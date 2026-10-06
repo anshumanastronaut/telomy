@@ -1,0 +1,28 @@
+# dependencies & builds
+node_modules/
+mobile/ios/
+mobile/android/
+mobile/.expo/
+mobile/dist/
+.venv/
+.venv-tools/
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# local data
+backend/telomy.db
+*.db
+# personal data captured during competitor teardowns (real health data) — never commit
+research/ultrahuman/shots/
+research/ultrahuman/a.sh
+brand/frames/
+qa/shots/
+qa/sheet_*.jpg
+# secrets
+.env
+.env.*
+*.pem
+*.p12
+*.mobileprovision
+.DS_Store
