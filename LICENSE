@@ -1,0 +1,8 @@
+Copyright (c) 2026 Telomy. All rights reserved.
+
+This repository and all of its contents are proprietary and confidential. No licence is granted to use, copy, modify,
+distribute or create derivative works, in whole or in part, except by Telomy team members and contractors under a written
+agreement with Telomy.
+
+Third-party components remain under their own licences (see each package). Data sets fetched at runtime (e.g. DDInter,
+Open-Meteo/Copernicus CAMS) are subject to their providers' terms; DDInter is non-commercial and must not ship in production.
