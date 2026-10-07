@@ -2,12 +2,13 @@
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from . import activities, brief, db, derived, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import config  # noqa: F401  (loads backend/.env first)
+from . import activities, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -20,7 +21,7 @@ async def lifespan(_app):
     therapy.init()
     rx.init()
     summaries.init()
-    for mod in (voice, routine, activities, exposome):
+    for mod in (voice, routine, activities, exposome, devices):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -747,6 +748,47 @@ def twin_day(drinking: bool = False, day: str | None = None):
 @app.get("/twin/mirror")
 def twin_mirror():
     return twin.mirror()
+
+
+# ------------------------------------------------------------------ machine telemetry (centre devices) — see docs/DEVICE_INTEGRATION.md
+
+class TelemetryIn(BaseModel):
+    samples: list[dict]
+
+
+@app.post("/devices/{device_id}/telemetry")
+def device_telemetry(device_id: str, body: TelemetryIn, x_device_key: str | None = Header(default=None)):
+    try:
+        return devices.ingest(device_id, x_device_key, body.samples)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except PermissionError as e:
+        raise HTTPException(401, str(e))
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.post("/centre/devices/{device_id}/key")
+def device_key(device_id: str, x_admin_key: str | None = Header(default=None)):
+    if x_admin_key != config.ADMIN_KEY:
+        raise HTTPException(401, "Admin key required (X-Admin-Key).")
+    try:
+        return devices.issue_key(device_id)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/centre/devices/{device_id}/telemetry")
+def device_recent(device_id: str, minutes: int = 120):
+    try:
+        return devices.recent(device_id, minutes)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/devices/channels")
+def device_channels():
+    return {m: {k: {"label": v[0], "unit": v[1], "limits": [v[2], v[3]]} for k, v in ch.items()} for m, ch in devices.CHANNELS.items()}
 
 
 @app.get("/physio/validation")

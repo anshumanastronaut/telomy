@@ -619,3 +619,36 @@ def test_twin_day_and_mirror(client):
     assert dd["peak_bac"] > 0.02 and dd["caffeine_at_bed_mg"] > 20 and dd["tonight"]["hrv"] < dd["tonight"]["hrv_baseline"]
     m = client.get("/twin/mirror").json()
     assert m["hrv"]["r2"] > 0.3 and any(l["marker"] == "hs-CRP" and l["unexplained_pct"] > 30 for l in m["labs"])
+
+
+# ---------------------------------------------------------------- machine telemetry & patch ingestion
+
+def test_device_telemetry_links_to_session_and_drives_physiology(client):
+    from datetime import datetime, timedelta
+    assert client.post("/centre/devices/CRY-1/key").status_code == 401                      # admin key required
+    key = client.post("/centre/devices/CRY-1/key", headers={"X-Admin-Key": "dev-admin"}).json()["key"]
+    assert client.post("/devices/CRY-1/telemetry", json={"samples": [{"ts": "2026-10-06T08:00:00", "chamber_temp_c": -100}]},
+                       headers={"X-Device-Key": "wrong"}).status_code == 401
+    from app import db
+    s = db.one("SELECT id, ts FROM therapy_sessions WHERE patient_id = 1 AND modality = 'cryo' AND device_id = 'CRY-1' ORDER BY ts DESC")
+    t0 = datetime.fromisoformat(s["ts"]) - timedelta(minutes=5)
+    samples = []
+    for k in range(0, 600, 5):           # pre-cool, 180 s at ≈ −158 °C with the person inside, then the door opens
+        v = -60 - 98 * min(1, k / 120) if k < 300 else (-158 if k < 480 else -120)
+        samples.append({"ts": (t0 + timedelta(seconds=k)).isoformat(timespec="seconds"), "chamber_temp_c": v, "door_open": int(k >= 480), "status": "running"})
+    samples.append({"ts": (t0 + timedelta(seconds=605)).isoformat(timespec="seconds"), "chamber_temp_c": -195, "status": "E12_sensor"})
+    r = client.post("/devices/CRY-1/telemetry", json={"samples": samples}, headers={"X-Device-Key": key}).json()
+    assert r["stored"] == len(samples) and any(a["channel"] == "chamber_temp_c" for a in r["alarms"]) and any(a["channel"] == "status" for a in r["alarms"])
+    sess = client.get(f"/therapy/sessions/{s['id']}").json()
+    m = sess["machine"]
+    assert m and m["seconds_below_minus110"] >= 150 and m["vs_prescribed"]
+    assert sess["source"] == "simulated (ODE prior driven by machine telemetry)" and sess["measured_params"]["chamber_c"] < -140
+    assert client.get("/centre/devices/CRY-1/telemetry").json()["connected"]
+
+
+def test_patch_rr_intervals_become_hrv(client):
+    s = client.post("/therapy/sessions", json={"modality": "sauna"}).json()
+    samples = [{"t": t, "rr_ms": [860, 840, 880, 850, 870] if t < 300 else [520, 515, 530, 512, 525] if t < 1500 else [900, 870, 930, 880, 920]}
+               for t in range(0, 3000, 10)]
+    f = client.post(f"/therapy/sessions/{s['id']}/samples", json={"samples": samples, "source": "Telomy patch (prototype)"}).json()["features"]
+    assert f["hr_pre"] and 65 < f["hr_pre"] < 75 and f["hr_peak"] > 110 and f["rmssd_pre"] > 15

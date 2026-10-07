@@ -1,0 +1,5 @@
+# Optional: local speech-to-text for Sinc voice (~250 MB Whisper "small" model downloads on first use)
+-r requirements.txt
+faster-whisper==1.2.1
+ctranslate2==4.8.2
+av==19.0.1

@@ -656,6 +656,17 @@ def session(sid: int) -> dict | None:
     r["labels"] = physio.LABELS
     dev = db.one("SELECT * FROM devices WHERE id = ?", (r["device_id"],)) if r["device_id"] else None
     r["device"] = dev
+    from . import devices
+    r["machine"] = devices.for_session(r)
+    if r["machine"] and r["source"].startswith("simulated"):
+        # the machine told us what it actually did → drive the person's physiology prior with measured inputs
+        mp = devices.measured_params(r, r["machine"])
+        if mp != r["params"]:
+            th = _theta_for(r["patient_id"])
+            tr = physio.simulate(r["modality"], mp, th, seed=sid, step=5)
+            r["trace"], r["features"] = tr, physio.analyse(r["modality"], tr, mp, th["age"])
+            r["source"] = r["trace"]["source"] = "simulated (ODE prior driven by machine telemetry)"
+            r["measured_params"] = mp
     return r
 
 
@@ -831,6 +842,12 @@ def ingest(sid: int, samples: list[dict], source: str = "device") -> dict:
         raise LookupError("Session not found")
     if len(samples) < 20:
         raise ValueError("Need at least 20 samples")
+    for s_ in samples:  # Telomy patch / chest strap may send raw RR intervals; HRV is computed server-side
+        rr = s_.get("rr_ms")
+        if isinstance(rr, list) and len(rr) >= 3 and "rmssd" not in s_:
+            d = [b - a for a, b in zip(rr, rr[1:])]
+            s_["rmssd"] = round((sum(x * x for x in d) / len(d)) ** 0.5, 1)
+            s_.setdefault("hr", round(60000 / (sum(rr) / len(rr)), 1))
     ts = [int(s["t"]) for s in samples]
     sig = {k: [s.get(k) for s in samples] for k in physio.SIGNALS if any(k in s for s in samples)}
     phases = r["trace"].get("phases") if r["trace"] else None

@@ -22,6 +22,7 @@ qa/sheet_*.jpg
 # secrets
 .env
 .env.*
+!.env.example
 *.pem
 *.p12
 *.mobileprovision
