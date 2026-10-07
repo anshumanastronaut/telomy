@@ -28,3 +28,4 @@ qa/sheet_*.jpg
 *.mobileprovision
 .DS_Store
 backend/data/ddinter/
+share/

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Telomy",
     "slug": "telomy",
-    "version": "1.0.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "telomy",
@@ -16,16 +16,19 @@
           "NSAllowsLocalNetworking": true
         }
       },
-      "appleTeamId": "M483297A5P"
+      "appleTeamId": "M483297A5P",
+      "buildNumber": "5"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#000000",
-        "foregroundImage": "./assets/images/icon.png"
+        "backgroundColor": "#0A0B0C",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.kumaranshuman.telomy",
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "versionCode": 5
     },
     "web": {
       "output": "static",
