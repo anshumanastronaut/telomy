@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from . import brief, db, derived, engine, features, food, seed, sinc
+from . import brief, db, derived, engine, features, food, plans, predict, roles, seed, sinc
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -15,6 +15,8 @@ from .labparse import parse_pdf
 @asynccontextmanager
 async def lifespan(_app):
     db.init()
+    roles.init()
+    plans.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
     yield
@@ -25,7 +27,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 
 def now():
-    return datetime.now().isoformat(timespec="seconds")
+    return engine.now_iso()
 
 
 def today():
@@ -60,6 +62,217 @@ def otp_verify(body: OtpIn):
     if body.code != "000000":
         raise HTTPException(400, "That code didn't match. Check the SMS and try again.")
     return {"token": "dev-token", "profile": engine.profile()}
+
+
+@app.get("/accounts")
+def accounts():
+    return db.rows("SELECT id, role, name, org FROM accounts ORDER BY id")
+
+
+# ------------------------------------------------------------------ prediction
+
+@app.get("/predict")
+def predict_me():
+    return predict.run(predict.inputs_from_vault())
+
+
+@app.post("/predict/what-if")
+def what_if(body: dict):
+    return predict.what_if(body)
+
+
+@app.get("/predict/patient/{pid}")
+def predict_patient(pid: int):
+    if not db.one("SELECT id FROM patients WHERE id = ?", (pid,)):
+        raise HTTPException(404, "Patient not found")
+    return roles.predictions(pid)
+
+
+# ------------------------------------------------------------------ plans, monthly reports, consults
+
+@app.get("/plans")
+def get_plans():
+    return {"plans": plans.PLANS, "on_demand": plans.ON_DEMAND, "centre": plans.CENTRE_PLANS, "doctor_seat": plans.DOCTOR_SEAT,
+            "test_mode": True, "subscription": plans.subscription()}
+
+
+class SubIn(BaseModel):
+    plan: str
+    billing: str = "month"
+
+
+@app.post("/subscription")
+def subscribe(body: SubIn):
+    try:
+        return plans.subscribe(body.plan, body.billing if body.billing in ("month", "year") else "month", today())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/monthly-reports")
+def monthly_reports():
+    return plans.list_monthly()
+
+
+@app.post("/monthly-reports/{period}/generate")
+def monthly_generate(period: str):
+    try:
+        return plans.generate_monthly(period)
+    except PermissionError as e:
+        raise HTTPException(402, str(e))
+
+
+@app.get("/monthly-reports/{period}")
+def monthly_get(period: str):
+    r = plans.get_monthly(period)
+    if not r:
+        raise HTTPException(404, "No report for that month yet")
+    return r
+
+
+class SignIn(BaseModel):
+    note: str
+    doctor: str = "Dr. Meera Rao"
+
+
+@app.post("/monthly-reports/{period}/sign")
+def monthly_sign(period: str, body: SignIn):
+    try:
+        return plans.sign_monthly(period, body.doctor, body.note)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class ConsultIn(BaseModel):
+    kind: str = "gp"
+    mode: str = "video"
+    reason: str = ""
+
+
+@app.post("/consults")
+def consult(body: ConsultIn):
+    try:
+        return plans.request_consult(body.kind, body.mode, body.reason, today())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/consults")
+def consult_list():
+    return plans.consults()
+
+
+class DoneIn(BaseModel):
+    notes: str
+
+
+@app.post("/consults/{cid}/complete")
+def consult_done(cid: int, body: DoneIn):
+    try:
+        return plans.complete_consult(cid, body.notes)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ------------------------------------------------------------------ doctor
+
+@app.get("/doctor/today")
+def doctor_today():
+    return roles.doctor_today(today())
+
+
+@app.get("/doctor/work")
+def doctor_work():
+    return {"monthly_reports": [r for r in plans.list_monthly() if r["state"] == "awaiting_doctor"],
+            "consults": [c for c in plans.consults() if c["status"] == "scheduled"]}
+
+
+@app.get("/doctor/patients")
+def doctor_patients():
+    return roles.doctor_patients()
+
+
+@app.get("/doctor/patients/{pid}")
+def doctor_patient(pid: int):
+    p = roles.doctor_patient(pid)
+    if not p:
+        raise HTTPException(404, "Patient not found")
+    return p
+
+
+class NoteIn(BaseModel):
+    text: str
+    author: str = "Dr. Meera Rao"
+
+
+@app.post("/doctor/patients/{pid}/notes")
+def add_note(pid: int, body: NoteIn):
+    if not body.text.strip():
+        raise HTTPException(400, "Write a note first.")
+    db.exec_("INSERT INTO clinical_notes (patient_id, author, ts, text) VALUES (?,?,?,?)", (pid, body.author, now(), body.text.strip()))
+    return {"ok": True}
+
+
+# ------------------------------------------------------------------ wellness centre
+
+@app.get("/centre/dashboard")
+def centre_dashboard():
+    return roles.centre_dashboard(today())
+
+
+@app.get("/centre/members")
+def centre_members():
+    return roles.centre_members()
+
+
+@app.get("/centre/services")
+def centre_services():
+    return roles.services()
+
+
+@app.get("/centre/services/{sid}/outcomes")
+def centre_service_outcomes(sid: str):
+    return roles.service_outcomes(sid)
+
+
+@app.get("/centre/bookings")
+def centre_bookings(day: str | None = None):
+    d = day or today()
+    return db.rows("""SELECT b.*, s.name AS service, s.minutes, p.name FROM bookings b JOIN services s ON s.id = b.service_id
+                      JOIN patients p ON p.id = b.patient_id WHERE substr(b.ts,1,10) = ? ORDER BY b.ts""", (d,))
+
+
+class BookingIn(BaseModel):
+    patient_id: int
+    service_id: str
+    ts: str
+
+
+@app.post("/centre/bookings")
+def centre_book(body: BookingIn):
+    s = db.one("SELECT * FROM services WHERE id = ?", (body.service_id,))
+    if not s or not db.one("SELECT id FROM patients WHERE id = ?", (body.patient_id,)):
+        raise HTTPException(400, "Unknown member or service.")
+    taken = db.one("SELECT COUNT(*) AS n FROM bookings WHERE service_id = ? AND ts = ? AND status != 'cancelled'", (body.service_id, body.ts))["n"]
+    if taken >= s["capacity"]:
+        raise HTTPException(409, f"{s['name']} is full at that time ({s['capacity']} places).")
+    bid = db.exec_("INSERT INTO bookings (patient_id, service_id, ts, status, price) VALUES (?,?,?,?,?)",
+                   (body.patient_id, body.service_id, body.ts, "booked", s["price"]))
+    return {"id": bid, "message": f"Booked {s['name']}."}
+
+
+class StatusIn(BaseModel):
+    status: str
+
+
+@app.post("/centre/bookings/{bid}/status")
+def centre_booking_status(bid: int, body: StatusIn):
+    if body.status not in ("booked", "checked_in", "completed", "no_show", "cancelled"):
+        raise HTTPException(400, "Unknown status")
+    db.exec_("UPDATE bookings SET status = ? WHERE id = ?", (body.status, bid))
+    return {"ok": True}
 
 # ------------------------------------------------------------------ profile
 
@@ -616,7 +829,7 @@ class MealIn(BaseModel):
 
 @app.post("/meals/analyze")
 def meal_analyze(body: MealIn):
-    when = datetime.fromisoformat(body.ts) if body.ts else datetime.now()
+    when = datetime.fromisoformat(body.ts) if body.ts else datetime.fromisoformat(engine.now_iso())
     a = food.analyze(body.text, when)
     if body.save and a.get("items"):
         mid = db.exec_("INSERT INTO meals (ts, name, analysis) VALUES (?,?,?)", (when.isoformat(timespec="seconds"), body.text, db.j(a)))

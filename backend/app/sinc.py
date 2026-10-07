@@ -64,7 +64,7 @@ def context_pack() -> dict:
                         "goal": p.get("goal")},
             "longevity_age": {k: engine.longevity_age().get(k) for k in ("value", "chronological", "pace", "confidence")},
             "labs": labs, "signals_30d": signals, "insights": insights, "memories": memories,
-            "today": datetime.now().date().isoformat()}
+            "today": (engine.last_signal_day() or datetime.now().date().isoformat())}
 
 
 def _claude_available() -> bool:
@@ -218,7 +218,7 @@ def _deep_refs(out: dict) -> list[dict]:
 
 
 def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict:
-    now = datetime.now().isoformat(timespec="seconds")
+    now = engine.now_iso()
     if not chat_id:
         chat_id = db.exec_("INSERT INTO chats (ts, title) VALUES (?,?)", (now, question[:60]))
     history = db.rows("SELECT role, content FROM messages WHERE chat_id = ? ORDER BY id", (chat_id,))
@@ -249,7 +249,7 @@ def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict
             chips.append({"id": e, "type": "signal", "label": engine.SIGNALS[e][0]})
     out["chips"] = chips
     mid = db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)",
-                   (chat_id, datetime.now().isoformat(timespec="seconds"), "assistant", out["answer"], db.j(out)))
+                   (chat_id, engine.now_iso(), "assistant", out["answer"], db.j(out)))
     for m in MEMORY_PAT.findall(question):
         db.exec_("INSERT INTO memories (ts, fact, source) VALUES (?,?,?)", (now, m.strip().capitalize(), "Sinc chat"))
     return {"chat_id": chat_id, "message_id": mid, **out}

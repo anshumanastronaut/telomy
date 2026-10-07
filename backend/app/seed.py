@@ -48,7 +48,7 @@ def run(reset=True):
         "phone": "+91 90000 00000", "goal": "Track biomarkers and sleep better", "city": "Bengaluru",
         "emergency": {"blood_type": "B+", "allergies": "Penicillin", "conditions": "None known",
                       "medications": "Vitamin D3 2000 IU", "contact": "Test Contact · +91 90000 00001"},
-        "is_test_profile": True, "onboarded": True}),))
+        "is_test_profile": True, "onboarded": True, "smoker": False, "bp_treated": False, "family_history_dm": True}),))
 
     # ---- events
     events = []
@@ -130,13 +130,16 @@ def run(reset=True):
             "skin_temp": round(rnd.gauss(0, 0.18) + (0.35 if prev in alcohol_days else 0), 2),
             "daylight_min": round(daylight), "mindful_min": round(max(0, rnd.gauss(6, 6))),
         }
+        if i % 3 == 0:  # home BP cuff every 3 days
+            vals["sbp"] = round(rnd.gauss(128, 6) + (5 if prev in alcohol_days else 0))
+            vals["dbp"] = round(rnd.gauss(82, 4))
         if i % 7 == 0:
             vals["vo2max"] = round(vo2, 1)
             vals["weight"] = round(weight, 1)
         if i >= DAYS - 14:  # two-week CGM sensor
             vals["glucose_mean"] = round(rnd.gauss(104, 6) + (8 if prev in late_meal_days else 0))
         for k, v in vals.items():
-            src = "CGM · Libre" if k == "glucose_mean" else "Telomy Band" if k in ("hrv", "rhr", "skin_temp", "spo2",
+            src = "CGM · Libre" if k == "glucose_mean" else "BP cuff · Omron" if k in ("sbp", "dbp") else "Telomy Band" if k in ("hrv", "rhr", "skin_temp", "spo2",
                   "resp_rate", "deep_sleep", "rem_sleep", "sleep_hours", "sleep_score") else "Apple Health"
             db.exec_("INSERT OR REPLACE INTO signals (day, metric, value, source) VALUES (?,?,?,?)",
                      (d.isoformat(), k, v, src))
@@ -219,7 +222,7 @@ def run(reset=True):
               "clinic", "confirmed", "Lipids and ApoB review"))
 
     # ---- consents (default off; a few granted with history)
-    now = datetime.now().isoformat(timespec="seconds")
+    now = engine.now_iso()
     purposes = ["wearable_sync", "lab_analysis", "sinc_ai", "clinician_sharing", "research", "family_sharing",
                 "cycle_tracking", "marketing"]
     granted = {"wearable_sync", "lab_analysis", "sinc_ai", "clinician_sharing"}
@@ -267,7 +270,22 @@ def run(reset=True):
         db.exec_("INSERT INTO sessions_log (ts, kind, minutes, data) VALUES (?,?,?,?)",
                  (f"{day.isoformat()}T21:30:00", rnd.choice(["coherent", "sleep", "box"]), rnd.choice([5, 10, 10, 15]), db.j({})))
 
+    from . import roles
+    roles.seed(rnd, TODAY, sorted(sauna_days))
+    from . import plans
+    plans.init()
+    db.exec_("INSERT INTO subscriptions (id, plan, billing, since, renews) VALUES (1,'plus','year','2026-06-01','2027-06-01')")
     engine.regenerate_insights()
+    prot = db.unj(db.one("SELECT data FROM protocols WHERE active = 1")["data"])
+    ids = [it["id"] for its in prot["pillars"].values() for it in its]
+    for k in range(70):
+        d = (TODAY - timedelta(days=k + 1)).isoformat()
+        for iid in ids:
+            if rnd.random() < 0.62:
+                db.exec_("INSERT OR REPLACE INTO checklist (day, item_id, done) VALUES (?,?,1)", (d, iid))
+    plans.generate_monthly("2026-08")
+    plans.sign_monthly("2026-08", "Dr. Meera Rao", "Good month for sleep. ApoB is the priority — let's recheck in October.")
+    plans.generate_monthly("2026-09")
     # A signed-off example so the thread UI has every state
     signed = db.one("SELECT id FROM insights WHERE medical = 1 ORDER BY confidence DESC")
     if signed:

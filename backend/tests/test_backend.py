@@ -301,3 +301,85 @@ def test_notifications_notes_stats_documents(client):
     from app import features
     meds = features.extract_meds("Rx: Tab. Atorvastatin 10 mg OD at night\nTab. Metformin 500 mg BD")
     assert [m["name"] for m in meds] == ["Atorvastatin", "Metformin"] and meds[1]["times"] == ["08:00", "20:00"]
+
+
+# ---------------------------------------------------------------- roles & prediction
+
+def test_pce_matches_guideline_examples():
+    from app import predict
+    m = predict.ascvd_pce(55, "male", 213, 50, 120)
+    f = predict.ascvd_pce(55, "female", 213, 50, 120)
+    assert abs(m["risk"] - 5.3) <= 0.2, m
+    assert abs(f["risk"] - 2.1) <= 0.2, f
+    assert predict.ascvd_pce(55, "male", None, 50, 120)["missing"] == ["total cholesterol"]
+
+
+def test_prediction_models_and_what_if(client):
+    p = client.get("/predict").json()["models"]
+    assert p["cvd"]["risk"] is not None and any("calcium" in e for e in p["cvd"]["enhancers"])
+    assert p["diabetes"]["risk"] >= 15 and p["liver"]["score"] < 1.3 and "not applicable" in p["kidney"]["band"]
+    w = client.post("/predict/what-if", json={"tc": 170, "hdl": 55, "sbp": 115}).json()
+    assert w["delta"]["cvd"]["to"] < w["delta"]["cvd"]["from"]
+    from app import predict
+    assert predict.kfre(70, "male", 35, 300)["risk"] > predict.kfre(70, "male", 55, 10)["risk"]
+    assert predict.diabetes(50, "male", 31, 6.7, 130)["already"]
+
+
+def test_doctor_views(client):
+    pts = client.get("/doctor/patients").json()
+    assert len(pts) >= 10 and pts == sorted(pts, key=lambda x: -x["priority"])
+    me = client.get("/doctor/patients/1").json()
+    assert me["full_vault"] and me["risk_map"] and me["notes"]
+    other = client.get(f"/doctor/patients/{pts[0]['id']}").json()
+    assert other["predictions"]["models"]["cvd"]
+    assert client.post("/doctor/patients/3/notes", json={"text": "Start statin discussion"}).json()["ok"]
+    assert client.post("/doctor/patients/3/notes", json={"text": " "}).status_code == 400
+    assert client.get("/doctor/patients/999").status_code == 404
+    t = client.get("/doctor/today").json()
+    assert t["patients"] == len(pts) and "awaiting_reviews" in t
+
+
+def test_centre_views(client):
+    d = client.get("/centre/dashboard").json()
+    assert d["members"] > 5 and d["today"] and d["utilisation"] and d["revenue_prev_month"] > 0
+    assert client.get("/centre/members").json()
+    o = client.get("/centre/services/sauna/outcomes").json()
+    assert o["n"] >= 10 and o["hrv_after"] > o["hrv_other"]
+    b = client.post("/centre/bookings", json={"patient_id": 6, "service_id": "dexa", "ts": "2026-10-09T13:00:00"}).json()
+    assert b["id"]
+    assert client.post("/centre/bookings", json={"patient_id": 7, "service_id": "dexa", "ts": "2026-10-09T13:00:00"}).status_code == 409
+    assert client.post(f"/centre/bookings/{b['id']}/status", json={"status": "checked_in"}).json()["ok"]
+    assert client.post(f"/centre/bookings/{b['id']}/status", json={"status": "weird"}).status_code == 400
+
+
+def test_prevent_matches_reference_package():
+    from app import predict
+    r = predict.prevent(50, "female", 200, 45, 160, bp_treated=True, statin=False, diabetic=True, smoker=False, egfr=90, bmi=35)
+    assert r["ten_year"] == {"total_cvd": 14.7, "ascvd": 9.2, "heart_failure": 8.1, "chd": 4.4, "stroke": 5.4}
+    assert r["thirty_year"]["total_cvd"] == 53.0 and r["thirty_year"]["heart_failure"] == 39.0
+
+
+def test_prevent_in_vault_and_what_if(client):
+    m = client.get("/predict").json()["models"]["prevent"]
+    assert m["ten_year"]["total_cvd"] > 0 and m["thirty_year"]["total_cvd"] > m["ten_year"]["total_cvd"]
+    d = client.post("/predict/what-if", json={"sbp": 115, "statin": True}).json()["delta"]
+    assert d["prevent_thirty_year"]["ascvd"]["to"] < d["prevent_thirty_year"]["ascvd"]["from"]
+
+
+def test_plans_monthly_reports_and_consults(client):
+    p = client.get("/plans").json()
+    assert [x["id"] for x in p["plans"]] == ["free", "essential", "plus", "pro"] and p["test_mode"]
+    reps = {r["period"]: r for r in client.get("/monthly-reports").json()}
+    assert reps["2026-08"]["state"] == "signed" and reps["2026-09"]["state"] == "awaiting_doctor"
+    r = client.get("/monthly-reports/2026-09").json()["data"]
+    assert r["signals"] and r["priorities"] and r["actions"] and 0 < r["protocol_adherence"] <= 100
+    assert client.post("/monthly-reports/2026-09/sign", json={"note": " "}).status_code == 400
+    assert client.post("/monthly-reports/2026-09/sign", json={"note": "Looks good"}).json()["state"] == "signed"
+    c1 = client.post("/consults", json={"kind": "gp", "mode": "video"}).json()
+    row = next(c for c in client.get("/consults").json() if c["id"] == c1["id"])
+    assert row["scheduled_at"] > row["requested_at"][:16]
+    assert client.post("/consults", json={"kind": "dentist"}).status_code == 400
+    assert client.post(f"/consults/{c1['id']}/complete", json={"notes": ""}).status_code == 400
+    client.post("/subscription", json={"plan": "free"})
+    assert client.post("/monthly-reports/2026-10/generate").status_code == 402
+    client.post("/subscription", json={"plan": "plus", "billing": "year"})

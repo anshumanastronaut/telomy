@@ -3,6 +3,7 @@ import React from 'react';
 import { Alert, View } from 'react-native';
 
 import { api, useApi } from '@/lib/api';
+import { useRole } from '@/lib/role';
 import { usePalette } from '@/lib/theme';
 import { Ring } from '@/ui/charts';
 import { Card, Chip, Divider, ListRow, Row, Screen, Section, T } from '@/ui/core';
@@ -13,6 +14,8 @@ export default function Profile() {
   const prof = useApi<any>('/profile');
   const comp = useApi<any>('/completeness');
   const health = useApi<any>('/health');
+  const plans = useApi<any>('/plans');
+  const { setRole } = useRole();
   const pr = prof.data;
   return (
     <Screen onRefresh={() => { prof.reload(); comp.reload(); }} refreshing={prof.loading}>
@@ -37,6 +40,13 @@ export default function Profile() {
         </Row>
       </Card>
 
+      <Group title="Plan & doctor">
+        <ListRow icon="star" title={`Plan · ${plans.data?.subscription.plan_detail.name ?? '—'}`} subtitle="Compare Free, Essential, Plus and Longevity Pro" onPress={() => router.push('/plans')} />
+        <ListRow icon="doc.text" title="Monthly reports" subtitle="Auto-generated each month, doctor-signed on Plus" onPress={() => router.push('/monthly')} />
+        <ListRow icon="video" title="Consult a doctor now" subtitle="GP ₹699 · specialist ₹1,499 · included in your plan" onPress={() => router.push('/consult')} />
+        <ListRow icon="waveform.path.ecg" title="Disease predictions" subtitle="PREVENT, PCE, diabetes, FIB-4, KFRE" onPress={() => router.push('/predict')} />
+      </Group>
+
       <Group title="Care">
         <ListRow icon="stethoscope" title="Clinicians & appointments" subtitle="Book, prepare a pre-clinic brief" onPress={() => router.push('/care')} />
         <ListRow icon="doc.richtext" title="Specialist pack" subtitle="PDF + FHIR for cardiology, endocrinology…" onPress={() => router.push('/brief')} />
@@ -56,6 +66,7 @@ export default function Profile() {
 
       <Group title="App">
         <ListRow icon="sparkles" title="Replay onboarding" onPress={() => router.push('/onboarding')} />
+        <ListRow icon="arrow.left.arrow.right" title="Switch role" subtitle="User · Doctor · Wellness centre" onPress={async () => { await setRole(null); router.replace('/welcome' as any); }} testID="switch-role" />
         <ListRow
           icon="arrow.counterclockwise"
           title="Reset test data"

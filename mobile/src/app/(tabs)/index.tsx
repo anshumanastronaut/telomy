@@ -118,6 +118,17 @@ export default function Home() {
         </Section>
       ) : null}
 
+      <Card onPress={() => router.push('/predict')} testID="predict-card" tone="teal">
+        <Row>
+          <Icon name="waveform.path.ecg" color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="body" style={{ fontWeight: '600' }}>Disease predictions</T>
+            <T v="small">10- and 30-year risk from validated equations, with what-if</T>
+          </View>
+          <Icon name="chevron.right" size={13} color={p.faint} />
+        </Row>
+      </Card>
+
       <Card onPress={() => router.push('/activity')} testID="activity-card">
         <Row>
           <Icon name="figure.walk" color={p.teal} />

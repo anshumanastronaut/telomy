@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { useColorScheme, View } from 'react-native';
 
+import { RoleProvider } from '@/lib/role';
 import { fonts, usePalette } from '@/lib/theme';
 import { Intro } from '@/ui/intro';
 
@@ -32,6 +33,7 @@ export default function RootLayout() {
   }, [loaded]);
   if (!loaded) return <View style={{ flex: 1, backgroundColor: '#000' }} />;
   return (
+    <RoleProvider>
     <ThemeProvider value={theme}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       {intro ? <Intro onDone={() => setIntro(false)} /> : null}
@@ -69,7 +71,16 @@ export default function RootLayout() {
         <Stack.Screen name="notes" options={{ title: 'Clinician notes' }} />
         <Stack.Screen name="nutrition" options={{ title: 'Nutrition' }} />
         <Stack.Screen name="pins" options={{ title: 'Pinned to Home' }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen name="doctor" options={{ headerShown: false }} />
+        <Stack.Screen name="centre" options={{ headerShown: false }} />
+        <Stack.Screen name="patient/[id]" options={{ title: 'Patient' }} />
+        <Stack.Screen name="predict" options={{ title: 'Disease predictions' }} />
+        <Stack.Screen name="plans" options={{ title: 'Plans' }} />
+        <Stack.Screen name="monthly" options={{ title: 'Monthly reports' }} />
+        <Stack.Screen name="consult" options={{ title: 'Consult a doctor' }} />
       </Stack>
     </ThemeProvider>
+    </RoleProvider>
   );
 }

@@ -42,3 +42,35 @@ Home (dial, cards, Sinc read, domains, pinned, 7-day summary, appointment, Vault
 8. Upload flow through the iOS document picker not yet exercised in the simulator (API path tested).
 9. Install on the physical iPhone (dev build signed with the user's Apple ID) and Android APK for the Galaxy A35.
 10. Teardowns pending: Fittr (phone locked), Ultrahuman Ring/M1/Home (hardware-gated).
+
+## Iterations 2–3 — roles, plans, validated prediction
+
+**Shipped**
+- Role selection at first launch (user · doctor · wellness-centre owner); each role gets its own tabs and home. 140-patient doctor panel ranked by risk, work queue (monthly reports, Sinc drafts, consults), centre dashboard (revenue vs same days last month, utilisation, members, bookings, service outcomes).
+- Plans after pricing research (Practo, Function Health, Superpower, Ultrahuman Blood Vision): Free / Essential ₹499 / Plus ₹1,499 / Longevity Pro ₹3,999 per month; on-demand GP ₹699, specialist ₹1,499, longevity physician ₹1,999; centre and doctor-seat plans. Payments are test mode only.
+- Auto-generated monthly report every month → doctor signs with a note (Plus/Pro) → patient sees the signed report. On-demand consults with a pre-clinic brief → doctor completes with notes.
+- Validated prediction: AHA PREVENT 2024 (10/30-year; matches the preventr reference example exactly), Pooled Cohort Equations (match guideline examples), ADA diabetes score + HbA1c bands, FIB-4, KFRE. What-if levers recompute every model.
+- Multivariable (OLS) event effects with BH FDR, Deep Research mode in Sinc with curated citations, sex-specific zones, action-plan safety gating.
+- Inter + Fraunces typography; Telomy logo, splash and boot video.
+
+**Bugs found while testing all three roles (fixed)**
+| # | Bug | Fix |
+|---|---|---|
+| 13 | Consult scheduled before it was requested (slot used app day, request used wall clock) | Single app clock (`engine.now_iso`) for every timestamp; GP slot = next half hour, others next day 10:00; regression test |
+| 14 | Monthly report "auto-generated 7 Oct" while the Vault day is 6 Oct | Same app-clock fix across plans, roles, seed, Sinc, food, events |
+| 15 | Revenue compared month-to-date with a full month | Same-day window |
+| 16 | Steps shown with decimals in monthly report | Integer signals rounded |
+| 17 | Monthly protocol adherence 0 % | Checklist history seeded |
+| 18 | Monthly / vault deep-link params ignored | `useEffect` on params |
+| 19 | Breathe header under the status bar | Safe-area insets |
+| 20 | Doctor consult count ≠ list | Combined counts, list capped, "Needs attention" first |
+
+**Verified end to end in the Simulator:** user books a plan-covered GP consult → doctor sees it in Work queue → completes with notes; doctor signs the September monthly report with a note; plan switching Free ↔ Essential ↔ Plus ↔ Pro (Pro shows "Unlimited GP consults"). Backend: 85 tests passing.
+
+### Open — next iteration
+1. iPhone release build with the JS bundle embedded; backend reachable from the phone (same Wi-Fi or hosted).
+2. Private GitHub repo `telomy` (needs `gh auth login`).
+3. HealthKit / Health Connect sync; Android build for the Galaxy A35.
+4. Real Claude key for Sinc; PREVENT optional UACR/HbA1c models; SCORE2, FRAX.
+5. DICOM viewer; photo meal logging.
+6. Hosted backend with real authentication.

@@ -6,6 +6,8 @@ items were matched and which were not, and its confidence reflects that coverage
 import re
 from datetime import date, datetime, timedelta
 
+from . import engine
+
 # name: (aliases, kcal, protein, carbs, fat, fibre, processing 0-3, veg)
 FOODS = {
     "egg": (["egg", "eggs", "omelette"], 78, 6.3, 0.6, 5.3, 0, 0, False),
@@ -60,7 +62,7 @@ WORDNUM = {"one": 1, "two": 2, "three": 3, "four": 4, "half": 0.5, "a": 1, "an":
 
 
 def analyze(text: str, when: datetime | None = None) -> dict:
-    when = when or datetime.now()
+    when = when or datetime.fromisoformat(engine.now_iso())
     t = text.lower()
     items, unmatched = [], []
     chunks = [c.strip() for c in re.split(r",| and | with |\+|&|\n", t) if c.strip()]

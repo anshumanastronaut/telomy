@@ -30,6 +30,8 @@ SIGNALS = {
     "skin_temp": ("Skin temperature deviation", "°C", "mid", 2),
     "vo2max": ("VO2 max", "mL/kg/min", "high", 1),
     "weight": ("Weight", "kg", "mid", 1),
+    "sbp": ("Systolic blood pressure", "mmHg", "low", 0),
+    "dbp": ("Diastolic blood pressure", "mmHg", "low", 0),
     "glucose_mean": ("Glucose (CGM mean)", "mg/dL", "low", 0),
     "daylight_min": ("Time in daylight", "min", "high", 0),
     "mindful_min": ("Mindful minutes", "min", "high", 0),
@@ -86,6 +88,12 @@ def series(metric: str, start: str | None = None, end: str | None = None) -> lis
 def last_signal_day() -> str | None:
     r = db.one("SELECT MAX(day) AS d FROM signals")
     return r["d"] if r else None
+
+
+def now_iso() -> str:
+    """App clock: the Vault's current day with the wall-clock time, so timestamps never run ahead of the data."""
+    day = last_signal_day() or date.today().isoformat()
+    return f"{day}T{datetime.now().strftime('%H:%M:%S')}"
 
 # ---------------------------------------------------------------- confidence
 
@@ -738,7 +746,7 @@ def trend_insights() -> list[dict]:
 
 def regenerate_insights() -> list[dict]:
     """Recompute all engine insights; review state and dismissals persist by stable id."""
-    now = datetime.now().isoformat(timespec="seconds")
+    now = now_iso()
     produced = cross_panel_patterns() + event_effects() + lab_wearable_links() + signal_correlations() + trend_insights()
     for ins in produced:
         existing = db.one("SELECT review_state, dismissed FROM insights WHERE id = ?", (ins["id"],))
