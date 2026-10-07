@@ -295,10 +295,15 @@ def analyse(modality: str, trace: dict, params: dict | None = None, age: float =
     if co:
         f["core_rise"] = round(max(co) - co[0], 2)
     if rec:
+        last_t = trace["t"][-1] if trace["t"] else rec["end"]
+        rec = {**rec, "end": min(rec["end"], last_t + 1)}  # device uploads may stop before the planned recovery ends
+    if rec and rec["end"] - rec["start"] >= 300:
         post_hr = _mean(_window(trace, "hr", rec["end"] - 300, rec["end"]))
         post_hrv = _mean(_window(trace, "rmssd", rec["start"] + 900, rec["start"] + 1260)) or _mean(_window(trace, "rmssd", rec["end"] - 300, rec["end"]))
-        f["hr_post"], f["hr_post_delta"] = r1(post_hr), r1(post_hr - hr_pre)
-        f["rmssd_post"], f["rebound_pct"] = r1(post_hrv), r1((post_hrv - hrv_pre) / hrv_pre * 100)
+        if post_hr is not None and hr_pre is not None:
+            f["hr_post"], f["hr_post_delta"] = r1(post_hr), r1(post_hr - hr_pre)
+        if post_hrv is not None and hrv_pre:
+            f["rmssd_post"], f["rebound_pct"] = r1(post_hrv), r1((post_hrv - hrv_pre) / hrv_pre * 100)
         # Recovery constant k: log-linear fit of the HRV gap closing during recovery
         pts = [(t - rec["start"], v) for t, v in zip(trace["t"], trace["signals"]["rmssd"]) if rec["start"] <= t < rec["end"]]
         if len(pts) > 20:

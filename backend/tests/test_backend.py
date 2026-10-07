@@ -647,7 +647,9 @@ def test_device_telemetry_links_to_session_and_drives_physiology(client):
 
 
 def test_patch_rr_intervals_become_hrv(client):
-    s = client.post("/therapy/sessions", json={"modality": "sauna"}).json()
+    blocked = client.post("/therapy/sessions", json={"modality": "sauna"})   # earlier test logged vodka today → sauna blocked
+    assert blocked.status_code in (200, 403)
+    s = client.post("/therapy/sessions", json={"modality": "pemf"}).json()
     samples = [{"t": t, "rr_ms": [860, 840, 880, 850, 870] if t < 300 else [520, 515, 530, 512, 525] if t < 1500 else [900, 870, 930, 880, 920]}
                for t in range(0, 3000, 10)]
     f = client.post(f"/therapy/sessions/{s['id']}/samples", json={"samples": samples, "source": "Telomy patch (prototype)"}).json()["features"]
