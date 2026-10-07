@@ -79,6 +79,20 @@ export default function RootLayout() {
         <Stack.Screen name="plans" options={{ title: 'Plans' }} />
         <Stack.Screen name="monthly" options={{ title: 'Monthly reports' }} />
         <Stack.Screen name="consult" options={{ title: 'Consult a doctor' }} />
+        <Stack.Screen name="therapy/[id]" options={{ title: 'Therapy' }} />
+        <Stack.Screen name="session/[id]" options={{ title: 'Session' }} />
+        <Stack.Screen name="therapy-plan" options={{ title: 'Therapy plan' }} />
+        <Stack.Screen name="therapies" options={{ title: 'All therapies' }} />
+        <Stack.Screen name="tests" options={{ title: 'Tests & scans' }} />
+        <Stack.Screen name="rx" options={{ title: 'Supplements & Rx' }} />
+        <Stack.Screen name="review/[id]" options={{ title: 'Report review' }} />
+        <Stack.Screen name="centre-research" options={{ title: 'Outcomes & research' }} />
+        <Stack.Screen name="voice" options={{ title: 'Talk to Sinc' }} />
+        <Stack.Screen name="twin" options={{ title: 'Digital twin' }} />
+        <Stack.Screen name="routine" options={{ title: 'My routine' }} />
+        <Stack.Screen name="activities" options={{ title: 'My activities' }} />
+        <Stack.Screen name="activity/[id]" options={{ title: 'Activity' }} />
+        <Stack.Screen name="environment" options={{ title: 'Environment' }} />
       </Stack>
     </ThemeProvider>
     </RoleProvider>

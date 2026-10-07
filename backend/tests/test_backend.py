@@ -34,7 +34,10 @@ def parsed(name):
     ("04_*", "genetic", 14, "2026-03-11"), ("05_*", "bioage", 8, "2026-09-25"), ("06_*", "metals", 8, "2026-08-14"),
     ("07_*", "toxins", 11, "2026-08-14"), ("08_*", "advanced", 16, "2026-09-30"), ("09_*", "fitness", 10, "2026-09-12"),
     ("10_*", "bodycomp", 6, "2026-07-20"), ("11_*", "bodycomp", 6, "2026-09-28"), ("12_*", "ct", 6, "2026-08-02"),
-    ("13_*", "mri", 6, "2026-08-30"), ("14_*", "screening", 7, "2026-09-05"), ("15_*", "proteomic", 8, "2026-09-25")])
+    ("13_*", "mri", 6, "2026-08-30"), ("14_*", "screening", 7, "2026-09-05"), ("15_*", "proteomic", 8, "2026-09-25"),
+    ("16_*", "hormones", 10, "2026-09-30"), ("17_*", "micronutrients", 11, "2026-10-01"), ("18_*", "cardio", 11, "2026-09-20"),
+    ("19_*", "lung", 4, "2026-09-12"), ("20_*", "cgm", 6, "2026-10-06"), ("21_*", "immune", 7, "2026-09-30"),
+    ("22_*", "urine", 6, "2026-10-01"), ("23_*", "screening", 2, "2026-09-18"), ("24_*", "functional", 6, "2026-09-22")])
 def test_parser_routes_and_counts(name, panel, n, date):
     p = parsed(name)
     assert p["panel"] == panel and len(p["markers"]) == n and p["collected_on"] == date and p["is_test_data"]
@@ -66,7 +69,8 @@ def test_history_has_true_per_date_values(client):
 def test_every_report_keeps_all_markers(client):
     counts = {r["filename"][:2]: r["markers"] for r in client.get("/reports").json()}
     assert counts == {"01": 34, "02": 34, "03": 17, "04": 14, "05": 8, "06": 8, "07": 11, "08": 16, "09": 10, "10": 6,
-                      "11": 6, "12": 6, "13": 6, "14": 7, "15": 8}
+                      "11": 6, "12": 6, "13": 6, "14": 7, "15": 8, "16": 10, "17": 11, "18": 11, "19": 4, "20": 6, "21": 7,
+                      "22": 6, "23": 2, "24": 6}
 
 
 def test_each_panel_has_its_own_data(client):
@@ -246,7 +250,7 @@ def test_adjusted_effects_cover_ground_truth(client):
         lo, hi = eff[key]["ci95"]
         assert lo - 0.05 <= truth <= hi + 0.05, (key, eff[key]["ci95"])
     sauna = eff[("sauna", "deep_sleep")]
-    assert abs(sauna["adjusted_effect"]) < abs(sauna["unadjusted_effect"])  # confounding removed
+    assert abs(sauna["adjusted_effect"] - 0.25) <= abs(sauna["unadjusted_effect"] - 0.25)  # adjustment moves toward the truth
 
 
 def test_future_report_date_rejected(client):
@@ -383,3 +387,235 @@ def test_plans_monthly_reports_and_consults(client):
     client.post("/subscription", json={"plan": "free"})
     assert client.post("/monthly-reports/2026-10/generate").status_code == 402
     client.post("/subscription", json={"plan": "plus", "billing": "year"})
+
+
+# ---------------------------------------------------------------- therapies & in-session physiology
+
+def test_ode_prior_reproduces_literature_targets():
+    from app import physio
+    r = physio.validate_prior(12)
+    assert r["all_pass"], r
+
+
+def test_session_analytics_on_device_samples(client):
+    s = client.post("/therapy/sessions", json={"modality": "cryo", "params": {"chamber_c": -140}}).json()
+    assert s["expected"]["source"].startswith("simulated")
+    samples = []
+    for t in range(0, 2000, 5):  # a real chest-strap style trace: baseline, 3-min cold, recovery
+        cold = 300 <= t < 480
+        rec = t >= 480
+        samples.append({"t": t, "hr": 70 + (14 if cold else -3 if rec else 0), "rmssd": 40 * (0.65 if cold else 1.0 + (0.7 * (1 - 2.718 ** (-(t - 480) / 600)) if rec else 0)),
+                        "skin": 33 - (10 * min(1, (t - 300) / 120) if cold else 10 * 2.718 ** (-(t - 480) / 700) if rec else 0), "spo2": 97.5})
+    f = client.post(f"/therapy/sessions/{s['id']}/samples", json={"samples": samples, "source": "Polar H10 (test)"}).json()["features"]
+    assert f["source"] == "Polar H10 (test)" and 12 <= f["hr_peak_delta"] <= 16 and f["rebound_pct"] > 40 and f["skin_drop"] < -8
+    assert f["rewarm_half_min"] is not None and f["safety"]["tier"] == 0
+    done = client.post(f"/therapy/sessions/{s['id']}/finish", json={"subjective": {"pre": {"energy": 5}, "post": {"energy": 7}}}).json()
+    assert done["status"] == "completed"
+
+
+def test_therapy_verdicts_match_seeded_truth(client):
+    v = {r["modality"]: r["verdict"] for r in client.get("/therapy/working").json()}
+    assert v["sauna"] == "helped"                                  # embedded +0.25 h deep sleep, +4 HRV
+    assert v["pemf"] in ("helped", "promising") and v["cryo"] in ("helped", "promising")
+    for m in ("hbot_mild", "redlight", "h2_inhal", "compression"):  # nothing embedded → never "helped"
+        assert v[m] in ("no_signal", "too_early"), (m, v[m])
+    assert v["iv"] == "too_early"
+
+
+def test_safety_screen_uses_the_vault(client):
+    s = {x["modality"]: x for x in client.get("/therapy/safety").json()["screen"]}
+    assert s["cryo"]["status"] == "caution" and "CAC" in s["cryo"]["summary"]    # coronary plaque on CT
+    assert s["ihht"]["status"] == "caution"                                       # sleep apnoea
+    assert s["redlight"]["status"] == "ok"
+
+
+def test_plan_needs_doctor_and_books_sessions(client):
+    p = client.post("/therapy/plans", json={"goal": "sleep", "per_week": 4}).json()
+    assert p["state"] == "awaiting_doctor" and p["plan"]["items"][0]["modality"] == "sauna"
+    assert any(x["id"] == p["id"] for x in client.get("/doctor/work").json()["therapy_plans"])
+    assert client.post(f"/therapy/plans/{p['id']}/decide", json={"approve": True, "note": " "}).status_code == 400
+    d = client.post(f"/therapy/plans/{p['id']}/decide", json={"approve": True, "note": "Go ahead; recheck HRV at week 4."}).json()
+    assert d["state"] == "active" and d["booked"] == 16
+    assert client.post(f"/therapy/plans/{p['id']}/decide", json={"approve": True, "note": "again"}).status_code == 400
+
+
+def test_hsai_and_floor_and_phenotypes(client):
+    h = client.get("/therapy/hsai").json()
+    assert h["available"] and 0 <= h["score"] <= 100 and h["range"][0] <= h["score"] <= h["range"][1]
+    assert "not a diagnosis" in h["message"]
+    floor = client.get("/centre/floor").json()
+    assert len(floor["devices"]) >= 25
+    ph = client.get("/centre/research/phenotypes").json()
+    assert ph["n"] >= 8 and len(ph["groups"]) >= 2 and "Simulated" in ph["caveat"]
+
+
+def test_new_report_rules_fire(client):
+    keys = {i["receipts"].get("rule") for i in client.get("/insights").json() if i["kind"] == "cross_panel"}
+    for k in ("masked_htn", "osa_nondipper", "thyroid_autoimmune", "cgm_a1c", "liver_fibrosis", "allergic_airway", "folate_hcy", "g6pd"):
+        assert k in keys, k
+
+
+# ---------------------------------------------------------------- tests catalogue, Telomy Rx, doctor AI summaries
+
+def test_tests_catalogue_and_recommendations(client):
+    cat = {t["id"]: t for t in client.get("/tests").json()}
+    assert len(cat) >= 70 and cat["food_igg"]["evidence"] == "D" and cat["dexa"]["status"]["state"] == "current"
+    rec = client.get("/tests/recommended").json()
+    assert any(r["id"] == "pgx" for r in rec)                       # statin discussion → SLCO1B1 first
+    assert client.post("/tests/book", json={"test_id": "food_igg", "day": "2026-10-09"}).status_code == 409
+    assert client.post("/tests/book", json={"test_id": "pgx", "day": "2026-10-09"}).status_code == 200
+
+
+def test_rx_is_data_triggered_and_doctor_gated(client):
+    r = client.get("/rx/recommend", params={"goal": "heart"}).json()
+    ids = {i["id"]: i for i in r["supplements"] + r["medicines"]}
+    assert "4,000 IU" in ids["vitd"]["dose"] and ids["vitd"]["status"] == "adjust_dose"   # 22 ng/mL on 2,000 IU
+    assert ids["rosuva"]["status"] == "discuss" and "CAC" not in ids["rosuva"]["why"] or "Coronary calcium" in ids["rosuva"]["why"]
+    assert "Magnesium glycinate" in [i["name"] for i in r["already_taking"]]
+    assert {e["name"] for e in r["excluded"]} >= {"NMN", "Melatonin"}
+    plan = client.post("/rx/plans", json={"goal": "heart", "items": ["vitd", "psyllium", "rosuva"]}).json()
+    assert plan["state"] == "awaiting_doctor"
+    assert client.post(f"/rx/plans/{plan['id']}/order").status_code == 403                 # cannot order before sign-off
+    assert any(p["id"] == plan["id"] for p in client.get("/doctor/work").json()["rx_plans"])
+    d = client.post(f"/rx/plans/{plan['id']}/decide", json={"approve": True, "note": "Start D3 4,000 IU and psyllium; statin 5 mg after PGx.",
+                                                           "keep": ["vitd", "psyllium", "rosuva"], "doses": {"rosuva": "5 mg nightly"}}).json()
+    assert d["state"] == "approved" and d["plan"]["signed"]["reg_no"]
+    assert next(i for i in d["plan"]["items"] if i["id"] == "rosuva")["dose"] == "5 mg nightly"
+    o = client.post(f"/rx/plans/{plan['id']}/order").json()
+    assert "test mode" in o["message"] and any("pharmacy" in c for c in o["channels"])
+    pdf = client.get(f"/rx/plans/{plan['id']}/prescription.pdf")
+    assert pdf.status_code == 200 and pdf.content[:4] == b"%PDF"
+
+
+def test_iv_vitamin_c_needs_g6pd(client):
+    from app import rx
+    ctx = rx._context()
+    ctx["flags"] = (ctx["flags"] - {"g6pd_ok"}) | {"g6pd_def"}
+    assert any(i["severity"] == "major" for i in rx.screen("iv_vitc", ctx))
+
+
+def test_doctor_sees_every_report_with_ai_summary(client):
+    reps = client.get("/doctor/patients/1/reports").json()
+    assert len(reps) == 24 and all(r["summary"] for r in reps)
+    cardio = next(r for r in reps if r["panel"] == "cardio")
+    s = client.get(f"/reports/{cardio['id']}/summary").json()
+    assert s["flagged"] == 3 and "Non-dipper" in s["summary"] and s["patterns"]
+    assert client.post(f"/reports/{cardio['id']}/review", json={"action": "signed", "note": ""}).status_code == 400
+    s2 = client.post(f"/reports/{cardio['id']}/review", json={"action": "signed", "note": "ABPM confirms; start telmisartan discussion."}).json()
+    assert s2["reviews"][0]["doctor"] == "Dr. Meera Rao"
+    ps = client.get("/doctor/patients/1/summary").json()
+    assert "PREVENT" in ps["summary"] and "HSAI" in ps["summary"] and ps["problems"]
+    assert "Latest labs" in client.get("/doctor/patients/7/summary").json()["summary"]
+
+
+# ---------------------------------------------------------------- voice, routine, activities, environment
+
+def test_voice_text_any_sentence_becomes_actions(client):
+    r = client.post("/voice/command", json={"text": "Had 2 boiled eggs and dal for lunch, then 2 cigarettes, feeling stressed"}).json()
+    kinds = {i["intent"] for i in r["intents"]}
+    assert {"meal", "smoke", "mood"} <= kinds
+    assert any("cigarette" in a["message"] for a in r["actions"])
+    hi = client.post("/voice/command", json={"text": "आज मैंने दो अंडे और दाल खाई, थोड़ा तनाव है"}).json()      # Hindi
+    assert {"meal", "mood"} <= {i["intent"] for i in hi["intents"]}
+    v = client.post("/voice/command", json={"text": "had 120 ml vodka at 9 pm"}).json()
+    a = next(i for i in v["intents"] if i["intent"] == "alcohol")
+    assert a["grams_alcohol"] == 37.9 and a["ts"][11:16] == "21:00"
+    q = client.post("/voice/command", json={"text": "why is my HRV low this week?"}).json()
+    assert q["intents"][0]["intent"] == "question" and q["actions"][0]["answer"]
+
+
+def test_voice_audio_pipeline_extracts_features(client):
+    import io, math, wave
+    sr, buf = 16000, io.BytesIO()
+    w = wave.open(buf, "wb"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr)
+    frames = bytearray()
+    for i in range(sr * 2):  # 2 s of a 140 Hz 'voice' with syllable-like amplitude modulation
+        amp = 0.4 * (0.5 + 0.5 * math.sin(2 * math.pi * 3 * i / sr)) if (i // 4000) % 2 == 0 else 0.002
+        v = int(32767 * amp * math.sin(2 * math.pi * 140 * i / sr))
+        frames += v.to_bytes(2, "little", signed=True)
+    w.writeframes(bytes(frames)); w.close()
+    from app import voice
+    f = voice.acoustics(voice.decode(buf.getvalue()))
+    assert 120 <= f["f0_mean"] <= 160 and f["jitter_pct"] < 5 and 0 < f["pause_ratio"] < 1
+    assert voice.stress_score(f)["score"] is not None
+
+
+def test_routine_text_becomes_schedule_and_metrics(client):
+    txt = ("I wake up around 7-8 am every day and sleep around 12-1. After waking I take a cigarette. Office from monday to friday, "
+           "a 30 min drive. Black coffee at 10am and at 5. Lunch at 1 with 2 eggs and dal. I drink 2 times a week in the evening 90 ml of whisky each. "
+           "While drinking I take 3 cigarettes, otherwise 1. I drink 3 litres of water a day.")
+    r = client.post("/routine/parse", json={"text": txt}).json()
+    m = r["metrics"]
+    assert m["alcohol_g_week"] == round(90 * 0.4 * 0.789 * 2, 1) and m["drink_days_per_week"] == 2
+    assert m["sleep_hours"] == 7.0 and m["caffeine_times"] == ["10:00", "17:00"] and m["water_litres"] == [3.0, 3.0]
+    assert 1 < m["cigarettes_per_day"] < 3
+    saved = client.post("/routine", json={"text": txt}).json()
+    assert "smoker = yes" in " ".join(saved["profile_changes"])
+    pred = client.get("/predict").json()["models"]["cvd"]
+    assert pred.get("risk") is not None
+    t = client.get("/routine/today", params={"day": "2026-10-06", "drinking": False}).json()
+    smoke = next(i for i in t["items"] if i["kind"] == "smoke")
+    t2 = client.post("/routine/mark", json={"day": "2026-10-06", "key": smoke["key"], "status": "done"}).json()
+    assert next(i for i in t2["items"] if i["key"] == smoke["key"])["status"] == "done"
+    from app import db
+    db.exec_("UPDATE profile SET data = json_set(data, '$.smoker', json('false')) WHERE id = 1")  # keep later tests' assumptions
+
+
+def test_custom_activities_build_baselines(client):
+    lst = client.get("/activities").json()
+    assert {a["id"] for a in lst["mine"]} >= {"fast_bowling", "golf"}
+    d = client.get("/activities/fast_bowling").json()
+    assert d["series"]["max_speed"]["baseline"]["n"] >= 3 and any("workload" in i for i in d["insights"])
+    g = client.get("/activities/golf").json()
+    assert "calm_index" in g["series"]
+    new = client.post("/activities", json={"name": "Padel match", "fields": [{"key": "games", "label": "Games won", "unit": ""}]}).json()
+    assert new["id"] == "padel_match"
+    s = client.post("/activities/padel_match/sessions", json={"values": {"games": 6}, "minutes": 60, "hr": [120, 135, 142, 150, 138], "hrv": [20, 18, 15, 14, 17]}).json()
+    assert s["vitals"]["hr_max"] == 150
+    v = client.post("/voice/command", json={"text": "bowled 6 overs at nets, fastest 134 kmph, 2 wickets"}).json()
+    assert v["actions"][0]["activity"] == "fast_bowling"
+
+
+def test_environment_compare_offline_math(client):
+    from app import exposome
+    c = exposome.compare("Delhi", "Bengaluru")
+    d, b = c["cities"]
+    assert d["pm25_annual"] > b["pm25_annual"] and d["aqli_years_lost"] > b["aqli_years_lost"] and len(c["sources"]) >= 5
+
+
+# ---------------------------------------------------------------- digital twin
+
+def test_twin_calibrates_to_this_person(client):
+    o = client.get("/twin").json()
+    cal = o["calibration"]
+    assert 0.1 <= cal["vitd_response"] < 0.5          # seeded: 18 → 22 ng/mL on 2,000 IU ≈ 20 % of the population response
+    assert cal["hrv_per_alcohol_night"] < -5           # from the engine's adjusted effect (truth −9)
+    assert {s["name"] for s in o["systems"]} >= {"Heart & vessels", "Muscle & bone"}
+
+
+def test_twin_scenarios_follow_the_evidence(client):
+    base = client.post("/twin/simulate", json={"years": 5}).json()
+    from app import twin
+    now = twin.inputs_now()["statin"]                  # an earlier test may already have ordered rosuvastatin via Rx
+    st = client.post("/twin/simulate", json={"changes": {"statin": "rosuva20"}, "years": 5}).json()
+    v = {x["key"]: x for x in st["variables"]}
+    expected = (1 - twin.STATIN["rosuva20"]) / (1 - twin.STATIN[now])
+    assert abs(v["ldl"]["scenario_end"] / v["ldl"]["baseline_end"] - expected) < 0.03
+    assert st["risk_scenario"][-1][1]["prevent_30y"] < base["risk_baseline"][-1][1]["prevent_30y"]
+    s = client.post("/twin/simulate", json={"changes": {"strength_per_week": 3, "protein_g_kg": 1.6}, "years": 2}).json()
+    v = {x["key"]: x for x in s["variables"]}
+    assert v["lean_kg"]["difference"] > 0.5 and v["bmd_t"]["difference"] > 0
+    d = client.post("/twin/simulate", json={"preset": "move_delhi", "years": 3}).json()
+    v = {x["key"]: x for x in d["variables"]}
+    assert 3 < v["sbp"]["difference"] < 9 and v["hrv"]["difference"] < 0
+    assert client.post("/twin/simulate", json={"changes": {"teleport": 1}}).status_code == 400
+
+
+def test_twin_day_and_mirror(client):
+    client.post("/routine", json={"text": "I wake up around 7-8 am and sleep around 12-1. Black coffee at 10am and at 5. "
+                                           "I drink 2 times a week in the evening 90 ml of whisky each. While drinking I take 3 cigarettes, otherwise 1.",
+                                  "apply_to_profile": False})
+    dd = client.get("/twin/day", params={"drinking": True, "day": "2026-10-06"}).json()
+    assert dd["peak_bac"] > 0.02 and dd["caffeine_at_bed_mg"] > 20 and dd["tonight"]["hrv"] < dd["tonight"]["hrv_baseline"]
+    m = client.get("/twin/mirror").json()
+    assert m["hrv"]["r2"] > 0.3 and any(l["marker"] == "hs-CRP" and l["unexplained_pct"] > 30 for l in m["labs"])

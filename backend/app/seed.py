@@ -5,6 +5,8 @@ Embedded ground truth (so the correlation engine can be verified):
   alcohol        → next night HRV −9 ms, RHR +4, deep sleep −0.30 h, sleep score −7
   late meal      → deep sleep −0.35 h, sleep score −6
   sauna          → deep sleep +0.25 h, HRV +4
+  centre therapies (last 70 days): cryo → HRV +3.5, cold plunge → HRV +3, PEMF → deep +0.15 h, vibroacoustic → deep +0.1 h;
+                   HBOT (mild), red light, compression, H₂, IV → no next-day effect (honest "no reliable signal")
   hard workout   → next-day HRV −6
   caffeine late  → sleep −0.45 h
   steps          → deep sleep (+0.06 h per 1k steps above 7k)
@@ -83,7 +85,17 @@ def run(reset=True):
     ev(date(2026, 7, 10), "supplement", "Started Vitamin D3 2000 IU daily", 9, data=db.j({"dose": "2000 IU"}))
     ev(date(2026, 8, 25), "supplement", "Magnesium glycinate 300 mg (N-of-1)", 21, data=db.j({"dose": "300 mg"}))
     ev(TODAY - timedelta(days=40), "life", "Moved to a new apartment", 12)
-    ev(TODAY - timedelta(days=18), "hbot", "Halo session 60 min", 10)
+    # ---- centre therapy history (separate RNG); each session is also an event so the engine can test next-day effects
+    from . import therapy
+    p1_sched = therapy.schedule_p1(start, DAYS, sauna_days, hard_days, {trip + timedelta(days=k) for k in range(4)})
+    tdays = {m: {d for d, _, _ in items} for m, items in p1_sched.items()}
+    for m, items in p1_sched.items():
+        if m == "sauna":
+            continue
+        for d, hour, prm in items:
+            label = therapy.MODALITIES[m]["name"] + (f" {prm['chamber_c']} °C" if "chamber_c" in prm else f" {prm['water_c']} °C" if "water_c" in prm else "")
+            events.append((f"{d.isoformat()}T{hour:02d}:00:00", m, label, None, db.j(prm)))
+    eff = lambda prev, metric: sum(v.get(metric, 0) for m, v in therapy.EFFECTS_P1.items() if prev in tdays.get(m, ()))  # noqa: E731
     for e in events:
         db.exec_("INSERT INTO events (ts, kind, label, severity, data) VALUES (?,?,?,?,?)", e)
 
@@ -110,12 +122,12 @@ def run(reset=True):
         sleep_h = max(4.2, min(9.2, sleep_h))
         deep = (1.35 + 0.06 * (steps - 7000) / 1000 + 0.08 * (sleep_h - 7) + rnd.gauss(0, 0.13)
                 - (0.30 if prev in alcohol_days else 0) - (0.35 if prev in late_meal_days else 0)
-                + (0.25 if prev in sauna_days else 0) + (0.22 if mg_on(d) else 0))
+                + (0.25 if prev in sauna_days else 0) + (0.22 if mg_on(d) else 0) + eff(prev, "deep_sleep"))
         deep = max(0.4, min(2.6, deep))
         rem = max(0.6, rnd.gauss(1.7, 0.25) + 0.1 * (sleep_h - 7) - (0.2 if prev in alcohol_days else 0))
         drift = -6 * max(0, (i - (DAYS - 35))) / 35
         hrv = (54 + 4 * (sleep_h - 7) + rnd.gauss(0, 5) + drift - (9 if prev in alcohol_days else 0)
-               + (4 if prev in sauna_days else 0) - (6 if prev in hard_days else 0))
+               + (4 if prev in sauna_days else 0) - (6 if prev in hard_days else 0) + eff(prev, "hrv"))
         rhr = 58 - 0.12 * (hrv - 54) + rnd.gauss(0, 1.6) + (4 if prev in alcohol_days else 0)
         score = max(30, min(98, 62 + 9 * (sleep_h - 7) + 14 * (deep - 1.3) + rnd.gauss(0, 4)
                             - (7 if prev in alcohol_days else 0) - (6 if prev in late_meal_days else 0)))
@@ -272,6 +284,14 @@ def run(reset=True):
 
     from . import roles
     roles.seed(rnd, TODAY, sorted(sauna_days))
+    therapy.seed(random.Random(11), TODAY, p1_sched)
+    from . import activities, exposome, routine, rx, summaries, voice
+    rx.init()
+    summaries.init()
+    voice.init()
+    routine.init()
+    exposome.init()
+    activities.seed(TODAY)
     from . import plans
     plans.init()
     db.exec_("INSERT INTO subscriptions (id, plan, billing, since, renews) VALUES (1,'plus','year','2026-06-01','2027-06-01')")

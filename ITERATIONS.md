@@ -74,3 +74,51 @@ Home (dial, cards, Sinc read, domains, pinned, 7-day summary, appointment, Vault
 4. Real Claude key for Sinc; PREVENT optional UACR/HbA1c models; SCORE2, FRAX.
 5. DICOM viewer; photo meal logging.
 6. Hosted backend with real authentication.
+
+## Iteration 4 — inside the machine, the digital twin, voice and the person's own life
+
+**Audit against Telomy DPR v5, the 10 Features / Next 10 / USP docs and the Echo OS DPRs + PINN code.**
+Missing before this iteration: in-session physiology, therapy response fingerprinting, HSAI, a full tests catalogue, doctor-certified
+supplements/Rx/IV, doctor-side report summaries, voice, routines, custom activities, exposome and a digital twin. All built below.
+
+**Built**
+- *In-session physiology* (`physio.py`): numpy port of the Echo OS calibrated ODE priors (cryo −90…−180 °C, cold plunge, HBOT 1.3–2.4 ATA, Finnish/IR
+  sauna, contrast, IHHT, PBM, PEMF, compression, vibroacoustic, H₂, float, breathwork, IV, Halo). Passes all 11 literature targets (Louis 2020,
+  Lund 2003, Laukkanen 2019, AJP-RICU 2025, cold-shock). Session analytics on any trace (simulated or device): HR surge, HRV suppression/rebound,
+  recovery constant k, rewarming half-time, TRI, SpO₂ kinetics, cardiac load, PBM dose, deterministic safety tiers. Device ingest endpoint.
+- *Therapies* (`therapy.py`): 24 modalities with mechanism, minute-by-minute "inside your body", evidence grade and references; 28 centre machines;
+  Vault-driven safety screen (e.g. CAC 38 → cryo caution, AHI 13 → IHHT caution); per-person verdicts (Working / Promising / No reliable signal /
+  Possible negative / Too early) using adjusted next-day effects + split-half replication; dose-response; plan builder → doctor sign-off → 4 weeks booked;
+  live therapy floor; modality outcomes; Therapy Response Phenotype clustering (research thesis 1); HSAI (Echo OS spec, ±2σ).
+- *Tests & scans* (`diagnostics.py`): 75 tests with evidence, price, prep; guideline + risk + gap recommendations; D-grade tests refused.
+- *Telomy Rx* (`rx.py`): Telomy Formulas (Wind-Down, Calm, Recover + roadmap), single supplements, Rx medicines, clinic IVs; data-triggered
+  (vitamin D dose personalised, statin discussion from CAC + ApoB), duplicate/interaction checks (curated + DDInter 160k pairs, local only — licence
+  is non-commercial), doctor edit + sign → e-prescription PDF → test-mode order → "is it working?" tracking.
+- *Doctor*: AI summary per patient and per report (grounded composer), all 24 reports reviewable and signable; therapy and Rx queues.
+- *New report types* (24 total, 254 markers): thyroid/hormones, iron/minerals, heart & vascular function (ECG/Holter/echo/ABI/PWV/ABPM), spirometry,
+  CGM, immunity/allergy/G6PD, urine, FibroScan, cortisol rhythm/organic acids; panel routing by marker majority; 9 new cross-modality rules.
+- *Voice Sinc* (`voice.py`): local Whisper (99 languages), any-sentence → actions (meal, drink, smoke, coffee, mood, symptom, activity, therapy start,
+  medication, routine, question), English/Hindi/Hinglish, voice-stress features vs own baseline fused with HRV; raw audio never stored.
+- *Routine* (`routine.py`): free text → weekly schedule (typo/autocorrect tolerant), quantified (cigarettes/day, alcohol g/week, caffeine timing, water,
+  sleep window, protein), evidence-graded flags, profile updates (smoker → PREVENT), daily confirm/deviate logging.
+- *Custom activities* (`activities.py`): fast bowling, golf (calm index, pressure response), any user-defined activity; baselines, readiness links,
+  acute:chronic workload.
+- *Exposome* (`exposome.py`): daily PM2.5/UV from Copernicus CAMS (Open-Meteo) for wherever the person was; within-person effects; Delhi vs Bengaluru
+  twin comparison (AQLI, Berkeley Earth, Liang 2014, CGWB water).
+- *Digital twin* (`twin.py`): 21-variable hybrid twin (first-order kinetics to lifestyle/drug steady states with literature τ; Hall energy balance;
+  statin/ezetimibe/psyllium; ADAG; Heaney vitamin D; BP levers; liver fat; lean mass/BMD; VO₂; HRV/sleep from the person's own effects), personal
+  calibration (e.g. vitamin D response 21 % of average), 10-year what-ifs with PREVENT + PhenoAge recomputed, 24-h caffeine/nicotine/BAC twin, and a
+  mirror that scores fidelity and flags lab drift the logged life can't explain.
+
+**Bugs found and fixed this iteration**: subjective check-in partial dict crash; HBOT block scheduled during travel (impossible + confounded); confounding
+from short events (all kinds now covariates); chance false positive (split-half replication); TRI depends on chamber temperature (added rewarming half-time);
+cryo skin-drop and IR-sauna core calibration; MAD = 0 division; routine fuzzy-correction over-reach ("after" → "water"); "12" sleep = noon; two coffee
+times in one clause; autocorrected typed text; empty-routine 500 on the day twin; trajectory sampling missed the final year; PM2.5→BP linear overstatement;
+Hindi meal analysed from untranslated text. Backend tests: 113 passing.
+
+### Open — next
+1. Native dev build for HealthKit/Health Connect and real chest-strap streaming into `/therapy/sessions/{id}/samples`; Telomy patch/band SDK.
+2. Wake word + VAD + speaker verification on-device (needs native build); larger Whisper / AI4Bharat for Indic accuracy.
+3. Claude-backed understanding and twin narration when an API key is configured; PINN training once ≥ 500 real sessions exist.
+4. Licensed drug-interaction source for commercial use; partner pharmacy and lab APIs.
+5. iPhone release build with embedded bundle; hosted backend.

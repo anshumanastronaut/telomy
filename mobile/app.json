@@ -42,7 +42,13 @@
         }
       ],
       "expo-sharing",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Telomy uses the microphone when you talk to Sinc \u2014 to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

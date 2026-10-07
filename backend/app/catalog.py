@@ -147,7 +147,7 @@ def status_for(mid: str, value, ref_low=None, ref_high=None, flag: str = "") -> 
     if better == "variant":
         return "variant" if value in RISK_GENOTYPES.get(mid, {}) else "typical"
     if better == "absent":
-        return "detected" if isinstance(value, str) and value.lower().startswith("detected") else "absent"
+        return "detected" if isinstance(value, str) and value.lower().startswith(("detected", "positive", "present", "trace", "+")) else "absent"
     if better == "info" or not isinstance(value, (int, float)):
         return "info"
     lo, hi = spec[3], spec[4]

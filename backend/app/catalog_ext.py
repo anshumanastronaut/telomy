@@ -230,3 +230,17 @@ ACTIONS = [
     {"kind": "lifestyle", "title": "Positional therapy / sleep-apnoea evaluation", "targets": ["ahi", "odi", "min_spo2"], "impact": "high"},
     {"kind": "lifestyle", "title": "Glass or steel food containers; no heating in plastic", "targets": ["bpa", "mep"], "impact": "moderate"},
 ]
+
+# ---- second wave of report types (thyroid/hormones, micronutrients, cardio, lung, CGM, immune, urine, functional)
+from .catalog_more import (MORE_CONCERNS, MORE_EVIDENCE, MORE_MARKERS, MORE_PANELS, MORE_PREP,  # noqa: E402
+                           MORE_RETEST, MORE_ZONES)
+
+EXT_PANELS.update(MORE_PANELS)
+EXT_MARKERS.update(MORE_MARKERS)
+EVIDENCE.update(MORE_EVIDENCE)
+ZONES.update(MORE_ZONES)
+for _k, _v in MORE_CONCERNS.items():
+    CONCERNS.setdefault(_k, [])
+    CONCERNS[_k] += [m for m in _v if m not in CONCERNS[_k]]
+RETEST_DAYS.update(MORE_RETEST)
+RETEST_PREP.update(MORE_PREP)

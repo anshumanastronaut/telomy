@@ -26,3 +26,4 @@ qa/sheet_*.jpg
 *.p12
 *.mobileprovision
 .DS_Store
+backend/data/ddinter/

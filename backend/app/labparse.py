@@ -13,6 +13,14 @@ from pypdf import PdfReader
 from .catalog import MARKERS, match_marker, status_for
 
 PANEL_KEYWORDS = [
+    ("urine", ["urine routine", "urinalysis"]),
+    ("cgm", ["continuous glucose", "cgm"]),
+    ("lung", ["spirometry", "lung function"]),
+    ("cardio", ["ecg", "echocardiograph", "ankle-brachial", "pulse wave", "ambulatory blood pressure", "vascular function"]),
+    ("functional", ["organic acids", "cortisol rhythm", "functional medicine"]),
+    ("immune", ["autoimmun", "allergy", "immunity"]),
+    ("micronutrients", ["iron studies", "micronutrient", "vitamins and minerals"]),
+    ("hormones", ["thyroid", "hormone"]),
     ("gut", ["microbiome", "16s", "stool"]),
     ("proteomic", ["proteomic", "organ age"]),
     ("fitness", ["cardiopulmonary", "cpet", "vo2"]),
@@ -35,6 +43,16 @@ DATE_PATTERNS = ["%d-%b-%Y %H:%M", "%d-%b-%Y", "%Y-%m-%d"]
 def _text(pdf_bytes: bytes) -> str:
     reader = PdfReader(io.BytesIO(pdf_bytes))
     return "\n".join((p.extract_text() or "") for p in reader.pages)
+
+
+def vote_panel(markers: list[dict]) -> str | None:
+    """Panel = where most recognised markers live (robust to words like 'thyroid' or 'ECG gating' in headers)."""
+    from collections import Counter
+    c = Counter(MARKERS[m["marker_id"]][1] for m in markers if m.get("marker_id") in MARKERS)
+    if not c:
+        return None
+    top, n = c.most_common(1)[0]
+    return top if n * 2 >= sum(c.values()) else None
 
 
 def classify_panel(text: str) -> str:
@@ -195,7 +213,8 @@ def parse_pdf(pdf_bytes: bytes, filename: str = "") -> dict:
     skip = ("patient", "age / sex", "age/sex", "test data", "referred", "collected", "sample diagnostics")
     title = next((l for l in lines[:10] if len(l) > 12 and not l.lower().startswith(skip) and any(k in l.lower() for k in
                   ["panel", "microbiome", "age", "metals", "toxins", "genetic", "test", "composition", "ct", "mri",
-                   "imaging", "study", "proteom", "dexa"])), filename)
+                   "imaging", "study", "proteom", "dexa", "thyroid", "hormone", "iron", "vitamin", "ecg", "spirometry", "lung",
+                   "glucose", "allergy", "urine", "function", "assessment"])), filename)
     panel = classify_panel(text)
     markers, unmatched = parse_cells(lines, panel), []
     if not markers:  # fall back to one-row-per-line layouts
@@ -205,6 +224,7 @@ def parse_pdf(pdf_bytes: bytes, filename: str = "") -> dict:
             if parsed and parsed["marker_id"] not in seen:
                 markers.append(parsed)
                 seen.add(parsed["marker_id"])
+    panel = vote_panel(markers) or panel
     return {
         "title": title,
         "panel": panel,

@@ -38,10 +38,13 @@ SIGNALS = {
 }
 
 EVENT_KINDS = {
-    "alcohol": "Alcohol", "late_meal": "Late meal (<2h before bed)", "sauna": "Sauna", "hbot": "Halo session",
+    "alcohol": "Alcohol", "late_meal": "Late meal (<2h before bed)", "sauna": "Sauna", "hbot": "Hyperbaric oxygen (HBOT)",
     "travel": "Travel", "supplement": "Supplement", "medication": "Medication", "symptom": "Symptom",
     "mood": "Mood", "workout_hard": "Hard workout", "stress": "Stressful day", "caffeine_late": "Caffeine after 2 pm",
     "life": "Life event", "meal": "Meal", "note": "Note",
+    "cryo": "Whole-body cryotherapy", "cold": "Cold plunge", "pemf": "PEMF session", "redlight": "Red-light therapy",
+    "compression": "Compression therapy", "vibroacoustic": "Vibroacoustic session", "h2_inhal": "Hydrogen inhalation",
+    "hbot_mild": "Mild hyperbaric session", "iv": "IV drip", "float": "Float session", "contrast": "Contrast therapy",
 }
 
 # ---------------------------------------------------------------- data access
@@ -386,6 +389,54 @@ def _iid(*parts) -> str:
     return hashlib.sha1("|".join(map(str, parts)).encode()).hexdigest()[:12]
 
 
+def effect_table(min_events: int = 5, outcomes=("hrv", "rhr", "deep_sleep", "sleep_score", "sleep_hours")) -> list[dict]:
+    """Every adjusted next-day estimate (kind × outcome), significant or not — the honest table behind the insights."""
+    import numpy as np
+    events = db.rows("SELECT ts, kind FROM events")
+    by_kind: dict[str, set] = {}
+    for e in events:
+        if e["kind"] in ("mood", "meal", "note", "symptom", "supplement", "medication", "life"):
+            continue
+        by_kind.setdefault(e["kind"], set()).add(e["ts"][:10])
+    # Every logged kind is a covariate (a 4-day trip still confounds); only kinds with ≥ min_events are reported.
+    kinds = sorted(k for k, d in by_kind.items() if len(d) >= 2)
+    report = {k for k in kinds if len(by_kind[k]) >= min_events}
+    rows = []
+    for metric in outcomes if report else []:
+        s = series(metric)
+        if len(s) < 40:
+            continue
+        days = [date.fromisoformat(d) for d, _ in s]
+        y = np.array([v for _, v in s], dtype=float)
+        prev = [(d - timedelta(days=1)).isoformat() for d in days]
+        X_ev = np.array([[1.0 if pd in by_kind[k] else 0.0 for k in kinds] for pd in prev])
+        wd = np.array([[1.0 if d.weekday() >= 5 else 0.0] for d in days])
+        trend = np.array([[(d - days[0]).days / 30.0] for d in days])
+        X = np.hstack([np.ones((len(y), 1)), X_ev, wd, trend])
+        beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+        resid = y - X @ beta
+        sigma2 = float(resid @ resid) / max(len(y) - X.shape[1], 1)
+        cov = sigma2 * np.linalg.pinv(X.T @ X)
+        label, unit, better, dec = SIGNALS[metric]
+        for j, kind in enumerate(kinds, start=1):
+            if kind not in report:
+                continue
+            b, se = float(beta[j]), float(np.sqrt(max(cov[j, j], 1e-12)))
+            n_ev = int(X_ev[:, j - 1].sum())
+            pval = 2 * (1 - _phi(abs(b / se)))
+            good = (b > 0) == (better == "high") if better != "mid" else None
+            rows.append({"event": kind, "metric": metric, "label": label, "unit": unit, "effect": round(b, dec or 1),
+                         "ci95": [round(b - 1.96 * se, dec or 1), round(b + 1.96 * se, dec or 1)], "p": pval, "n": n_ev,
+                         "d": round(b / (float(np.std(y)) or 1e-9), 2), "helpful": good})
+    m = len(rows)
+    cut = bh_threshold([r["p"] for r in rows]) if rows else 0
+    for r in rows:
+        r["significant"] = r["p"] <= cut and abs(r["d"]) >= 0.3
+        r["p_text"] = fmt_p(r["p"])
+        r["tests"] = m
+    return rows
+
+
 def event_effects(min_events: int = 5) -> list[dict]:
     """Adjusted next-day effect of each logged event on each outcome.
 
@@ -402,8 +453,10 @@ def event_effects(min_events: int = 5) -> list[dict]:
         if e["kind"] in ("mood", "meal", "note", "symptom", "supplement", "medication", "life"):
             continue
         by_kind.setdefault(e["kind"], set()).add(e["ts"][:10])
-    kinds = sorted(k for k, d in by_kind.items() if len(d) >= min_events)
-    if not kinds:
+    # Every logged kind is a covariate (a 4-day trip still confounds); only kinds with ≥ min_events are reported.
+    kinds = sorted(k for k, d in by_kind.items() if len(d) >= 2)
+    report = {k for k in kinds if len(by_kind[k]) >= min_events}
+    if not report:
         return []
     outcomes = ["hrv", "rhr", "deep_sleep", "sleep_score", "sleep_hours"]
     tests: list[float] = []
@@ -427,6 +480,8 @@ def event_effects(min_events: int = 5) -> list[dict]:
         sd_y = float(np.std(y)) or 1e-9
         label, unit, better, dec = SIGNALS[metric]
         for j, kind in enumerate(kinds, start=1):
+            if kind not in report:
+                continue
             b, se = float(beta[j]), float(np.sqrt(max(cov[j, j], 1e-12)))
             t = b / se
             pval = 2 * (1 - _phi(abs(t)))
@@ -524,7 +579,7 @@ def cross_panel_patterns() -> list[dict]:
                "day": L[m]["collected_on"], "status": L[m]["status"]} for m in markers if m in L]
         panels = {MARKERS[m][1] for m in markers if m in L}
         from .catalog_ext import EVIDENCE
-        grade = {"A": 1.0, "B": 0.85, "C": 0.6}
+        grade = {"A": 1.0, "B": 0.85, "C": 0.6, "D": 0.45}
         g = [grade.get(EVIDENCE.get(m, "B"), 0.85) for m in markers if m in L]
         flagged = sum(1 for m in markers if m in L and L[m]["status"] in ("out_of_range", "variant", "detected"))
         support = (flagged + 0.3 * (len(ev) - flagged)) / max(len(markers), 1)
@@ -682,6 +737,92 @@ def cross_panel_patterns() -> list[dict]:
             add("kidney_ok", "Kidney function is consistent across two methods",
                 f"eGFR {round(e_cr)} (creatinine) and {round(e_cy)} (cystatin C), UACR {_v(L, 'uacr')} mg/g. No action needed.",
                 ["creatinine", "cystatin_c", "uacr"], medical=False, direction="helpful")
+    # ---------------- second-wave modalities (ABPM · ECG/echo · PWV · thyroid · micronutrients · CGM · FibroScan · allergy · cortisol)
+    asbp, adbp, dip, pwv = _v(L, "abpm_day_sbp"), _v(L, "abpm_day_dbp"), _v(L, "abpm_dip"), _v(L, "pwv")
+    home = signal_baseline("sbp", days=60)
+    if isinstance(asbp, float) and asbp >= 135:
+        hm = round(home["mean"]) if home else None
+        masked = hm is not None and hm < 135
+        add("masked_htn", "Ambulatory blood pressure is in the hypertension range" + (" even though home readings look normal" if masked else ""),
+            f"24-hour ABPM daytime average is {int(asbp)}/{int(adbp) if isinstance(adbp, float) else '?'} mmHg (ESC/ESH threshold 135/85)"
+            + (f", while your home cuff averages {hm} mmHg — a pattern called masked hypertension, which carries similar risk to sustained hypertension" if masked else "")
+            + f". Nocturnal dip is {dip}% (normal 10–20%). Together with CAC {int(cac) if isinstance(cac, float) else '?'} and pulse wave velocity "
+            f"{pwv} m/s, blood pressure belongs on the treatment conversation alongside ApoB. PREVENT and PCE in Telomy use the home value; "
+            f"use the ABPM value in what-if to see the difference.",
+            ["abpm_day_sbp", "abpm_day_dbp", "abpm_dip", "pwv", "cac"])
+    if isinstance(dip, float) and dip < 10 and isinstance(ahi, float) and ahi >= 5:
+        add("osa_nondipper", "Your blood pressure doesn't fall at night — sleep apnoea is the likely link",
+            f"Nocturnal BP dip is only {dip}% (non-dipper, normal ≥10%) and your sleep study shows AHI {ahi} with lowest SpO2 "
+            f"{_v(L, 'min_spo2')}%. Apnoea surges keep night-time pressure high; non-dipping independently predicts cardiovascular events. "
+            f"Treating apnoea often restores the dip — re-run ABPM after treatment.",
+            ["abpm_dip", "ahi", "odi", "min_spo2", "abpm_day_sbp"])
+    if isinstance(pwv, float) and pwv > 8:
+        add("arterial_stiffness", "Arteries are stiffer than ideal for your age",
+            f"Carotid-femoral pulse wave velocity is {pwv} m/s (ideal < 8; ESC organ-damage threshold 10). It tracks with your proteomic artery "
+            f"age gap ({_v(L, 'org_artery')} y), ambulatory SBP {asbp} and ApoB {apob}. Aerobic fitness, blood pressure and sodium are the main levers; "
+            f"PWV can improve within months.", ["pwv", "org_artery", "abpm_day_sbp", "apob", "vo2max_lab"])
+    tpo, tsh, sel = _v(L, "tpo_ab"), _v(L, "tsh"), _v(L, "selenium")
+    if isinstance(tpo, float) and tpo > 34:
+        add("thyroid_autoimmune", "Thyroid antibodies are positive — an early autoimmune signal",
+            f"Anti-TPO is {tpo} IU/mL (positive > 34) with TSH {tsh} µIU/mL, still in range, and free T4 {_v(L, 'ft4')} ng/dL. TPO-positive people "
+            f"with TSH above 2.5 progress to hypothyroidism more often (≈2–4% per year), so TSH every 6–12 months is reasonable. "
+            f"Selenium is {sel} µg/L; supplementing selenium lowers antibody levels in some trials but clinical benefit is unproven.",
+            ["tpo_ab", "tsh", "ft4", "tg_ab", "selenium"])
+    e2 = _v(L, "estradiol")
+    if isinstance(e2, float) and e2 > 40 and profile().get("sex") == "male" and isinstance(vat, float) and vat > 100:
+        add("estradiol_vat", "Estradiol is mildly high for a man, in line with visceral fat",
+            f"Estradiol is {e2} pg/mL with testosterone {_v(L, 'testosterone')} ng/dL and visceral fat {int(vat)} cm². Fat tissue converts "
+            f"testosterone to estradiol (aromatase); losing visceral fat usually corrects the ratio without medication.",
+            ["estradiol", "testosterone", "vat_area", "shbg"], medical=False)
+    fol = _v(L, "folate")
+    if isinstance(fol, float) and fol < 10 and isinstance(hcy, float) and hcy > 12:
+        add("folate_hcy", "Low-normal folate is likely contributing to high homocysteine",
+            f"Folate is {fol} ng/mL (optimal ≥ 10) and homocysteine {hcy} µmol/L, with MTHFR {mthfr} and B12 {b12} pg/mL, MMA {_v(L, 'mma')}. "
+            f"Folate, B12 and B6 together lower homocysteine by about 25% in trials.", ["folate", "homocysteine", "mthfr_c677t", "b12", "mma"])
+    zn = _v(L, "zinc")
+    if isinstance(zn, float) and zn < 80:
+        add("zinc_low", "Zinc is low",
+            f"Serum zinc is {zn} µg/dL (copper {_v(L, 'copper')}). Low zinc is common in vegetarian diets high in phytates. Food first "
+            f"(pumpkin seeds, legumes soaked/sprouted, dairy, eggs); a short course of 15–25 mg/day is typical if needed — long-term high doses lower copper.",
+            ["zinc", "copper"], medical=False)
+    gmi, tir, peak = _v(L, "gmi"), _v(L, "cgm_tir"), _v(L, "cgm_peak")
+    if isinstance(gmi, float) and isinstance(a1c, float):
+        n_late = len(db.rows("SELECT id FROM events WHERE kind='late_meal' AND ts >= ?", ((date.fromisoformat(L["gmi"]["collected_on"]) - timedelta(days=14)).isoformat(),)))
+        same = abs(gmi - a1c) < 0.5
+        add("cgm_a1c", "Your CGM " + ("confirms" if same else "disagrees with") + " your HbA1c",
+            f"14-day GMI is {gmi}% vs lab HbA1c {a1c}%" + (" — concordant, so HbA1c is a reliable marker for you" if same else
+            " — a gap of ≥0.5 points (glycation gap); track with CGM rather than HbA1c alone") + f". Time in tight range is {tir}% "
+            f"(target > 85%) and post-meal peaks average {peak} mg/dL. You logged {n_late} late dinners during the sensor — late meals "
+            f"raise next-day mean glucose in your own data.", ["gmi", "hba1c", "cgm_tir", "cgm_peak", "cgm_cv", "homa_ir"])
+    lsm, capv = _v(L, "lsm"), _v(L, "cap")
+    if isinstance(lsm, float):
+        conc = [x for x in (isinstance(pdff, float) and pdff >= 5, isinstance(capv, float) and capv >= 248, isinstance(lhu, float) and lhu < 50) if x]
+        add("liver_fibrosis", "Fatty liver confirmed by three methods — no sign of scarring",
+            f"FibroScan CAP {capv} dB/m, MRI-PDFF {pdff}% and CT attenuation {lhu} HU agree on steatosis ({len(conc)} of 3 methods). "
+            f"Liver stiffness is {lsm} kPa (< 8 rules out advanced fibrosis) and FIB-4 is {fib}. That is the reassuring part: fat without "
+            f"fibrosis is fully reversible with 7–10% weight loss.", ["lsm", "cap", "liver_pdff", "liver_hu", "alt", "ast"],
+            direction="neutral")
+    feno, mite, ige = _v(L, "feno"), _v(L, "ige_mite"), _v(L, "total_ige")
+    if isinstance(feno, float) and feno > 25 and isinstance(mite, float) and mite > 0.35:
+        add("allergic_airway", "Dust-mite allergy is showing up as airway inflammation",
+            f"FeNO is {feno} ppb (> 25 suggests eosinophilic airway inflammation), total IgE {ige} IU/mL and house-dust-mite IgE {mite} kUA/L. "
+            f"Spirometry is normal (FEV1/FVC {_v(L, 'fev1_fvc')}). Mite-proof bedding covers, 60 °C washes and a HEPA filter are first-line; "
+            f"night-time breathing symptoms or cough deserve an asthma review.", ["feno", "ige_mite", "total_ige", "fev1_fvc"])
+    carv, cn = _v(L, "car"), _v(L, "cortisol_night")
+    if isinstance(carv, float) and carv < 38 and isinstance(cn, float) and cn > 4:
+        hb = signal_baseline("hrv", days=30)
+        add("cortisol_rhythm", "Your cortisol rhythm is flattened",
+            f"Morning cortisol rise is {carv}% (normal 38–75%) and late-night cortisol is {cn} nmol/L (high). A flat rhythm is linked with "
+            f"short or fragmented sleep, sleep apnoea (AHI {ahi}) and chronic stress; your 30-day HRV is {round(hb['mean'], 1) if hb else '?'} ms and "
+            f"has drifted down. Morning daylight, a fixed wake time and treating apnoea are the evidence-based levers. Functional test — evidence C.",
+            ["car", "cortisol_night", "ahi", "ohdg"], medical=False)
+    g6 = _v(L, "g6pd")
+    if isinstance(g6, float):
+        ok = g6 >= 7
+        add("g6pd", "G6PD is normal — oxidant drugs and high-dose IV vitamin C are not blocked" if ok else "G6PD deficiency — avoid oxidant drugs and high-dose IV vitamin C",
+            f"G6PD activity is {g6} U/g Hb ({'normal' if ok else 'deficient'}). " + ("Telomy's IV and medicine safety checks use this result."
+            if ok else "High-dose IV vitamin C, primaquine, dapsone, rasburicase and some sulfonamides can cause haemolysis."),
+            ["g6pd"], medical=not ok, direction="helpful" if ok else "harmful")
     return out
 
 

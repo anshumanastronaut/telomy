@@ -288,4 +288,101 @@ report("15_Proteomic_Organ_Age_2026-09-25.pdf", "Proteomic Organ Age (plasma pro
 ], ["Organ-specific ageing is fastest in liver, heart and artery. Research-grade test; interpret with clinical data."],
    "Olink Explore 3072 / organ-specific aging models")
 
+report("16_Thyroid_Hormone_Panel_2026-09-30.pdf", "Thyroid and Hormone Panel (male)", "30-Sep-2026", [
+    ["TSH", "3.1", "µIU/mL", "0.4 – 4.0", ""],
+    ["Free T4", "1.12", "ng/dL", "0.9 – 1.7", ""],
+    ["Reverse T3", "21", "ng/dL", "10 – 24", ""],
+    ["Anti-TPO antibodies", "52", "IU/mL", "< 34", "H"],
+    ["Anti-thyroglobulin antibodies", "88", "IU/mL", "< 115", ""],
+    ["LH (luteinising hormone)", "4.8", "mIU/mL", "1.7 – 8.6", ""],
+    ["FSH (follicle-stimulating hormone)", "5.2", "mIU/mL", "1.5 – 12.4", ""],
+    ["Estradiol", "44", "pg/mL", "11 – 43", "H"],
+    ["Prolactin", "9.1", "ng/mL", "4.0 – 15.2", ""],
+    ["PSA (total)", "0.6", "ng/mL", "< 4.0", ""],
+], ["Anti-TPO positive with TSH in the upper half of range: early autoimmune thyroiditis cannot be excluded; repeat TSH in 6–12 months.",
+    "Estradiol mildly raised for a male; consider adipose aromatase activity."], "CLIA / ECLIA immunoassay")
+
+report("17_Iron_Vitamins_Minerals_2026-10-01.pdf", "Iron Studies, Vitamins and Minerals (micronutrient panel)", "01-Oct-2026", [
+    ["Serum iron", "78", "µg/dL", "60 – 170", ""],
+    ["Total iron-binding capacity", "340", "µg/dL", "250 – 450", ""],
+    ["Transferrin saturation", "23", "%", "20 – 50", ""],
+    ["Folate (serum)", "6.2", "ng/mL", "> 5.4", ""],
+    ["RBC magnesium", "4.6", "mg/dL", "4.2 – 6.8", ""],
+    ["Zinc", "72", "µg/dL", "80 – 120", "L"],
+    ["Copper", "112", "µg/dL", "70 – 140", ""],
+    ["Selenium", "118", "µg/L", "70 – 150", ""],
+    ["Calcium (total)", "9.4", "mg/dL", "8.6 – 10.2", ""],
+    ["Sodium", "140", "mmol/L", "136 – 145", ""],
+    ["Potassium", "4.3", "mmol/L", "3.5 – 5.1", ""],
+], ["Iron stores low-normal (TSAT 23 %, ferritin 48 on the blood panel) — no iron needed. Zinc mildly low.",
+    "Folate low-normal for someone with raised homocysteine."], "Colorimetry / ICP-MS / chemiluminescence")
+
+report("18_Heart_Vascular_Function_2026-09-20.pdf", "Heart and Vascular Function: ECG, Holter, Echocardiography, ABI, Pulse Wave Velocity, Ambulatory Blood Pressure", "20-Sep-2026", [
+    ["Resting heart rate (ECG)", "61", "bpm", "50 – 100", ""],
+    ["QTc (ECG)", "418", "ms", "< 450", ""],
+    ["Atrial fibrillation burden (Holter)", "0", "%", "0", ""],
+    ["PVC burden (Holter)", "0.4", "%", "< 1", ""],
+    ["E/e' ratio (echo)", "7.2", "", "< 14", ""],
+    ["Left atrial volume index (echo)", "26", "mL/m²", "16 – 34", ""],
+    ["Ankle-brachial index", "1.12", "ratio", "1.00 – 1.40", ""],
+    ["Pulse wave velocity (carotid-femoral)", "8.9", "m/s", "< 10", ""],
+    ["Daytime ambulatory SBP (ABPM)", "136", "mmHg", "< 135", "H"],
+    ["Daytime ambulatory DBP (ABPM)", "86", "mmHg", "< 85", "H"],
+    ["Nocturnal BP dip (ABPM)", "6", "%", "10 – 20", "L"],
+], ["Sinus rhythm. Structurally normal heart with normal diastolic function.",
+    "24-h ABPM: daytime mean 136/86 mmHg (hypertension by ABPM criteria) with a non-dipping nocturnal profile.",
+    "Arterial stiffness at the upper end of normal for age."], "12-lead ECG; 24-h Holter; TTE; oscillometric ABI; SphygmoCor cf-PWV; 24-h ABPM")
+
+report("19_Spirometry_Lung_Function_2026-09-12.pdf", "Spirometry and Lung Function Test", "12-Sep-2026", [
+    ["FEV1 (% predicted)", "96", "%", "> 80", ""],
+    ["FVC (% predicted)", "101", "%", "> 80", ""],
+    ["FEV1/FVC ratio", "0.80", "ratio", "> 0.70", ""],
+    ["FeNO", "31", "ppb", "< 25", "H"],
+], ["Normal spirometry, no obstruction. FeNO intermediate — suggests eosinophilic (allergic) airway inflammation."],
+   "Vitalograph spirometry (GLI-2012 reference); NIOX FeNO")
+
+report("20_CGM_14_Day_Report_2026-10-06.pdf", "Continuous Glucose Monitoring (CGM) 14-day Report", "06-Oct-2026", [
+    ["Mean glucose (CGM)", "106", "mg/dL", "< 105", "H"],
+    ["Time in tight range 70–140", "78", "%", "> 85", "L"],
+    ["Glucose variability CV", "21", "%", "< 36", ""],
+    ["Glucose management indicator", "5.8", "%", "< 5.7", "H"],
+    ["Mean post-meal peak", "162", "mg/dL", "< 140", "H"],
+    ["Time below 70", "0.4", "%", "< 4", ""],
+], ["Post-meal peaks above 140 mg/dL mainly after late dinners. GMI agrees with laboratory HbA1c."], "FreeStyle Libre 2, 14 days, 96 % sensor wear")
+
+report("21_Immunity_Allergy_Panel_2026-09-30.pdf", "Immunity, Autoimmunity and Allergy Panel", "30-Sep-2026", [
+    ["ESR (erythrocyte sedimentation rate)", "14", "mm/h", "< 15", ""],
+    ["Antinuclear antibodies (ANA, IFA)", "Negative", "", "Negative", ""],
+    ["tTG-IgA", "1.2", "U/mL", "< 4", ""],
+    ["Total IgE", "286", "IU/mL", "< 100", "H"],
+    ["Specific IgE: house dust mite", "4.8", "kUA/L", "< 0.35", "H"],
+    ["Specific IgE: grass pollen", "0.2", "kUA/L", "< 0.35", ""],
+    ["G6PD activity", "11.8", "U/g Hb", "> 7.0", ""],
+], ["Sensitised to house dust mite (class 3). No autoimmune or coeliac signal. G6PD normal."], "IFA / ELISA / ImmunoCAP / quantitative G6PD")
+
+report("22_Urine_Routine_2026-10-01.pdf", "Urine Routine Examination (urinalysis)", "01-Oct-2026", [
+    ["Urine pH", "6.0", "", "4.6 – 8.0", ""],
+    ["Urine specific gravity", "1.022", "", "1.005 – 1.030", ""],
+    ["Urine protein", "Negative", "", "Negative", ""],
+    ["Urine glucose", "Negative", "", "Negative", ""],
+    ["Urine blood", "Negative", "", "Negative", ""],
+    ["Urine pus cells", "2", "/hpf", "0 – 5", ""],
+], ["Normal urinalysis."], "Dipstick + microscopy")
+
+report("23_FibroScan_Ultrasound_2026-09-18.pdf", "FibroScan (transient elastography) Screening Test", "18-Sep-2026", [
+    ["Liver stiffness (FibroScan)", "5.8", "kPa", "< 7.0", ""],
+    ["Controlled attenuation parameter", "262", "dB/m", "< 248", "H"],
+], ["CAP 262 dB/m: mild steatosis (S1). Liver stiffness 5.8 kPa: advanced fibrosis unlikely. Concordant with MRI-PDFF 9.4 %."],
+   "FibroScan 630 Expert, M probe, IQR/M 9 %")
+
+report("24_Cortisol_Rhythm_Organic_Acids_2026-09-22.pdf", "Functional Medicine: Cortisol Rhythm and Organic Acids", "22-Sep-2026", [
+    ["Cortisol awakening response", "28", "%", "38 – 75", "L"],
+    ["Late-night salivary cortisol", "5.2", "nmol/L", "< 4.0", "H"],
+    ["8-OHdG (oxidative DNA damage)", "5.6", "ng/mg creat", "< 4.5", "H"],
+    ["Pyroglutamic acid", "46", "mmol/mol creat", "< 40", "H"],
+    ["Kynurenic acid", "4.1", "mmol/mol creat", "< 6", ""],
+    ["5-HIAA", "6.2", "mmol/mol creat", "3.8 – 12", ""],
+], ["Blunted morning cortisol rise with raised late-night cortisol (flattened rhythm).",
+    "Functional-medicine markers: research-grade, interpret with clinical context."], "Salivary ELISA; urinary organic acids GC-MS")
+
 print("\n".join(sorted(p.name for p in OUT.iterdir())))

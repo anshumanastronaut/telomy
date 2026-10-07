@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
-from . import brief, db, derived, engine, features, food, plans, predict, roles, seed, sinc
+from . import activities, brief, db, derived, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -17,6 +17,11 @@ async def lifespan(_app):
     db.init()
     roles.init()
     plans.init()
+    therapy.init()
+    rx.init()
+    summaries.init()
+    for mod in (voice, routine, activities, exposome):
+        mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
     yield
@@ -186,7 +191,8 @@ def doctor_today():
 @app.get("/doctor/work")
 def doctor_work():
     return {"monthly_reports": [r for r in plans.list_monthly() if r["state"] == "awaiting_doctor"],
-            "consults": [c for c in plans.consults() if c["status"] == "scheduled"]}
+            "consults": [c for c in plans.consults() if c["status"] == "scheduled"],
+            "therapy_plans": therapy.plans("awaiting_doctor"), "rx_plans": rx.list_plans("awaiting_doctor")}
 
 
 @app.get("/doctor/patients")
@@ -273,6 +279,481 @@ def centre_booking_status(bid: int, body: StatusIn):
         raise HTTPException(400, "Unknown status")
     db.exec_("UPDATE bookings SET status = ? WHERE id = ?", (body.status, bid))
     return {"ok": True}
+
+# ------------------------------------------------------------------ therapies (centre machines, in-session physiology)
+
+@app.get("/therapy")
+def therapy_home(patient_id: int = 1):
+    return therapy.therapy_home(patient_id)
+
+
+@app.get("/therapy/catalogue")
+def therapy_catalogue(patient_id: int = 1):
+    return therapy.catalogue(patient_id)
+
+
+@app.get("/therapy/catalogue/{mid}")
+def therapy_modality(mid: str, patient_id: int = 1):
+    m = next((x for x in therapy.catalogue(patient_id) if x["id"] == mid), None)
+    if not m:
+        raise HTTPException(404, "Unknown therapy")
+    m["sessions"] = [{k: x[k] for k in ("id", "ts", "params", "features", "subjective", "adverse")}
+                     for x in therapy._sessions(patient_id, mid)][::-1]
+    m["response"] = next((r for r in therapy.response(patient_id) if r["modality"] == mid), None)
+    return m
+
+
+@app.get("/therapy/working")
+def therapy_working(patient_id: int = 1):
+    return therapy.response(patient_id)
+
+
+@app.get("/therapy/safety")
+def therapy_safety(patient_id: int = 1):
+    return {"conditions": therapy.conditions_for(patient_id), "screen": therapy.screen(patient_id)}
+
+
+@app.get("/therapy/sessions/{sid}")
+def therapy_session(sid: int):
+    r = therapy.session(sid)
+    if not r:
+        raise HTTPException(404, "Session not found")
+    return r
+
+
+@app.get("/therapy/hsai")
+def therapy_hsai(patient_id: int = 1):
+    return therapy.hsai(patient_id)
+
+
+@app.get("/therapy/goals")
+def therapy_goals():
+    return [{"id": k, "label": v} for k, v in therapy.GOALS.items()]
+
+
+class PlanIn(BaseModel):
+    goal: str
+    per_week: int = 4
+    patient_id: int = 1
+
+
+@app.post("/therapy/plans/preview")
+def therapy_plan_preview(body: PlanIn):
+    try:
+        return therapy.build_plan(body.patient_id, body.goal, max(1, min(10, body.per_week)))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/therapy/plans")
+def therapy_plan_submit(body: PlanIn):
+    try:
+        return therapy.save_plan(body.patient_id, body.goal, max(1, min(10, body.per_week)))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/therapy/plans")
+def therapy_plans(state: str | None = None):
+    return therapy.plans(state)
+
+
+class DecideIn(BaseModel):
+    approve: bool
+    note: str
+
+
+@app.post("/therapy/plans/{plan_id}/decide")
+def therapy_plan_decide(plan_id: int, body: DecideIn):
+    try:
+        return therapy.decide_plan(plan_id, body.approve, body.note)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class StartIn(BaseModel):
+    modality: str
+    params: dict = {}
+    patient_id: int = 1
+
+
+@app.post("/therapy/sessions")
+def therapy_start(body: StartIn):
+    try:
+        return therapy.start_session(body.patient_id, body.modality, body.params)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+
+
+class SamplesIn(BaseModel):
+    samples: list[dict]
+    source: str = "device"
+
+
+@app.post("/therapy/sessions/{sid}/samples")
+def therapy_ingest(sid: int, body: SamplesIn):
+    try:
+        return therapy.ingest(sid, body.samples, body.source)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class FinishIn(BaseModel):
+    subjective: dict = {}
+    adverse: str | None = None
+
+
+@app.post("/therapy/sessions/{sid}/finish")
+def therapy_finish(sid: int, body: FinishIn):
+    try:
+        return therapy.finish_session(sid, body.subjective, body.adverse)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/centre/floor")
+def centre_floor():
+    return therapy.live_floor()
+
+
+@app.get("/centre/devices")
+def centre_devices():
+    return db.rows("SELECT * FROM devices ORDER BY room, id")
+
+
+@app.get("/centre/therapy-outcomes")
+def centre_therapy_outcomes():
+    return therapy.modality_outcomes()
+
+
+@app.get("/centre/research/phenotypes")
+def centre_phenotypes():
+    return therapy.phenotypes()
+
+
+# ------------------------------------------------------------------ tests & scans catalogue
+
+@app.get("/tests")
+def tests_catalogue():
+    return diagnostics.catalogue()
+
+
+@app.get("/tests/recommended")
+def tests_recommended():
+    return diagnostics.recommend()
+
+
+class TestBookIn(BaseModel):
+    test_id: str
+    day: str
+
+
+@app.post("/tests/book")
+def tests_book(body: TestBookIn):
+    try:
+        return diagnostics.book(body.test_id, body.day)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except PermissionError as e:
+        raise HTTPException(409, str(e))
+
+# ------------------------------------------------------------------ Telomy Rx: supplements, medicines, IVs (doctor-certified)
+
+@app.get("/rx/goals")
+def rx_goals():
+    return [{"id": k, "label": v} for k, v in rx.GOALS.items()]
+
+
+@app.get("/rx/recommend")
+def rx_recommend(goal: str = "longevity"):
+    try:
+        return rx.recommend(goal)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class RxIn(BaseModel):
+    goal: str
+    items: list[str] | None = None
+
+
+@app.post("/rx/plans")
+def rx_submit(body: RxIn):
+    try:
+        return rx.submit(body.goal, 1, body.items)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/rx/plans")
+def rx_plans(state: str | None = None):
+    return rx.list_plans(state)
+
+
+@app.get("/rx/plans/{plan_id}")
+def rx_plan(plan_id: int):
+    r = rx.get(plan_id)
+    if not r:
+        raise HTTPException(404, "Plan not found")
+    return r
+
+
+class RxDecideIn(BaseModel):
+    approve: bool
+    note: str
+    keep: list[str] | None = None
+    doses: dict | None = None
+
+
+@app.post("/rx/plans/{plan_id}/decide")
+def rx_decide(plan_id: int, body: RxDecideIn):
+    try:
+        return rx.decide(plan_id, body.approve, body.note, body.keep, body.doses)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/rx/plans/{plan_id}/order")
+def rx_order(plan_id: int):
+    try:
+        return rx.order(plan_id)
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+
+
+@app.get("/rx/plans/{plan_id}/prescription.pdf")
+def rx_pdf(plan_id: int):
+    try:
+        return Response(rx.prescription_pdf(plan_id), media_type="application/pdf")
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+
+
+@app.get("/rx/tracking")
+def rx_tracking():
+    return rx.tracking()
+
+# ------------------------------------------------------------------ doctor: reports with AI summaries
+
+@app.get("/doctor/patients/{pid}/summary")
+def doctor_patient_summary(pid: int):
+    s = summaries.patient_summary(pid)
+    if not s:
+        raise HTTPException(404, "Patient not found")
+    return s
+
+
+@app.get("/doctor/patients/{pid}/reports")
+def doctor_patient_reports(pid: int):
+    return summaries.patient_reports(pid)
+
+
+@app.get("/reports/{rid}/summary")
+def report_summary(rid: int):
+    s = summaries.report_summary(rid)
+    if not s:
+        raise HTTPException(404, "Report not found")
+    return s
+
+
+class ReportReviewIn(BaseModel):
+    action: str
+    note: str
+
+
+@app.post("/reports/{rid}/review")
+def report_review(rid: int, body: ReportReviewIn):
+    try:
+        return summaries.review_report(rid, body.action, body.note)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ------------------------------------------------------------------ Sinc voice (any language, say anything)
+
+@app.post("/voice/audio")
+async def voice_audio(file: UploadFile = File(...), language: str | None = None):
+    data = await file.read()
+    if len(data) < 2000:
+        raise HTTPException(400, "Recording too short.")
+    try:
+        return voice.from_audio(data, file.filename or "audio.m4a", language)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(422, f"Couldn't read that audio ({type(e).__name__}). Try again a little closer to the mic.")
+
+
+class VoiceText(BaseModel):
+    text: str
+    language: str | None = None
+
+
+@app.post("/voice/command")
+def voice_command(body: VoiceText):
+    if not body.text.strip():
+        raise HTTPException(400, "Say or type something first.")
+    return voice.command(body.text, None, body.language, "typed")
+
+
+@app.get("/voice/stress")
+def voice_stress():
+    return voice.stress_trend()
+
+
+@app.get("/voice/design")
+def voice_design():
+    return voice.DESIGN
+
+# ------------------------------------------------------------------ routine
+
+class RoutineIn(BaseModel):
+    text: str
+    apply_to_profile: bool = True
+
+
+@app.post("/routine/parse")
+def routine_parse(body: RoutineIn):
+    return routine.parse(body.text)
+
+
+@app.post("/routine")
+def routine_save(body: RoutineIn):
+    if len(body.text.strip()) < 20:
+        raise HTTPException(400, "Describe your day in a sentence or two.")
+    return routine.save(body.text, body.apply_to_profile)
+
+
+@app.get("/routine")
+def routine_get():
+    return routine.active() or {}
+
+
+@app.get("/routine/today")
+def routine_today(day: str | None = None, drinking: bool | None = None):
+    return routine.today(day, drinking)
+
+
+class RoutineMark(BaseModel):
+    day: str
+    key: str
+    status: str
+
+
+@app.post("/routine/mark")
+def routine_mark(body: RoutineMark):
+    try:
+        return routine.confirm(body.day, body.key, body.status)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+# ------------------------------------------------------------------ custom activities
+
+@app.get("/activities")
+def activities_list():
+    return {"mine": activities.overview(), "templates": [{"id": k, "name": v["name"]} for k, v in activities.TEMPLATES.items()]}
+
+
+class ActTypeIn(BaseModel):
+    name: str = ""
+    template: str | None = None
+    fields: list[dict] | None = None
+
+
+@app.post("/activities")
+def activities_create(body: ActTypeIn):
+    try:
+        return activities.create_type(body.name, body.fields, body.template)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/activities/{tid}")
+def activities_detail(tid: str):
+    try:
+        return activities.detail(tid)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+
+
+class ActSessIn(BaseModel):
+    values: dict = {}
+    minutes: float | None = None
+    hr: list[float] | None = None
+    hrv: list[float] | None = None
+    notes: str = ""
+
+
+@app.post("/activities/{tid}/sessions")
+def activities_log(tid: str, body: ActSessIn):
+    try:
+        return activities.log_session(tid, body.values, body.minutes, body.hr, body.hrv, notes=body.notes)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+
+# ------------------------------------------------------------------ environment / exposome
+
+@app.get("/environment")
+def environment():
+    exposome.ensure()
+    return exposome.personal()
+
+
+@app.get("/environment/compare")
+def environment_compare(a: str = "Delhi", b: str = "Bengaluru"):
+    if a not in exposome.CITIES or b not in exposome.CITIES:
+        raise HTTPException(400, f"Cities available: {', '.join(exposome.CITIES)}")
+    return exposome.compare(a, b, exposome.live_week())
+
+
+# ------------------------------------------------------------------ digital twin
+
+@app.get("/twin")
+def twin_overview():
+    return twin.overview()
+
+
+class TwinIn(BaseModel):
+    changes: dict = {}
+    years: float = 5
+    preset: str | None = None
+
+
+@app.post("/twin/simulate")
+def twin_simulate(body: TwinIn):
+    ch = dict(twin.PRESETS[body.preset][1]) if body.preset in twin.PRESETS else {}
+    ch.update(body.changes or {})
+    bad = [k for k in ch if k not in twin.LEVERS]
+    if bad:
+        raise HTTPException(400, f"Unknown lever: {', '.join(bad)}")
+    return twin.simulate(ch or None, max(0.25, min(10, body.years)))
+
+
+@app.get("/twin/day")
+def twin_day(drinking: bool = False, day: str | None = None):
+    return twin.day(drinking, day)
+
+
+@app.get("/twin/mirror")
+def twin_mirror():
+    return twin.mirror()
+
+
+@app.get("/physio/validation")
+def physio_validation():
+    from . import physio
+    return physio.validate_prior(20)
+
 
 # ------------------------------------------------------------------ profile
 

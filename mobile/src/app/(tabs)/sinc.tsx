@@ -137,6 +137,9 @@ export default function Sinc() {
             accessibilityLabel="Message Sinc"
             testID="sinc-input"
           />
+          <Pressable onPress={() => router.push('/voice')} accessibilityLabel="Talk to Sinc" testID="sinc-mic" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: p.copper, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="mic.fill" size={18} color="#fff" />
+          </Pressable>
           <Pressable onPress={() => send(text)} disabled={busy || !text.trim()} accessibilityLabel="Send" testID="sinc-send" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: text.trim() ? p.teal : p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
             {busy ? <ActivityIndicator color="#fff" /> : <Icon name="arrow.up" size={18} color={text.trim() ? '#fff' : p.faint} />}
           </Pressable>

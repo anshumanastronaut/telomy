@@ -143,8 +143,14 @@ export default function Home() {
       <Row gap={space[2]}>
         <Quick icon="plus.circle" label="Log event" onPress={() => router.push('/log')} />
         <Quick icon="fork.knife" label="Log meal" onPress={() => router.push('/log?kind=meal')} />
-        <Quick icon="bubble.left" label="Ask Sinc" onPress={() => router.push('/(tabs)/sinc')} />
+        <Quick icon="mic" label="Talk to Sinc" onPress={() => router.push('/voice')} />
         <Quick icon="wind" label="Breathe" onPress={() => router.push('/breathe')} />
+      </Row>
+      <Row gap={space[2]}>
+        <Quick icon="person.2" label="Digital twin" onPress={() => router.push('/twin')} />
+        <Quick icon="calendar.day.timeline.left" label="Routine" onPress={() => router.push('/routine')} />
+        <Quick icon="figure.cricket" label="Activities" onPress={() => router.push('/activities')} />
+        <Quick icon="aqi.medium" label="Environment" onPress={() => router.push('/environment')} />
       </Row>
 
       <Section title="Domains">
