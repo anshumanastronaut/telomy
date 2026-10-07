@@ -90,7 +90,7 @@ export default function Session() {
                 <View key={k} style={{ paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderTopColor: p.border }}>
                   <Row>
                     <T v="body" style={{ flex: 1 }}>{label}</T>
-                    <T v="num" style={{ fontSize: 16 }}>{typeof f[k] === 'number' && f[k] > 0 && unit === '%' ? '+' : ''}{f[k]} <T v="small">{unit}</T></T>
+                    <T v="num" style={{ fontSize: 16 }}>{typeof f[k] === 'number' && f[k] > 0 && unit === '%' && !k.startsWith('spo2_') ? '+' : ''}{f[k]} <T v="small">{unit}</T></T>
                   </Row>
                   {lit[k] ? <T v="small" color={lit[k].verdict === 'typical' ? p.success : p.warn}>Literature {lit[k].range[0]} to {lit[k].range[1]} · {lit[k].source} · {lit[k].verdict}</T> : null}
                 </View>

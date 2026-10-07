@@ -62,7 +62,8 @@ export default function Floor() {
           <Card style={{ paddingVertical: 4 }}>
             {d.next.map((n: any, i: number) => (
               <Row key={n.booking_id} style={{ paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderTopColor: p.border }}>
-                <T v="body" style={{ flex: 1 }}>{n.name}</T><T v="small">{n.therapy} · {n.ts.slice(11, 16)}</T>
+                <T v="body" numberOfLines={1} style={{ flexShrink: 0, maxWidth: '45%' }}>{n.name}</T>
+                <T v="small" style={{ flex: 1, textAlign: 'right' }}>{n.therapy} · {n.ts.slice(11, 16)}</T>
               </Row>
             ))}
           </Card>

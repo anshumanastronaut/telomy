@@ -304,6 +304,8 @@ def day(drinking: bool = False, date_: str | None = None) -> dict:
     anchors = {"after waking": 8.6, "after lunch": 13.6}
     for it in r["items"]:
         h = to_h(it.get("time")) if it.get("time") else anchors.get(it.get("anchor"))
+        if h is None and it["kind"] == "alcohol":
+            h = 20.0  # an evening drink with no stated time
         if h is None:
             continue
         if h < 5:
@@ -315,7 +317,9 @@ def day(drinking: bool = False, date_: str | None = None) -> dict:
                 doses["nicotine"].append((h + 0.7 * i, 1.0))
         if it["kind"] == "alcohol" and drinking:
             doses["alcohol"].append((h, it.get("grams_alcohol", 30)))
-    hours = [h / 2 for h in range(14, 58)]  # 07:00 → 04:30 next day
+    wake_it = next((i for i in r["items"] if i["kind"] == "wake" and i.get("time")), None)
+    start = max(10, min(18, int(to_h(wake_it["time"]) * 2))) if wake_it else 14  # from wake-up (05:00–09:00), else 07:00
+    hours = [h / 2 for h in range(start, start + 44)]  # 22 h, through the night
     caf = [round(sum(dz * 0.5 ** ((t - t0) / 5) for t0, dz in doses["caffeine"] if t >= t0), 1) for t in hours]
     nic = [round(sum(dz * 0.5 ** ((t - t0) / 2) for t0, dz in doses["nicotine"] if t >= t0), 2) for t in hours]
     bac = []
@@ -332,9 +336,9 @@ def day(drinking: bool = False, date_: str | None = None) -> dict:
     sleep_h = state_now()["sleep"] - 0.004 * caf_bed - (0.3 if drinking else 0)
     return {"day": r["day"], "drinking": drinking, "hours": hours, "has_routine": bool(r["items"]), "caffeine_mg": caf, "nicotine_mg": nic, "bac_pct": bac,
             "bedtime": f"{int(bed) % 24:02d}:{int((bed % 1) * 60):02d}", "caffeine_at_bed_mg": caf_bed, "peak_bac": max(bac) if bac else 0,
-            "tonight": {"hrv": round(hrv, 1), "sleep_h": round(sleep_h, 2), "hrv_baseline": round(base_hrv, 1)},
-            "notes": [f"≈ {caf_bed:.0f} mg caffeine still active at bedtime (half-life ~5 h).",
-                      f"{len(doses['nicotine'])} cigarettes → nicotine peaks raise heart rate 10–20 bpm for ~30 min each."] +
+            "tonight": {"hrv": round(hrv, 1), "sleep_h": round(sleep_h, 1), "hrv_baseline": round(base_hrv, 1)},
+            "notes": [f"≈ {caf_bed:.0f} mg caffeine still active at bedtime (half-life ~5 h)."] +
+                     ([f"{len(doses['nicotine'])} cigarettes → nicotine peaks raise heart rate 10–20 bpm for ~30 min each."] if doses["nicotine"] else []) +
                      ([f"Peak blood alcohol ≈ {max(bac):.3f} % (Widmark); your HRV falls ≈ {abs(cal['hrv_per_alcohol_night']):.0f} ms on drinking nights."] if drinking else []),
             "method": "Caffeine t½ 5 h, nicotine t½ 2 h, Widmark alcohol (r = 0.68, β = 0.015 %/h); tonight from your own measured effects."}
 

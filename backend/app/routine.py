@@ -21,6 +21,7 @@ KINDS = [  # (kind, regex) — order matters
     ("commute", r"\b(drive|commute|cab|metro|bus)\b"), ("work", r"\b(office|work)\b"), ("walk", r"\b(walk|walking|steps)\b"),
     ("meal", r"\b(lunch|dinner|breakfast|snack|snacks|eat|eggs?|rice|chicken|pulses|dal|veggies|sweet|chips)\b"),
     ("screen", r"\b(phone|screen|scroll|netflix|tv)\b"),
+    ("exercise", r"\b(gym|workout|work out|strength|weights|yoga|run|running|cycling|swim|swimming|sport|cricket|badminton|tennis)\b"),
 ]
 
 
@@ -37,7 +38,7 @@ def _rng(s: str):
     return (float(m.group(1)), float(m.group(1))) if m else None
 
 
-def _clock(h: float, ampm: str | None, kind: str) -> str:
+def _clock(h: float, ampm: str | None, kind: str, wake: float | None = None) -> str:
     hh = int(h) % 24
     if ampm == "pm" and hh < 12:
         hh += 12
@@ -50,6 +51,10 @@ def _clock(h: float, ampm: str | None, kind: str) -> str:
             hh += 12  # "sleep at 11" = 23:00
         elif kind == "wake":
             pass
+        elif kind == "evening" and hh < 12:
+            hh += 12  # "dinner at 8" = 20:00
+        elif wake is not None and wake <= hh < 12:
+            pass  # after an early wake-up, "coffee at 7" is 07:00
         elif 1 <= hh <= 7:
             hh += 12  # "coffee at 4" in a day routine = 16:00
     return f"{hh:02d}:{int(round((h % 1) * 60)):02d}"
@@ -111,19 +116,22 @@ def parse(text: str) -> dict:
         if "office" in c and days != DAYS:
             office_days = days
         freq = None
-        m = re.search(r"(\d+|three|two|four)\s*(?:times?|x)\s*(?:a|per)\s*week", c)
+        m = re.search(r"(\d+|once|twice|three|two|four|five)\s*(?:times?|x)?\s*(?:a|per)\s*week", c)
         if m:
-            freq = {"two": 2, "three": 3, "four": 4}.get(m.group(1)) or int(m.group(1))
+            freq = {"once": 1, "twice": 2, "two": 2, "three": 3, "four": 4, "five": 5}.get(m.group(1)) or int(m.group(1))
         tm, win = None, None
+        wk = next((x for x in items if x["kind"] == "wake" and x.get("time")), None)
+        wake_h = int(wk["time"][:2]) if wk else None
         r = re.search(r"(\d{1,2})\s*(?:-|to)\s*(\d{1,2})\s*(am|pm)?", c) if re.search(r"(around|at|by|from)\s+\d", c) or re.search(r"\d\s*(am|pm)", c) else None
         r1 = re.search(r"(?:at|around|by)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", c) or re.search(r"(\d{1,2})\s*(am|pm)\b", c)
-        kind_hint = "sleep" if re.search(r"\bsleep\b", c) and not re.search(r"\bwake\b", c) else "wake" if re.search(r"\bwake\b", c) else ""
+        kind_hint = "sleep" if re.search(r"\bsleep\b", c) and not re.search(r"\bwake\b", c) else "wake" if re.search(r"\bwake\b", c) \
+            else "evening" if re.search(r"\b(dinner|evening|night)\b", c) else ""
         if r and not re.search(r"\d\s*(?:-|to)\s*\d\s*(eggs|cig|l\b|lit)", c):
-            win = [_clock(float(r.group(1)), r.group(3), kind_hint), _clock(float(r.group(2)), r.group(3), kind_hint)]
+            win = [_clock(float(r.group(1)), r.group(3), kind_hint, wake_h), _clock(float(r.group(2)), r.group(3), kind_hint, wake_h)]
             tm = win[0]
         elif r1:
             g = r1.groups()
-            tm = _clock(float(g[0]), g[-1] if g[-1] in ("am", "pm") else None, kind_hint)
+            tm = _clock(float(g[0]) + (int(g[1]) / 60 if g[1] else 0), g[-1] if g[-1] in ("am", "pm") else None, kind_hint, wake_h)
         anchor = "after waking" if "after wak" in c else "after lunch" if "after lunch" in c else None
         if not tm and "evening" in c:
             tm = "19:00"
@@ -131,14 +139,19 @@ def parse(text: str) -> dict:
         for kind, rx in KINDS:
             if kind == "alcohol" and not re.search(r"(vodka|whisk(e)?y|rum|gin|beer|wine|\d+\s*ml|peg)", c):
                 continue
+            if kind == "alcohol" and re.search(r"\b(water|paani|juice|milk|coconut|lassi|buttermilk|chaas|shake|smoothie)\b", c) \
+                    and not re.search(r"(vodka|whisk(e)?y|rum|gin|beer|wine|peg)", c):
+                continue  # "drink 500 ml of water" is not alcohol
             if kind == "meal" and found and found[0] in ("alcohol", "smoke"):
                 continue
             if re.search(rx, c) and kind not in found:
                 found.append(kind)
+        if "walk" in found and "meal" in found and re.search(r"\b(at|during|after) (lunch|dinner)", c):
+            found.remove("meal")  # "walk 30 minutes at lunch" is a walk, not a meal
         if anchor == "after waking" and "wake" in found and len(found) > 1:
             found.remove("wake")  # "after waking I …" is an anchor, not a wake-up item
         # wake & sleep in one clause ("wake up 8-9, sleep 1-2") are handled by the comma split; one primary kind per clause
-        prim = [k for k in found if k in ("wake", "sleep", "smoke", "alcohol", "caffeine", "water", "commute", "supplement")]
+        prim = [k for k in found if k in ("wake", "sleep", "smoke", "alcohol", "caffeine", "water", "commute", "supplement", "exercise")]
         kinds = prim[:1] + [k for k in found if k in ("meal", "work", "walk", "screen") and not prim] if prim else found
         if prim and "supplement" in found and prim[0] == "smoke":
             kinds = ["smoke", "supplement"]
@@ -167,7 +180,16 @@ def parse(text: str) -> dict:
             if kind == "alcohol":
                 ml = re.search(r"(\d+)\s*ml", c)
                 drink = re.search(r"(vodka|whisk(?:e)?y|rum|gin|beer|wine)", c)
-                it.update({"ml": float(ml.group(1)) if ml else 60.0, "drink": drink.group(1) if drink else "spirits"})
+                glass = re.search(r"(\d+|one|two|a)?\s*(glass|glasses|pint|pints|peg|pegs|can|cans)\b", c)
+                drink_name = drink.group(1) if drink else "spirits"
+                if ml:
+                    vol = float(ml.group(1))
+                elif glass:
+                    n = {"one": 1, "a": 1, "two": 2, None: 1}.get(glass.group(1)) or int(glass.group(1))
+                    vol = n * {"wine": 150, "beer": 330}.get(drink_name, 60)
+                else:
+                    vol = 60.0
+                it.update({"ml": vol, "drink": drink_name})
                 abv = 0.05 if it["drink"] == "beer" else 0.13 if it["drink"] == "wine" else 0.40
                 it["grams_alcohol"] = round(it["ml"] * abv * 0.789, 1)
             if kind == "water":
@@ -183,7 +205,7 @@ def parse(text: str) -> dict:
             if kind == "commute":
                 m2 = re.search(r"(\d+)\s*(?:min|minute)", c)
                 it["minutes"] = int(m2.group(1)) if m2 else None
-            if kind == "meal" and not tm and last and last["kind"] == "meal" and last.get("meal") in ("lunch", "dinner", "snack") \
+            if kind == "meal" and not tm and last and last["kind"] == "meal" and last.get("meal") in ("breakfast", "lunch", "dinner", "snack") \
                     and not re.search(r"(while|when|breakfast|dinner|lunch)", c):
                 last["text"] += ", " + c  # more foods for the same meal
                 if "alternate day" in c:
@@ -199,15 +221,16 @@ def parse(text: str) -> dict:
                     it["note"] = "sweet on alternate days"
                 desc = re.sub(r"(lunch|dinner|at \d+|majorly|i take|some|while not drinking|when drinks?|while drinking)", " ", c)
                 it["analysis"] = {k: v for k, v in food.analyze(desc).items() if k in ("kcal", "protein", "carbs", "fat", "fibre", "items")}
-            if kind == "caffeine" and "black" in c:
-                it["label"] = "Black coffee"
+            if kind == "caffeine":
+                it["label"] = "Black coffee" if "black" in c else "Green tea" if "green tea" in c else "Chai" if "chai" in c \
+                    else "Tea" if re.search(r"\btea\b", c) else "Coffee"
             if kind in ("wake", "sleep") and any(x["kind"] == kind for x in items):
                 continue
             items.append(it)
             last = it
             if kind == "caffeine":  # "coffee at 10am and at 5" → two items
                 for g in re.findall(r"\band (?:at|around)\s+(\d{1,2})\s*(am|pm)?", c):
-                    items.append({**it, "time": _clock(float(g[0]), g[1] or None, "caffeine")})
+                    items.append({**it, "time": _clock(float(g[0]), g[1] or None, "caffeine", wake_h)})
     for it in items:
         if it["kind"] in ("work", "commute") and office_days:
             it["days"] = office_days
@@ -231,7 +254,7 @@ def _label(it):
     if k == "meal":
         return it["meal"].title()
     return {"wake": "Wake up", "sleep": "Sleep", "caffeine": "Coffee", "commute": f"Commute {it.get('minutes') or ''} min".strip(),
-            "work": "Office", "walk": "Walking", "screen": "Phone / screen before bed"}.get(k, k.title())
+            "work": "Office", "walk": "Walking", "exercise": "Workout", "screen": "Phone / screen before bed"}.get(k, k.title())
 
 
 def _dedupe(items):
@@ -282,15 +305,19 @@ def metrics(items: list[dict]) -> dict:
         units = round(g_week / 8, 1)
         flags.append({"topic": "Alcohol", "severity": "high" if g_week > 140 else "moderate",
                       "text": f"{g_week} g alcohol a week (≈ {units} UK units, {round(g_week / 10, 1)} Indian standard drinks) over {drink_days:g} evenings. "
-                              f"WHO: no safe level; above ~100 g/week all-cause mortality rises (Wood 2018, Lancet). Your data: alcohol nights cost you ~9 ms HRV.",
+                              f"WHO: no safe level; above ~100 g/week all-cause mortality rises (Wood 2018, Lancet). Telomy measures what drinking nights do to your own HRV.",
                       "evidence": "A"})
+    bed = mid(sleep)[0] if sleep else None
     if caff and caff[-1] >= "15:00":
-        flags.append({"topic": "Caffeine timing", "severity": "low", "text": f"Last coffee at {caff[-1]}. With a ~5-h half-life about a quarter is still active at a 1–2 am bedtime; fine for most, worth testing as an N-of-1.",
+        left = f"about {round(100 * 0.5 ** (_hours(caff[-1], bed) / 5))} % is still active at your {bed} bedtime" if bed else "a good share is still active at bedtime"
+        flags.append({"topic": "Caffeine timing", "severity": "low", "text": f"Last caffeine at {caff[-1]}. With a ~5-h half-life {left}; fine for most, worth testing as an N-of-1.",
                       "evidence": "B"})
     if sleep_h:
         flags.append({"topic": "Sleep window", "severity": "low" if sleep_h >= 7 else "moderate",
-                      "text": f"≈ {sleep_h} h in bed ({mid(sleep)[0]}–{mid(wake)[1]}). Late but consistent is OK; the 1–2 am bedtime plus phone use delays melatonin — "
-                              f"cutting screens 30 min before bed is the cheapest lever.", "evidence": "B"})
+                      "text": f"≈ {sleep_h} h in bed ({mid(sleep)[0]}–{mid(wake)[1]}). "
+                              + ("Late but consistent is OK; " if bed and bed < "05:00" else "Consistency matters as much as duration; ")
+                              + ("phone use before bed delays melatonin — cutting screens 30 min before bed is the cheapest lever." if any(i["kind"] == "screen" for i in items)
+                                 else "aim for 7–9 h on the same schedule every day, weekends included."), "evidence": "B"})
     if any(i["kind"] == "screen" for i in items):
         pass
     return {"cigarettes_per_day": cig_day, "alcohol_g_week": g_week, "drink_days_per_week": drink_days, "caffeine_times": caff, "water_litres": water,

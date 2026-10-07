@@ -142,8 +142,8 @@ export default function Twin() {
           <Card>
             <T v="label">Caffeine in your blood (mg)</T>
             <Dual a={dayT.hours.map((h: number, i: number) => [h, dayT.caffeine_mg[i]])} unit="mg" xLabel={(x) => `${Math.floor(x % 24)}:00`} />
-            <T v="label">Nicotine (mg)</T>
-            <Dual a={dayT.hours.map((h: number, i: number) => [h, dayT.nicotine_mg[i]])} unit="mg" height={90} xLabel={(x) => `${Math.floor(x % 24)}:00`} />
+            {dayT.nicotine_mg.some((v: number) => v > 0) ? (<><T v="label">Nicotine (mg)</T>
+            <Dual a={dayT.hours.map((h: number, i: number) => [h, dayT.nicotine_mg[i]])} unit="mg" height={90} xLabel={(x) => `${Math.floor(x % 24)}:00`} /></>) : null}
             {drinking ? (<><T v="label">Blood alcohol (%)</T><Dual a={dayT.hours.map((h: number, i: number) => [h, dayT.bac_pct[i]])} unit="% BAC" height={90} xLabel={(x) => `${Math.floor(x % 24)}:00`} /></>) : null}
           </Card>
           <Card tone="teal">

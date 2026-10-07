@@ -69,7 +69,10 @@ export default function Monthly() {
           <Card>
             {d.predictions.prevent?.ten_year === undefined ? null : null}
             {Object.entries(d.predictions).map(([k, v]: any) => (
-              <Row key={k}><T v="body" style={{ flex: 1 }}>{v.model}</T><T v="small">{v.risk != null ? `${v.risk}%` : v.score ?? v.band ?? '—'}</T></Row>
+              <View key={k} style={{ gap: 2 }}>
+                <Row><T v="body" style={{ flex: 1 }}>{v.model}</T><T v="small">{v.risk != null ? `${v.risk}%` : v.score ?? (v.band && v.band.length <= 14 ? v.band : '—')}</T></Row>
+                {v.band && (v.risk != null || v.score != null || v.band.length > 14) ? <T v="small">{v.band}</T> : null}
+              </View>
             ))}
           </Card>
         </Section>

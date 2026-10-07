@@ -43,6 +43,13 @@ CREATE TABLE IF NOT EXISTS consults (id INTEGER PRIMARY KEY AUTOINCREMENT, kind 
 """
 
 
+def _pred_row(v: dict) -> dict:
+    row = {x: v.get(x) for x in ("risk", "band", "score", "model")}
+    if row["risk"] is None and (v.get("ten_year") or {}).get("total_cvd") is not None:  # PREVENT reports 10- and 30-year totals
+        row["risk"], row["band"] = v["ten_year"]["total_cvd"], f"10-year total CVD · 30-year {v['thirty_year']['total_cvd']}%"
+    return row
+
+
 def init():
     with db.tx() as c:
         c.executescript(SCHEMA)
@@ -125,8 +132,7 @@ def generate_monthly(period: str) -> dict:
         actions.append(f"Retest {t['name']} as planned and keep the action plan going.")
     data = {"period": period, "range": [s, e], "summary": summary, "signals": signals, "new_reports": new_reports,
             "events": events, "medications": [{"name": m["name"], "adherence": m["adherence_30d"]} for m in meds if m["active"]],
-            "protocol_adherence": adherence, "priorities": notes["top"], "predictions": {k: {x: v.get(x) for x in ("risk", "band", "score", "model")}
-                                                                                       for k, v in pred.items()},
+            "protocol_adherence": adherence, "priorities": notes["top"], "predictions": {k: _pred_row(v) for k, v in pred.items()},
             "actions": actions, "kind": kind}
     state = "awaiting_doctor" if kind == "doctor" else "ready"
     db.exec_("""INSERT INTO monthly_reports (period, created_at, state, data) VALUES (?,?,?,?)

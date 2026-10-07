@@ -103,6 +103,14 @@ def log_session(tid: str, values: dict, minutes: float | None = None, hr: list[f
     return {"id": sid, "vitals": vit}
 
 
+def _field_text(tid: str, key: str, v: float) -> str:
+    f = next((f for f in get_type(tid).get("fields", []) if f.get("key") == key), None)
+    if not f:
+        return f"{key.replace('_', ' ')} {v:g}"
+    unit = f.get("unit") or ""
+    return f"{f['label'].lower()} {v:g}" + (f" {unit}" if unit and unit.lower() not in f["label"].lower() else "")
+
+
 def log_from_voice(it: dict) -> dict:
     tid = VOICE_MAP.get(it["activity"])
     if not tid:
@@ -119,7 +127,7 @@ def log_from_voice(it: dict) -> dict:
     if "overs" in vals:
         vals["deliveries"] = int(vals["overs"]) * 6 + round((vals["overs"] % 1) * 10)
     r = log_session(tid, vals, it.get("minutes"), ts=it.get("ts"), notes=it.get("text", ""), source="voice")
-    return {"activity": tid, "session_id": r["id"], "message": f"Logged {get_type(tid)['name']}" + (f" — {', '.join(f'{k} {v:g}' for k, v in vals.items())}" if vals else "") + "."}
+    return {"activity": tid, "session_id": r["id"], "message": f"Logged {get_type(tid)['name']}" + (f" — {', '.join(_field_text(tid, k, v) for k, v in vals.items())}" if vals else "") + "."}
 
 
 def _baseline(vals: list[float]) -> dict | None:
@@ -178,7 +186,7 @@ def _insights(t, ss, series) -> list[str]:
             if hi and lo:
                 out.append(f"On mornings with above-median HRV your {nice} averaged {sum(hi) / len(hi):.1f} vs {sum(lo) / len(lo):.1f} on low-HRV mornings "
                            f"(r = {r:+.2f}, {engine.fmt_p(p)}, n = {len(pairs)}).")
-    if "calm_index" in series and series["calm_index"]["baseline"]:
+    if "calm_index" in series and series["calm_index"]["baseline"] and "calm_index" in (t.get("scores") or []):
         c = series["calm_index"]
         out.append(f"Calm index {c['last']:.0f} last time vs your baseline {c['baseline']['median']:.0f} — trend {c['change']:+.0f} since your first session.")
     if t["id"] == "golf" and "pressure_hr" in series:

@@ -561,6 +561,15 @@ def test_routine_text_becomes_schedule_and_metrics(client):
     db.exec_("UPDATE profile SET data = json_set(data, '$.smoker', json('false')) WHERE id = 1")  # keep later tests' assumptions
 
 
+def test_routine_times_keep_minutes_and_follow_wake_up():
+    from app import routine
+    items = routine.parse("I wake up at 6:30 am. Black coffee at 7. Lunch at 1. Green tea at 4. Sleep at 10:45 pm.")["items"]
+    t = {i["kind"]: i.get("time") for i in items}
+    assert t["wake"] == "06:30" and t["sleep"] == "22:45"
+    assert [i["time"] for i in items if i["kind"] == "caffeine"] == ["07:00", "16:00"]
+    assert next(i["time"] for i in items if i["kind"] == "meal") == "13:00"
+
+
 def test_custom_activities_build_baselines(client):
     lst = client.get("/activities").json()
     assert {a["id"] for a in lst["mine"]} >= {"fast_bowling", "golf"}
@@ -654,3 +663,11 @@ def test_patch_rr_intervals_become_hrv(client):
                for t in range(0, 3000, 10)]
     f = client.post(f"/therapy/sessions/{s['id']}/samples", json={"samples": samples, "source": "Telomy patch (prototype)"}).json()["features"]
     assert f["hr_pre"] and 65 < f["hr_pre"] < 75 and f["hr_peak"] > 110 and f["rmssd_pre"] > 15
+
+
+def test_routine_water_in_ml_is_not_alcohol():
+    from app import routine
+    items = routine.parse("I wake up at 7. Drink 500 ml of water. Wine twice a week, 1 glass.")["items"]
+    alc = [i for i in items if i["kind"] == "alcohol"]
+    assert len(alc) == 1 and alc[0]["drink"] == "wine" and alc[0]["ml"] == 150 and alc[0]["per_week"] == 2
+    assert any(i["kind"] == "water" for i in items)

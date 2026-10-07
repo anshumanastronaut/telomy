@@ -36,6 +36,11 @@ export function T({ v = 'body', color, style, ...rest }: TextProps & { v?: V; co
   const flat = (StyleSheet.flatten([base[v], color ? { color } : null, style]) ?? {}) as TextStyle;
   const isDisplay = flat.fontFamily === fonts.display;
   const family = isDisplay ? fonts.display : ff(flat.fontWeight as any);
+  // Native uppercase turns "µg/m³" into "ΜG/M³" (Greek capital mu); uppercase by hand and keep µ-units intact.
+  if (flat.textTransform === 'uppercase' && typeof rest.children === 'string' && rest.children.includes('µ')) {
+    const text = rest.children.split(/(µ[A-Za-z]+(?:\/[A-Za-z0-9³²]+)?)/).map((s, i) => (i % 2 ? s : s.toUpperCase())).join('');
+    return <Text {...rest} style={[flat, { fontFamily: family, fontWeight: 'normal', textTransform: 'none' }]} maxFontSizeMultiplier={2}>{text}</Text>;
+  }
   return <Text {...rest} style={[flat, { fontFamily: family, fontWeight: 'normal' }]} maxFontSizeMultiplier={2} />;
 }
 

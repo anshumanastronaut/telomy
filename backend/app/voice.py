@@ -267,7 +267,7 @@ def act(parsed: dict, original: str) -> list[dict]:
         elif k == "meal":
             a = food.analyze(it.get("text") or original)  # normalised English for non-English speech
             db.exec_("INSERT INTO meals (ts, name, analysis) VALUES (?,?,?)", (it["ts"], original[:120], db.j({**a, "source": "voice"})))
-            done.append({"intent": k, "message": f"Meal logged: ~{a.get('kcal')} kcal, {a.get('protein')} g protein, score {a.get('score')}."})
+            done.append({"intent": k, "message": f"Meal logged: ~{round(a.get('kcal') or 0)} kcal, {round(a.get('protein') or 0)} g protein, score {a.get('score')}."})
         elif k == "mood":
             sev = 2 if it["valence"] < 0 else 4
             kind = "stress" if it["feeling"] in ("stressed", "stress", "anxious", "overwhelmed") else "mood"
