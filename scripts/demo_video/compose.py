@@ -1,7 +1,8 @@
 """Compose the Telomy demo video: phone recording + typeset chapter panel + voiceover, 1920×1080 H.264/AAC.
 
   python scripts/demo_video/compose.py <work_dir>        # expects <work_dir>/clips/<chapter>.mp4
-Voice: macOS `say` (Samantha). Fonts: Fraunces + Inter from the mobile app's node_modules.
+Voice: a human take per frame in <work_dir>/voice/<id>.wav|m4a|mp3|aiff (record with record_voice.py);
+frames without one fall back to macOS `say` (Samantha) as a scratch track. Fonts: Fraunces + Inter from node_modules.
 """
 import os
 import subprocess
@@ -38,6 +39,8 @@ def wrap(d, text, fnt, width):
 
 
 def panel(cid, label, title, bullets, card, out):
+    if card and cid not in ("intro", "outro", "engineering"):
+        return pitch_card(label, title, bullets, out, big=(cid == "open"))
     im = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(im)
     if card:
@@ -80,6 +83,42 @@ def panel(cid, label, title, bullets, card, out):
     im.save(out)
 
 
+def pitch_card(label, title, bullets, out, big=False):
+    """Typographic card for the pitch frames (problem, why now, market, model, moat, ask)."""
+    im = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(im)
+    x0, w = 260, W - 520
+    tf = font("fraunces", "500Medium", 96 if big else 76)
+    lines = wrap(d, title, tf, w)
+    bf = font("inter", "400Regular", 36)
+    blines = [wrap(d, b, bf, w - 40) for b in bullets]
+    h = (60 if label else 0) + len(lines) * (112 if big else 92) + 40 + sum(len(b) * 50 + 22 for b in blines)
+    y = max(120, (H - h) // 2)
+    if label:
+        d.text((x0, y), label, font=font("inter", "600SemiBold", 28), fill=TEAL)
+        y += 60
+    for line in lines:
+        d.text((x0, y), line, font=tf, fill=INK)
+        y += 112 if big else 92
+    y += 40
+    for bl in blines:
+        if not big:
+            d.ellipse((x0, y + 17, x0 + 12, y + 29), fill=COPPER)
+        for line in bl:
+            d.text((x0 + (0 if big else 34), y), line, font=bf, fill=MUTED if big else INK)
+            y += 50
+        y += 22
+    im.save(out)
+
+
+def human_take(work, cid):
+    for ext in ("wav", "m4a", "mp3", "aiff", "aif"):
+        p = os.path.join(work, "voice", f"{cid}.{ext}")
+        if os.path.exists(p):
+            return p
+    return None
+
+
 def mask(out):
     m = Image.new("L", (460, 1000), 0)
     ImageDraw.Draw(m).rounded_rectangle((0, 0, 459, 999), radius=58, fill=255)
@@ -91,16 +130,30 @@ def dur(p):
 
 
 def main(work):
+    work = os.path.abspath(work)
     os.makedirs(os.path.join(work, "parts"), exist_ok=True)
     mk = os.path.join(work, "mask.png")
     mask(mk)
     parts = []
-    for cid, label, title, bullets, narration in CHAPTERS:
+    humans = 0
+    for cid, label, title, bullets, narration, *_ in CHAPTERS:
         card = cid in CARDS
         png = os.path.join(work, "parts", f"{cid}.png")
         panel(cid, label, title, bullets, card, png)
-        aif = os.path.join(work, "parts", f"{cid}.aiff")
-        subprocess.run(["say", "-v", VOICE, "-r", str(RATE), "-o", aif, narration], check=True)
+        aif = os.path.join(work, "parts", f"{cid}.m4a")
+        take = human_take(work, cid)
+        if take:  # trim silence at both ends, gentle low-cut, broadcast loudness (-16 LUFS)
+            humans += 1
+            subprocess.run(["ffmpeg", "-y", "-i", take, "-af",
+                            "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.15,areverse,"
+                            "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.3,areverse,"
+                            "highpass=f=80,loudnorm=I=-16:TP=-1.5:LRA=11", "-ar", "48000", "-c:a", "aac", "-b:a", "192k", aif],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            raw = os.path.join(work, "parts", f"{cid}.aiff")
+            subprocess.run(["say", "-v", VOICE, "-r", str(RATE), "-o", raw, narration], check=True)
+            subprocess.run(["ffmpeg", "-y", "-i", raw, "-c:a", "aac", "-b:a", "192k", aif], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         a = dur(aif)
         T = a + 1.2
         out = os.path.join(work, "parts", f"{cid}.mp4")
@@ -132,14 +185,14 @@ def main(work):
                    "-map", "[v]", "-map", "[a]", "-t", f"{T}", "-r", "30", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-c:a", "aac", "-b:a", "160k", out]
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         parts.append(out)
-        print(f"{cid:12s} {T:5.1f}s")
+        print(f"{cid:12s} {T:5.1f}s  {'your voice' if take else 'scratch voice'}")
     lst = os.path.join(work, "parts", "list.txt")
     with open(lst, "w") as f:
         f.writelines(f"file '{p}'\n" for p in parts)
     final = os.path.join(ROOT, "share", "telomy-demo.mp4")
     subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", "-movflags", "+faststart", final], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    print("→", final, f"{dur(final) / 60:.1f} min")
+    print("→", final, f"{dur(final) / 60:.1f} min · {humans}/{len(CHAPTERS)} frames in a human voice")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ clinic-machine sessions, medicines and life events; **Sinc**, an evidence-first 
 
 | | |
 |---|---|
-| **Backend** | Python 3.13 · FastAPI · SQLite (dev) · numpy · local Whisper (optional) — 171 API operations, 45 tables, 115 tests |
+| **Backend** | Python 3.13 · FastAPI · SQLite (dev) · numpy · local Whisper (optional) — 171 API operations, 48 tables, 117 tests |
 | **Mobile** | Expo SDK 57 · React Native 0.86 · expo-router — one app, three roles (member · doctor · centre owner) |
 | **Status** | v0.4 — feature-complete prototype running on the iOS Simulator; next: native build, device SDKs, hosting ([roadmap](docs/ROADMAP.md)) |
 
@@ -59,17 +59,20 @@ scripts/            Docs generator, setup helpers
 
 ## Documentation
 
+Start at **[docs/README.md](docs/README.md)**: the step-by-step index (requirements → PRD → HLD → LLD → design system → production plan).
+Claude Code reads [CLAUDE.md](CLAUDE.md) automatically.
+
 | Doc | For |
 |---|---|
-| [ARCHITECTURE](docs/ARCHITECTURE.md) | How the pieces fit; request flow; module map |
-| [DEVELOPMENT](docs/DEVELOPMENT.md) | Setup, running, seeding, debugging, Simulator & device builds |
-| [ENGINE](docs/ENGINE.md) | Every algorithm, model and its references |
-| [DEVICE_INTEGRATION](docs/DEVICE_INTEGRATION.md) | Machines, Telomy patch, wearables → server contract |
-| [SECURITY_PRIVACY](docs/SECURITY_PRIVACY.md) | DPDP, secrets, test-data rules |
-| [CLINICAL_SAFETY](docs/CLINICAL_SAFETY.md) | Claims firewall, clinician-in-the-loop, safety envelope |
+| [Requirements & sources](docs/requirements/README.md) | Original specs (DPR v5, Engineering Guide v3, UI Design System, Echo OS, PINN) and traceability |
+| [PRD](docs/product/PRD.md) | Product requirements, priorities, status |
+| [HLD](docs/architecture/HLD.md) · [LLD](docs/architecture/LLD.md) | Architecture diagrams; module-level design |
+| [Design system](docs/design/DESIGN_SYSTEM.md) | Brand, colours, fonts, components, screens |
+| [Production plan](docs/production/PRODUCTION_PLAN.md) | From the test user to real users |
+| [DEVELOPMENT](docs/DEVELOPMENT.md) · [ENGINE](docs/ENGINE.md) · [DEVICE_INTEGRATION](docs/DEVICE_INTEGRATION.md) | Setup; algorithms; machines and patch |
+| [SECURITY_PRIVACY](docs/SECURITY_PRIVACY.md) · [CLINICAL_SAFETY](docs/CLINICAL_SAFETY.md) | DPDP and secrets; claims firewall |
 | [API](docs/API.md) · [DATA_MODEL](docs/DATA_MODEL.md) | Generated references |
-| [ROADMAP](docs/ROADMAP.md) · [CHANGELOG](CHANGELOG.md) | What's next, what changed |
-| [CONTRIBUTING](CONTRIBUTING.md) | Branches, reviews, commits, definition of done |
+| [Decisions](docs/history/DECISIONS.md) · [ROADMAP](docs/ROADMAP.md) · [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md) | Project memory, plans, changes, process |
 
 ## Licence
 
