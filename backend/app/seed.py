@@ -285,8 +285,9 @@ def run(reset=True):
     from . import roles
     roles.seed(rnd, TODAY, sorted(sauna_days))
     therapy.seed(random.Random(11), TODAY, p1_sched)
-    from . import activities, devices, exposome, routine, rx, summaries, voice
+    from . import activities, band, devices, exposome, routine, rx, summaries, voice
     devices.init()
+    band.init()
     rx.init()
     summaries.init()
     voice.init()

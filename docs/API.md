@@ -1,7 +1,7 @@
 # API reference
 
 Generated from the FastAPI OpenAPI schema by `scripts/gen_docs.py` — do not edit by hand.
-Interactive docs: run the backend and open `http://127.0.0.1:8787/docs`. 171 operations.
+Interactive docs: run the backend and open `http://127.0.0.1:8787/docs`. 184 operations.
 
 ## /accounts
 
@@ -44,6 +44,24 @@ Interactive docs: run the backend and open `http://127.0.0.1:8787/docs`. 171 ope
 |---|---|---|
 | POST | `/auth/otp/send` | Otp Send |
 | POST | `/auth/otp/verify` | Otp Verify |
+
+## /band
+
+| Method | Path | Summary |
+|---|---|---|
+| GET | `/band/captures` | Band Captures |
+| POST | `/band/captures` | Band Capture Save |
+| GET | `/band/captures/{cid}` | Band Capture |
+| POST | `/band/events` | Band Events Save |
+| GET | `/band/events` | Band Events |
+| POST | `/band/minutes` | Band Minutes Save |
+| GET | `/band/minutes` | Band Minutes |
+| GET | `/band/recordings` | Band Recordings |
+| POST | `/band/recordings` | Band Recording Save |
+| GET | `/band/strips` | Band Strips |
+| POST | `/band/strips` | Band Strip Save |
+| GET | `/band/strips/{sid}` | Band Strip |
+| GET | `/band/summary` | Band Summary |
 
 ## /brief
 

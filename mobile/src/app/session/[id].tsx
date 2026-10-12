@@ -1,8 +1,10 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { api, fmtDate, useApi } from '@/lib/api';
+import { acquireStream, bandAvailable, startSessionCapture, useBand } from '@/lib/band';
+import { BeatHeart } from '@/ui/ecg';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, ErrorState, Loading, Row, Screen, Section, T, useToast } from '@/ui/core';
 import { PhaseLegend, SessionChart, phaseName } from '@/ui/therapy';
@@ -27,6 +29,17 @@ export default function Session() {
   const { toast, show } = useToast();
   const inProgress = s?.status === 'in_progress';
   const total = s?.trace?.t?.length ? s.trace.t[s.trace.t.length - 1] : 0;
+  const band = useBand();
+  const capture = useRef<ReturnType<typeof startSessionCapture> | null>(null);
+  const bandLive = bandAvailable && band.status?.state === 'streaming';
+
+  // While a session is in progress, record the band's HR and beat intervals in 5-s samples for this session.
+  useEffect(() => {
+    if (!inProgress || !bandAvailable) return;
+    const release = acquireStream();
+    capture.current = startSessionCapture();
+    return () => { capture.current?.stop(); capture.current = null; release(); };
+  }, [inProgress]);
 
   useEffect(() => {
     if (!inProgress || !live) return;
@@ -46,6 +59,15 @@ export default function Session() {
   const sig = ORDER.filter((k) => tr.signals[k]?.length);
 
   async function finish() {
+    const samples = capture.current?.stop() ?? [];
+    capture.current = null;
+    if (samples.length >= 20) {
+      try {
+        await api(`/therapy/sessions/${id}/samples`, { body: { samples, source: 'KY-E-B1 ECG band (measured)' } });
+      } catch (e: any) {
+        show(`Band data not attached: ${e.message}`, 'alert');
+      }
+    }
     const r = await api(`/therapy/sessions/${id}/finish`, { body: { subjective: { pre, post } } });
     show('Session saved. Telomy will check tonight\'s sleep and HRV.', 'success');
     reload();
@@ -65,6 +87,16 @@ export default function Session() {
         </Row>
         {s.source.startsWith('simulated') ? (
           <T v="small">This trace is your personal ODE prior — the response Telomy expects from your θ (resting HR, HRV, fitness, metabolic and vascular markers). Pair a chest strap, the Telomy patch or the machine's telemetry and real data replaces it.</T>
+        ) : null}
+
+        {inProgress && bandAvailable ? (
+          <Card tone={bandLive ? 'teal' : 'plain'} onPress={() => router.push('/monitor')}>
+            <Row>
+              {bandLive ? <BeatHeart lastBeatAt={band.lastBeatAt} /> : null}
+              <T v="h3" style={{ flex: 1 }}>{bandLive ? `${band.metrics?.hr ? Math.round(band.metrics.hr) : '–'} bpm · recording from your ECG band` : 'Wear your ECG band to measure this session'}</T>
+            </Row>
+            <T v="small">{bandLive ? `HRV ${band.metrics?.hrvReliable && band.metrics.rmssd60 ? Math.round(band.metrics.rmssd60) + ' ms' : 'settling'} · ${capture.current?.count() ?? 0} samples. Finishing the session replaces the simulated trace with your measured one.` : 'Open Live ECG to connect. Telomy records heart rate and HRV every 5 seconds while the session runs.'}</T>
+          </Card>
         ) : null}
 
         {inProgress && live ? (

@@ -7,6 +7,7 @@ import { ago, fmtDate, useApi } from '@/lib/api';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Dial, Ring, Sparkline } from '@/ui/charts';
 import { Card, Chip, ErrorState, Icon, Loading, Prov, Row, Screen, Section, Spacer, StatusChip, T } from '@/ui/core';
+import { BandTools } from '@/ui/ecg';
 import { InsightCard } from '@/ui/insight';
 import { Logo } from '@/ui/logo';
 
@@ -31,8 +32,8 @@ export default function Home() {
   const past = useApi(asOf ? `/home?as_of=${asOf}` : null, [asOf]);
   const h = rewind && past.data ? past.data : base.data;
 
-  if (base.error) return <Wrap><ErrorState message={base.error} onRetry={base.reload} /></Wrap>;
-  if (!h) return <Wrap><Loading what="Reading your Vault…" /></Wrap>;
+  if (base.error) return <Wrap><BandTools /><ErrorState message={base.error} onRetry={base.reload} /></Wrap>;
+  if (!h) return <Wrap><BandTools /><Loading what="Reading your Vault…" /></Wrap>;
   const la = h.longevity;
   const today = new Date(h.as_of + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -140,6 +141,7 @@ export default function Home() {
         </Row>
       </Card>
 
+      <BandTools />
       <Row gap={space[2]}>
         <Quick icon="plus.circle" label="Log event" onPress={() => router.push('/log')} />
         <Quick icon="fork.knife" label="Log meal" onPress={() => router.push('/log?kind=meal')} />

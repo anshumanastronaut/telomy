@@ -8,7 +8,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from . import config  # noqa: F401  (loads backend/.env first)
-from . import activities, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -21,7 +21,7 @@ async def lifespan(_app):
     therapy.init()
     rx.init()
     summaries.init()
-    for mod in (voice, routine, activities, exposome, devices):
+    for mod in (voice, routine, activities, exposome, devices, band):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -1760,3 +1760,99 @@ def research():
         {"title": "Gut diversity and hs-CRP", "status": "Analysis", "your_data": "Gut panel, blood panel", "n": 610},
         {"title": "Sauna frequency and deep sleep", "status": "Preprint published", "your_data": "Sleep, events", "n": 2875,
          "preprint": "medRxiv 2026.08.14 (test entry)"}]}
+
+
+# ----------------------------------------------------------------------------- ECG band (KY-E-B1)
+
+class BandMinutesIn(BaseModel):
+    items: list[dict]
+
+
+@app.post("/band/minutes")
+def band_minutes_save(body: BandMinutesIn):
+    try:
+        return band.save_minutes(body.items)
+    except (ValueError, KeyError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/band/minutes")
+def band_minutes(hours: int = 24):
+    return band.minutes(hours)
+
+
+@app.get("/band/summary")
+def band_summary():
+    return band.summary()
+
+
+@app.post("/band/strips")
+def band_strip_save(body: dict):
+    try:
+        return band.save_strip(body)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/band/strips")
+def band_strips():
+    return band.strips()
+
+
+@app.get("/band/strips/{sid}")
+def band_strip(sid: int):
+    r = band.strip(sid)
+    if not r:
+        raise HTTPException(404, "ECG strip not found")
+    return r
+
+
+@app.post("/band/recordings")
+def band_recording_save(body: dict):
+    try:
+        return band.save_recording(body)
+    except (ValueError, KeyError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/band/recordings")
+def band_recordings():
+    return band.recordings()
+
+
+class BandEventsIn(BaseModel):
+    items: list[dict]
+
+
+@app.post("/band/events")
+def band_events_save(body: BandEventsIn):
+    try:
+        return band.save_events(body.items)
+    except (ValueError, KeyError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/band/captures")
+def band_capture_save(body: dict):
+    try:
+        return band.save_capture(body)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/band/captures")
+def band_captures():
+    return band.captures()
+
+
+@app.get("/band/captures/{cid}")
+def band_capture(cid: str):
+    b = band.capture_bundle(cid)
+    if not b:
+        raise HTTPException(404, "Capture not found")
+    return b
+
+
+@app.get("/band/events")
+def band_events(days: int = 30):
+    return band.events(days)

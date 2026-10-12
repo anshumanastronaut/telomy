@@ -671,3 +671,44 @@ def test_routine_water_in_ml_is_not_alcohol():
     alc = [i for i in items if i["kind"] == "alcohol"]
     assert len(alc) == 1 and alc[0]["drink"] == "wine" and alc[0]["ml"] == 150 and alc[0]["per_week"] == 2
     assert any(i["kind"] == "water" for i in items)
+
+
+def test_band_minutes_strips_and_recordings(client):
+    from app import engine
+    now = engine.now_iso()[:16]
+    r = client.post("/band/minutes", json={"items": [{"ts": now, "hr": 72.4, "rmssd": 38.2, "sdnn": 45.1, "beats": 72, "quality": "good", "artefact_pct": 0}]})
+    assert r.json() == {"saved": 1}
+    assert client.post("/band/minutes", json={"items": [{"ts": now, "hr": 400}]}).status_code == 400
+    s = client.get("/band/summary").json()
+    assert s["minutes"] >= 1 and s["hr"]["avg"] == 72.4 and s["rmssd"]["median"] == 38.2
+    samples = [0.0] * 1000
+    st = client.post("/band/strips", json={"fs": 100, "samples": samples, "hr": 70, "quality": "good"}).json()
+    assert st["duration_s"] == 10 and len(st["samples"]) == 1000
+    assert client.post("/band/strips", json={"fs": 100, "samples": [0] * 100}).status_code == 400
+    assert client.get(f"/band/strips/{st['id']}").json()["fs"] == 100
+    rec = client.post("/band/recordings", json={"start_ts": "2026-10-06T22:00:00", "duration_s": 3600, "beats": 4300,
+                                                "mean_hr": 71.7, "rmssd": 41.0, "sdnn": 52.0, "artefact_pct": 1.2, "rr": [830, 845]}).json()
+    assert rec["mean_hr"] == 71.7 and client.get("/band/recordings").json()[0]["id"] == rec["id"]
+
+
+def test_band_events_and_sleep(client):
+    r = client.post("/band/events", json={"items": [{"type": "af_pattern", "start": 1791800000, "end": 1791800040, "detail": {"nrmssd": 0.14}}]})
+    assert r.json() == {"saved": 1}
+    client.post("/band/events", json={"items": [{"type": "af_pattern", "start": 1791800000, "end": 1791800120, "detail": {}}]})
+    ev = [e for e in client.get("/band/events", params={"days": 3650}).json() if e["type"] == "af_pattern"]
+    assert len(ev) == 1 and ev[0]["severity"] == "high" and ev[0]["end_ts"] > ev[0]["start_ts"]
+    assert client.post("/band/events", json={"items": [{"type": "diagnosis", "start": 1}]}).status_code == 400
+    rec = client.post("/band/recordings", json={"start_ts": "2026-10-07T23:00:00", "duration_s": 25200, "beats": 30000, "mean_hr": 62,
+                                                "sleep": {"totalSleepMin": 380, "efficiency": 0.9, "wasoMin": 30, "awakenings": 3, "hypnogram": [0, 1, 1]}}).json()
+    assert rec["sleep"]["totalSleepMin"] == 380
+
+
+def test_band_capture_upload(client):
+    bundle = {"format": "telomy.capture/1", "meta": {"id": "20261012-180000-sauna", "therapy": "Finnish sauna", "startedAt": 1791800000,
+              "durationSec": 900, "settings": {"temperature_c": "85"}, "phases": [{"phase": "baseline", "t": 1791800000}]},
+              "ecg": {"fs": 100, "data": ""}, "beats_csv": "t_unix,rr_ms,amplitude_uv\\n", "metrics": [], "events": []}
+    assert client.post("/band/captures", json=bundle).json()["stored"] is True
+    lst = client.get("/band/captures").json()
+    assert lst[0]["therapy"] == "Finnish sauna" and lst[0]["settings"]["temperature_c"] == "85"
+    assert client.get("/band/captures/20261012-180000-sauna").json()["format"] == "telomy.capture/1"
+    assert client.post("/band/captures", json={"format": "other"}).status_code == 400

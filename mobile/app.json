@@ -14,7 +14,13 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
           "NSAllowsLocalNetworking": true
-        }
+        },
+        "NSBluetoothAlwaysUsageDescription": "Telomy connects to your ECG band over Bluetooth to show your live ECG, heart rate and HRV, and to sync recordings.",
+        "UIBackgroundModes": [
+          "audio",
+          "bluetooth-central"
+        ],
+        "NSLocalNetworkUsageDescription": "Telomy connects to your Telomy server on this Wi-Fi network to save your ECG, heart rate and HRV."
       },
       "appleTeamId": "M483297A5P",
       "buildNumber": "5"
@@ -49,7 +55,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Telomy uses the microphone when you talk to Sinc \u2014 to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
+          "microphonePermission": "Telomy uses the microphone when you talk to Sinc — to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
         }
       ]
     ],

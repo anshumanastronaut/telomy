@@ -35,6 +35,39 @@ CREATE TABLE appointments (
   id INTEGER PRIMARY KEY AUTOINCREMENT, clinician_id TEXT, ts TEXT, kind TEXT, status TEXT, reason TEXT)
 ```
 
+## `band_captures` (0 fixture rows)
+
+```sql
+CREATE TABLE band_captures (
+  id TEXT NOT NULL, user_id INTEGER NOT NULL DEFAULT 1, therapy TEXT, started_at TEXT, duration_s REAL, meta TEXT, bundle TEXT,
+  received_at TEXT, PRIMARY KEY (user_id, id))
+```
+
+## `band_events` (0 fixture rows)
+
+```sql
+CREATE TABLE band_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL DEFAULT 1, type TEXT NOT NULL, start_ts TEXT NOT NULL,
+  end_ts TEXT NOT NULL, detail TEXT, source TEXT, UNIQUE (user_id, type, start_ts))
+```
+
+## `band_minutes` (0 fixture rows)
+
+```sql
+CREATE TABLE band_minutes (
+  user_id INTEGER NOT NULL DEFAULT 1, ts TEXT NOT NULL, hr REAL, rmssd REAL, sdnn REAL, beats INTEGER,
+  quality TEXT, artefact_pct REAL, source TEXT, PRIMARY KEY (user_id, ts))
+```
+
+## `band_recordings` (0 fixture rows)
+
+```sql
+CREATE TABLE band_recordings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL DEFAULT 1, start_ts TEXT NOT NULL, duration_s REAL,
+  beats INTEGER, mean_hr REAL, rmssd REAL, sdnn REAL, artefact_pct REAL, rr TEXT, source TEXT, sleep TEXT,
+  UNIQUE (user_id, start_ts))
+```
+
 ## `bookings` (4207 fixture rows)
 
 ```sql
@@ -103,6 +136,14 @@ CREATE TABLE devices (id TEXT PRIMARY KEY, modality TEXT, name TEXT, room TEXT, 
 ```sql
 CREATE TABLE documents (
   id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT, title TEXT, day TEXT, filename TEXT, summary TEXT, data TEXT, created_at TEXT)
+```
+
+## `ecg_strips` (0 fixture rows)
+
+```sql
+CREATE TABLE ecg_strips (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL DEFAULT 1, ts TEXT NOT NULL, fs REAL NOT NULL,
+  duration_s REAL, hr REAL, rmssd REAL, quality TEXT, samples TEXT NOT NULL, note TEXT, source TEXT)
 ```
 
 ## `events` (299 fixture rows)

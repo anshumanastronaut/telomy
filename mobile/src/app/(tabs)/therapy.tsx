@@ -6,17 +6,19 @@ import { fmtDate, useApi } from '@/lib/api';
 import { space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, ErrorState, Icon, Loading, Row, Screen, Section, T } from '@/ui/core';
 import { HsaiCard, VerdictChip, inr } from '@/ui/therapy';
+import { BandTools } from '@/ui/ecg';
 
 export default function Therapy() {
   const p = usePalette();
   const { data: d, error, reload, loading } = useApi<any>('/therapy');
-  if (error) return <Screen><ErrorState message={error} onRetry={reload} /></Screen>;
-  if (!d) return <Screen><Loading what="Loading your centre…" /></Screen>;
+  if (error) return <Screen><T v="h1">Therapy</T><BandTools /><ErrorState message={error} onRetry={reload} /></Screen>;
+  if (!d) return <Screen><T v="h1">Therapy</T><BandTools /><Loading what="Loading your centre…" /></Screen>;
   const working = d.working.filter((w: any) => w.verdict === 'helped' || w.verdict === 'promising');
   const rest = d.working.filter((w: any) => w.verdict !== 'helped' && w.verdict !== 'promising');
   return (
     <Screen onRefresh={reload} refreshing={loading}>
       <T v="h1">Therapy</T>
+      <BandTools />
       <Card tone="teal" testID="centre-card">
         <Row>
           <Icon name="building.2" color={p.teal} />
