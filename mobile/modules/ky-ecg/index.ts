@@ -69,6 +69,7 @@ export type RecordingEvent =
   | { phase: 'progress'; received: number; total: number }
   | { phase: 'failed'; message: string }
   | { phase: 'completed'; path: string; frames: number; start: number; durationSec?: number; beats?: number; meanHr?: number; rmssd?: number; sdnn?: number; artefactPercent?: number; rr?: number[]; events?: RhythmEvent[]; sleep?: SleepSummary; captureId?: string };
+export type UserEvent = { kind: string; label: string; note?: string; t?: number; amount?: string };
 export type FoundDevice = { id: string; name: string; rssi: number };
 export type CaptureMeta = {
   id: string; format: string; therapy: string; settings?: Record<string, unknown>; phases?: { phase: string; t: number; note?: string }[];
@@ -109,6 +110,7 @@ type Native = {
   listCaptures(): CaptureMeta[];
   deleteCapture(id: string): void;
   wellnessAppend(kind: string, record: Record<string, unknown>): void;
+  addUserEvent(e: Record<string, unknown>): { captureId?: string; t?: number };
   wellnessRead(kind: string, days: number): Promise<Record<string, any>[]>;
   reanalyseCapture(id: string): Promise<{ id?: string; summary?: Record<string, any>; error?: string }>;
   addListener<K extends keyof Events>(event: K, listener: Events[K]): EventSubscription;
@@ -143,6 +145,8 @@ export const Band = {
   captureMeta: (): Record<string, any> | null => native?.captureMeta() ?? null,
   listCaptures: (): CaptureMeta[] => native?.listCaptures() ?? [],
   deleteCapture: (id: string) => native?.deleteCapture(id),
+  /** Log a user event (meal, supplement, alcohol, custom…) into the running capture and the on-phone store. */
+  addUserEvent: (e: UserEvent) => native?.addUserEvent(e as any) ?? { },
   /** Append a record to the on-phone wellness store (Documents/wellness/<kind>/<day>.jsonl). */
   wellnessAppend: (kind: string, record: Record<string, unknown>) => native?.wellnessAppend(kind, record),
   /** Records from the last `days` days of the on-phone wellness store, oldest first. */

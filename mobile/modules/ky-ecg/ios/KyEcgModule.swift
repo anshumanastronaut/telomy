@@ -29,6 +29,7 @@ public class KyEcgModule: Module {
         Function("syncRecording") { KYBand.shared.syncRecording() }
         Function("log") { (line: String) in KYBand.shared.log("js " + line) }
         Function("startCapture") { (meta: [String: Any]) in KYBand.shared.startCapture(meta: meta) }
+        Function("addUserEvent") { (e: [String: Any]) in KYBand.shared.addUserEvent(e) }
         Function("markPhase") { (phase: String, note: String?) in KYBand.shared.markPhase(phase, note: note) }
         Function("updateCapture") { (meta: [String: Any]) in KYBand.shared.updateCapture(meta) }
         Function("stopCapture") { (extra: [String: Any]) in KYBand.shared.stopCapture(extra: extra) }

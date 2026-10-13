@@ -171,6 +171,16 @@ final class KYBand: NSObject {
         }
     }
 
+    /// Log a user event: into the running capture (if any) and always into the on-phone wellness store.
+    func addUserEvent(_ e: [String: Any]) -> [String: Any] {
+        var ev = e
+        if ev["t"] == nil { ev["t"] = Date().timeIntervalSince1970 }
+        if let c = capture { ev["captureId"] = c.id; c.addUserEvent(ev) }
+        KYWellnessStore.append(kind: "events", record: ev)
+        log("user event \(ev["kind"] ?? "") \(ev["label"] ?? "")")
+        return ["captureId": capture?.id as Any, "t": ev["t"] as Any]
+    }
+
     func markPhase(_ phase: String, note: String?) { capture?.mark(phase: phase, note: note); log("capture phase \(phase)") }
 
     func updateCapture(_ meta: [String: Any]) { capture?.update(meta: meta) }

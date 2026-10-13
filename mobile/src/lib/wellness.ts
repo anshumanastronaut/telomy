@@ -228,6 +228,7 @@ export function coachLine(rec: Score, sleep: Score | null, n?: Night) {
 // ------------------------------------------------------------------ hook
 
 export type DayEvent = { t: number; end: number; label: string };
+export type UserEventRec = { kind: string; label: string; note?: string; t: number; captureId?: string };
 
 /** Per-night scores for trends: each night scored against the nights before it (as it was that morning). */
 export function nightSeries(nights: Night[]) {
@@ -248,7 +249,7 @@ export function normalBand(values: number[]) {
 export type Wellness = {
   loading: boolean; nights: Night[]; last?: Night; sleep: Score | null; recovery: Score; age: number;
   today: { minutes: MinuteRec[]; zones: number[]; trimp: number; strain: number; stress: ReturnType<typeof stressFor>; worn: number; activeMin: number };
-  yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void; sessionsToday: DayEvent[];
+  yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void; sessionsToday: DayEvent[]; userEvents: UserEventRec[];
 };
 
 const reanalysed = new Set<string>();
@@ -256,7 +257,7 @@ let pending: Promise<void> | null = null;
 const reloaders = new Set<() => void>();
 
 export function useWellness(ageHint?: number | null): Wellness {
-  const [state, setState] = useState<{ nights: Night[]; minutes: MinuteRec[]; age: number; sessions: DayEvent[] } | null>(null);
+  const [state, setState] = useState<{ nights: Night[]; minutes: MinuteRec[]; age: number; sessions: DayEvent[]; userEvents: UserEventRec[] } | null>(null);
   const load = useCallback(async () => {
     const caps = bandAvailable ? Band.listCaptures() : [];
     // nights recorded before the night metrics existed: re-analyse once (in the background) so they get them.
@@ -274,7 +275,8 @@ export function useWellness(ageHint?: number | null): Wellness {
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
     const sessions: DayEvent[] = (caps as any[]).filter((c) => c.therapyId !== 'sleep' && c.startedAt >= dayStart.getTime() / 1000)
       .map((c) => ({ t: c.startedAt, end: c.endedAt ?? c.startedAt, label: c.therapy }));
-    setState({ nights: nightsFrom(caps), minutes, age: age!, sessions });
+    const userEvents = ((bandAvailable ? await Band.wellnessRead('events', 2) : []) as UserEventRec[]).filter((e) => e.t >= dayStart.getTime() / 1000 - 6 * 3600);
+    setState({ nights: nightsFrom(caps), minutes, age: age!, sessions, userEvents });
   }, [ageHint]);
   useEffect(() => { reloaders.add(load); load(); return () => { reloaders.delete(load); }; }, [load]);
 
@@ -300,6 +302,6 @@ export function useWellness(ageHint?: number | null): Wellness {
     today: { minutes: tm, zones, trimp, strain: strainFromTrimp(trimp), stress, worn: tm.length,
       activeMin: tm.filter((m) => m.activity === 'active').length },
     yesterdayTrimp: byDay(yKey).length >= 60 ? zonesFor(byDay(yKey), age).trimp : null,
-    restingHr, vo2: restingHr ? vo2max(age, restingHr) : null, reload: load, sessionsToday: state?.sessions ?? [],
+    restingHr, vo2: restingHr ? vo2max(age, restingHr) : null, reload: load, sessionsToday: state?.sessions ?? [], userEvents: state?.userEvents ?? [],
   };
 }

@@ -73,6 +73,7 @@ export default function RootLayout() {
         <Stack.Screen name="pins" options={{ title: 'Pinned to Home' }} />
         <Stack.Screen name="monitor" options={{ title: 'Live ECG' }} />
         <Stack.Screen name="wellness/[metric]" options={{ title: '' }} />
+        <Stack.Screen name="event" options={{ presentation: 'modal', title: 'Log an event' }} />
         <Stack.Screen name="capture" options={{ title: 'Therapy capture' }} />
         <Stack.Screen name="captures" options={{ title: 'Saved sessions' }} />
         <Stack.Screen name="ecg/[id]" options={{ title: 'ECG' }} />

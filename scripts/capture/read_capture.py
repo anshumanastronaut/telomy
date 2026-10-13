@@ -84,6 +84,8 @@ def summary(c: Capture) -> str:
         lines.append(f"  {p['phase']:<10} HR {hr:5.1f}  RMSSD {np.median(rm) if rm else float('nan'):5.1f} ms  ({len(sel)} s)")
     for k in c.markers:
         lines.append(f"  marker @{k['t'] - c.meta['startedAt']:.0f}s: {k.get('note', '')}")
+    for e in c.meta.get("userEvents", []):
+        lines.append(f"  event  @{e['t'] - c.meta['startedAt']:.0f}s: {e.get('kind')} · {e.get('label')}{' · ' + e['note'] if e.get('note') else ''}")
     if m.get("notes"):
         lines.append(f"notes: {m['notes']}")
     return "\n".join(lines)
@@ -109,6 +111,11 @@ def to_csv(c: Capture, out: str):
         w.writerow(["phase", "t_unix", "note"])
         for p in c.meta.get("phases", []):
             w.writerow([p["phase"], p["t"], p.get("note", "")])
+    with open(os.path.join(out, "events.csv"), "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["t_unix", "kind", "label", "note", "phase"])
+        for e in c.meta.get("userEvents", []):
+            w.writerow([e["t"], e.get("kind", ""), e.get("label", ""), e.get("note", ""), c.phase_at(e["t"])])
     with open(os.path.join(out, "meta.json"), "w") as f:
         json.dump(c.meta, f, indent=2)
 

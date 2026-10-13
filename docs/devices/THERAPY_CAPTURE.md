@@ -17,6 +17,7 @@ Therapy capture records a full ECG session around a therapy (sauna, cold plunge,
    - Sit still for 5 minutes. A 5-min baseline gives the standard short-term HRV.
 5. Tap **Therapy** when it starts and **Recovery** when it ends. Record at least 10 minutes of recovery.
    - Add **markers** at any time (e.g. "entered plunge", "felt dizzy").
+   - Tap **Log event** for anything that can change physiology: meal, snack, caffeine, alcohol, smoking, water, supplement, medication, exercise, stress, nap, symptom or a custom event. Each has a name or amount, notes, and a time (now or up to 2 h ago). Events are stored in `meta.userEvents` (`{kind, label, note, t}`) and also in the phone's event log, which feeds Today's timeline.
 6. **Stop & save**, then fill in the post ratings and notes.
 7. **Saved sessions** gives three actions per session:
    - **Share** (AirDrop, Files, mail or Drive): one `.telomy.json` file;

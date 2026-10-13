@@ -2,9 +2,9 @@
 // Design notes: docs/design/TODAY_UI.md.
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SFSymbol } from 'expo-symbols';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
 import Svg, { Circle, Defs, Line, LinearGradient as SvgGrad, Path, RadialGradient, Stop } from 'react-native-svg';
 
@@ -185,6 +185,9 @@ function BodyTile({ icon, color, title, value, unit, sub, onPress }: { icon: SFS
 /** Home block from the band alone (works when the Telomy server is unreachable). */
 export function WellnessToday({ age }: { age?: number | null }) {
   const w = useWellness(age ?? null);
+  // refresh when coming back (e.g. after logging an event or finishing a session)
+  const first = useRef(true);
+  useFocusEffect(useCallback(() => { if (first.current) { first.current = false; return; } w.reload(); }, [w.reload]));
   if (w.loading) return null;
   const s = w.today.stress;
   return (

@@ -224,8 +224,9 @@ export default function Capture() {
               </Pressable>
             ))}
           </Row>
+          <Button kind="secondary" icon="plus.circle" title="Log event · meal, supplement, drink, smoke…" onPress={() => router.push('/event')} />
           <Row>
-            <TextInput value={mark} onChangeText={setMark} placeholder="Mark a moment (e.g. felt dizzy, door opened)" placeholderTextColor={p.faint}
+            <TextInput value={mark} onChangeText={setMark} placeholder="Quick note (e.g. felt dizzy, door opened)" placeholderTextColor={p.faint}
               style={{ flex: 1, color: p.text, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10 }} />
             <Button kind="secondary" title="Mark" onPress={addMark} />
           </Row>

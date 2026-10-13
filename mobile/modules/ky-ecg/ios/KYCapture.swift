@@ -111,6 +111,15 @@ final class KYCapture {
         writeMeta()
     }
 
+    /// Free-form user event (meal, supplement, caffeine, alcohol, smoking, custom…) with its own time, kept in
+    /// meta.userEvents so the team can line it up with the ECG.
+    func addUserEvent(_ e: [String: Any]) {
+        var list = meta["userEvents"] as? [[String: Any]] ?? []
+        list.append(e)
+        meta["userEvents"] = list.sorted { ($0["t"] as? Double ?? 0) < ($1["t"] as? Double ?? 0) }
+        writeMeta()
+    }
+
     func update(meta extra: [String: Any]) { for (k, v) in extra { meta[k] = v }; writeMeta() }
 
     private func writeMeta() {

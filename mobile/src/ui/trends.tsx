@@ -5,7 +5,8 @@ import { Pressable, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 
 import { radius, space, usePalette } from '@/lib/theme';
-import { fmtClock, stressFor, type Wellness } from '@/lib/wellness';
+import { kindOf } from '@/lib/events';
+import { fmtClock, type Wellness } from '@/lib/wellness';
 import { Card, Icon, Row, T } from '@/ui/core';
 
 const COL = { asleep: '#6F8CF0', active: '#FF9A5A', stress: '#F2B94B', calm: '#4FD08F' };
@@ -42,7 +43,10 @@ export function DayTimeline({ w }: { w: Wellness }) {
       <Row>
         <Icon name="clock" size={14} color={p.teal} />
         <T v="label" style={{ flex: 1 }}>Your day so far</T>
-        <T v="small">{fmtClock(t0)} – now</T>
+        <Pressable onPress={() => router.push('/event')} accessibilityRole="button" accessibilityLabel="Log an event" hitSlop={8}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: p.tealSoft }}>
+          <Icon name="plus" size={11} color={p.teal} /><T v="small" color={p.teal} style={{ fontWeight: '600', fontSize: 12 }}>Event</T>
+        </Pressable>
       </Row>
       <View onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}>
         {width ? (
@@ -58,6 +62,12 @@ export function DayTimeline({ w }: { w: Wellness }) {
               </React.Fragment>
             ))}
             <Circle cx={5} cy={top + 5} r={4.5} fill="#F2B94B" stroke={p.surface} strokeWidth={1.5} />
+            {w.userEvents.filter((e) => e.t >= t0).map((e, i) => (
+              <React.Fragment key={'u' + i}>
+                <Line x1={X(e.t)} x2={X(e.t)} y1={top + 8} y2={H - 18 - laneH} stroke={kindOf(e.kind).color} strokeWidth={1.2} strokeDasharray="2 3" />
+                <Circle cx={X(e.t)} cy={top + 6} r={5} fill={kindOf(e.kind).color} stroke={p.surface} strokeWidth={1.5} />
+              </React.Fragment>
+            ))}
             {ticks.map((t) => <SvgText key={'l' + t} x={X(t)} y={H - 2} fontSize={10} fill={p.muted} textAnchor="middle">{fmtClock(t)}</SvgText>)}
           </Svg>
         ) : <View style={{ height: H }} />}
@@ -72,6 +82,19 @@ export function DayTimeline({ w }: { w: Wellness }) {
       ) : (
         <T v="small">Woke at {fmtClock(t0)}. Wear the band during the day to see your heart rate, calm and stress, activity and therapy sessions here.</T>
       )}
+      {w.userEvents.filter((e) => e.t >= t0).length ? (
+        <Row style={{ flexWrap: 'wrap' }} gap={8}>
+          {w.userEvents.filter((e) => e.t >= t0).map((e, i) => {
+            const k = kindOf(e.kind);
+            return (
+              <Row key={i} gap={5} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: k.color + '22' }}>
+                <Icon name={k.icon} size={11} color={k.color} />
+                <T v="small" style={{ fontSize: 12 }}>{e.label} · {fmtClock(e.t)}</T>
+              </Row>
+            );
+          })}
+        </Row>
+      ) : null}
       {w.sessionsToday.length ? (
         <Pressable onPress={() => router.push('/captures')} accessibilityRole="button">
           <T v="small" color={p.copper}>● {w.sessionsToday.map((s) => `${s.label} ${fmtClock(s.t)}`).join(' · ')}</T>
