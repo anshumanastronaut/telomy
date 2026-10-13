@@ -192,6 +192,9 @@ public final class KYAnalyzer {
     private var candV = 0.0, candI = -1, lastMwi = 0.0
     private var qrsPeaks: [Double] = [], noisePeaks: [Double] = []
     private var lastQRSAmp = 0.0
+    private var lastBeatN = 200  // first check 3 s after the 2-s start-up learn (fs = 100; reset() sets it from fs)
+    /// Times the detector re-learned its levels after 3 s without a beat (diagnostic).
+    public private(set) var relearns = 0
 
     private func median(_ v: [Double]) -> Double { let s = v.sorted(); return s.isEmpty ? 0 : s[s.count / 2] }
 
@@ -227,6 +230,14 @@ public final class KYAnalyzer {
             candV = 0; candI = -1
         }
         lastMwi = mwi
+        // recovery: a large artefact can lift the noise level to QRS size, after which every real beat is filed as noise
+        // and the levels never come down (night of 2026-10-13: detector silent from 01:31 to morning). No accepted beat
+        // for 3 s → re-learn both levels from the next 2 s, as at start-up.
+        if n - lastBeatN > Int(3 * fs) {
+            warm = 0; spk = 0; npk = 0; candV = 0; candI = -1
+            lastBeatN = n + Int(2 * fs); relearns += 1  // 3 s of detection after the 2-s re-learn
+            return
+        }
         // search-back: no beat for 1.66 × median RR → largest local MWI maximum since the last beat above half threshold
         if let mean = medianRRSamples(), lastQRSIndex > 0, Double(n - lastQRSIndex) > Self.tuning.searchBackFactor * mean {
             var best = -1; var bestV = 0.0
@@ -267,6 +278,7 @@ public final class KYAnalyzer {
     private func accept(_ i: Int, peak: Double?, slope: Double) {
         if let p = peak { spk = 0.125 * p + 0.875 * spk }
         lastQRSIndex = i
+        lastBeatN = i
         lastQRSSlope = slope
         pending.append((i, slope))
     }
@@ -415,7 +427,7 @@ public final class KYAnalyzer {
         let fresh = KYAnalyzer(sampleRate: fs)
         med1 = fresh.med1; med2 = fresh.med2; rawRing = fresh.rawRing; displayRing = fresh.displayRing; displayLP = fresh.displayLP
         ptHP = fresh.ptHP; ptLP = fresh.ptLP; bpPrev = [0, 0, 0, 0]; mwiBuf = []; mwiSum = 0; mwiRing = fresh.mwiRing; slopeRing = fresh.slopeRing
-        m1 = 0; m2 = 0; spk = 0; npk = 0; warm = 0; lastQRSIndex = -1_000_000; lastQRSSlope = 0; pending = []
+        m1 = 0; m2 = 0; spk = 0; npk = 0; warm = 0; lastBeatN = Int(2 * fs); relearns = 0; lastQRSIndex = -1_000_000; lastQRSSlope = 0; pending = []
         candV = 0; candI = -1; qrsPeaks = []; noisePeaks = []
         elHP = fresh.elHP; elLP = fresh.elLP; elSq = fresh.elSq; elShort = 0; elLong = 0; elMeanAcc = 0; elInBlock = false; elBeats = []
         qrsBandHP = fresh.qrsBandHP; qrsBandLP = fresh.qrsBandLP; wideHP = fresh.wideHP; wideLP = fresh.wideLP; dcHP = fresh.dcHP; baseLP = fresh.baseLP; allLP = fresh.allLP

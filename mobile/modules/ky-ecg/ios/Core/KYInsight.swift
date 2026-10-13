@@ -159,7 +159,9 @@ public enum KYRhythmStats {
             }
             if a >= 5 && b > 0 {
                 let mean = rr.reduce(0, +) / Double(rr.count)
-                return -log(Double(a) / Double(b)) - log(2 * rr2) - log(mean)
+                // COSEn = SampEn + ln(2r) − ln(mean RR), seconds (Lake & Moorman 2011). The sign of ln(2r) was flipped
+                // before 2026-10-13, which made every window pass the COSEn test.
+                return -log(Double(a) / Double(b)) + log(2 * rr2) - log(mean)
             }
             rr2 += 0.01  // widen tolerance until enough matches (Lake & Moorman)
         }
@@ -218,6 +220,10 @@ public final class KYInsight {
     public private(set) var afLog: [(t: Double, f: [Double], af: Bool)] = []
     public var onEvent: ((Event) -> Void)?
     private var now: Double = 0
+    // raw ECG (last ~80 s) and clean-beat sample indices, for the P-wave check in AF screening
+    private var raw = [Float](repeating: 0, count: 8192)
+    private var rawCount = 0
+    private var cleanBeatSamples: [Int] = []
 
     public init(sampleRate fs: Double = 100, restingHr: Double = 65) {
         self.fs = fs
@@ -228,6 +234,7 @@ public final class KYInsight {
     /// Feed raw samples (for the noise monitor) and the analyzer's beats for the same chunk; `t` = seconds at chunk end.
     public func process(samples: [Int16], beats newBeats: [KYAnalyzer.Beat], leadOn: Bool, quality: KYAnalyzer.Quality) {
         now += Double(samples.count) / fs
+        for v in samples { raw[rawCount & 8191] = Float(v); rawCount += 1 }
         for c in noise.feed(samples, leadOn: leadOn) {
             windowsBad.append((now, c))
         }
@@ -240,6 +247,7 @@ public final class KYInsight {
             let clean = windowClean && (quality == .good || quality == .acceptable)
             let used = kalman.update(time: t, rrMs: rr, quality: windowClean ? q : q * 0.4)
             beats.append((t, rr, clean, used))
+            if clean { cleanBeatSamples.append(Int(b.sample.rounded())); if cleanBeatSamples.count > 80 { cleanBeatSamples.removeFirst() } }
         }
         kalman.coast(to: now)
         beats.removeAll { $0.t < now - 900 }
@@ -347,9 +355,40 @@ public final class KYInsight {
 
     // MARK: rhythm screening (raw RR, never artefact-corrected — correction would erase AF irregularity)
 
-    public static var afThresholds = (nrmssd: 0.12, shannon: 0.70, tprLo: 0.54, tprHi: 1.20, cosen: -2.2)  // calibrated on afdb train split; test Se 96.8% Sp 86.7%, NSR FP 7.0%/min
+    public static var afThresholds = (nrmssd: 0.15, shannon: 0.80, tprLo: 0.40, tprHi: 1.40, cosen: -1.4)  // afdb train split after the COSEn sign fix (2026-10-13); test Se 91.7% Sp 99.4%, nsrdb FP 3.5% of windows
 
     private var lastRhythmCheck: Double = 0
+
+    /// P-wave consistency in [-1, 1]: median correlation of each beat's pre-QRS segment (300–100 ms before R, linearly
+    /// detrended) with the average of those segments over the last ≤ 40 clean beats. Sinus rhythm ≈ 0.6–0.9; AF (no
+    /// organised atrial activity) ≈ 0–0.3. 0 when the averaged segment is flat (no P wave visible). nil if too few beats.
+    /// Gate is off (nil): the KY-E-B1 chest lead shows P waves of only ~30 µV, too small to judge (2026-10-13). The score
+    /// is still logged (afLog f[4]) for research with other leads.
+    public static var pWaveMax: Double? = nil
+    func pWaveScore() -> Double? {
+        let a = Int(0.30 * fs), b = Int(0.10 * fs), len = a - b + 1
+        let oldest = rawCount - 8192
+        let idx = cleanBeatSamples.suffix(40).filter { $0 - a > oldest && $0 - b < rawCount }
+        guard idx.count >= 15 else { return nil }
+        var segs: [[Double]] = []
+        for s in idx {
+            var y = (0..<len).map { Double(raw[(s - a + $0) & 8191]) }
+            let n = Double(len), mx = (n - 1) / 2, my = y.reduce(0, +) / n
+            var sxy = 0.0, sxx = 0.0
+            for k in 0..<len { sxy += (Double(k) - mx) * (y[k] - my); sxx += (Double(k) - mx) * (Double(k) - mx) }
+            let slope = sxy / sxx
+            for k in 0..<len { y[k] -= my + slope * (Double(k) - mx) }
+            segs.append(y)
+        }
+        let tmpl = (0..<len).map { k in segs.reduce(0) { $0 + $1[k] } / Double(segs.count) }
+        let tsd = (tmpl.map { $0 * $0 }.reduce(0, +) / Double(len)).squareRoot()
+        guard tsd >= 8 else { return 0 }  // < 8 µV: no averaged P wave
+        let corr = segs.map { y -> Double in
+            let ysd = (y.map { $0 * $0 }.reduce(0, +) / Double(len)).squareRoot()
+            return ysd > 0 ? zip(y, tmpl).map { $0 * $1 }.reduce(0, +) / Double(len) / (ysd * tsd) : 0
+        }.sorted()
+        return corr[corr.count / 2]
+    }
     private func updateRhythm() {
         guard now - lastRhythmCheck >= 5 else { return }
         lastRhythmCheck = now
@@ -371,11 +410,14 @@ public final class KYInsight {
             let tpr = KYRhythmStats.turningPointRatio(w)
             let ce = KYRhythmStats.cosEn(Array(w.suffix(32))) ?? -9
             let th = KYInsight.afThresholds
+            let ps = pWaveScore()
+            // optional P-wave gate (off for this band, see pWaveMax)
             let af = nrmssd > th.nrmssd && se > th.shannon && tpr > th.tprLo && tpr < th.tprHi && ce > th.cosen
+                && (KYInsight.pWaveMax.map { pm in ps.map { $0 < pm } ?? true } ?? true)
             afWindows.append((now, af))
-            if keepLogs { afLog.append((now, [nrmssd, se, tpr, ce], af)) }
+            if keepLogs { afLog.append((now, [nrmssd, se, tpr, ce, ps ?? -1], af)) }
             afWindows.removeAll { $0.t < now - 3600 }
-            track("af_pattern", active: af, minDuration: 30, detail: ["nrmssd": nrmssd, "shannon": se, "tpr": tpr, "cosen": ce])
+            track("af_pattern", active: af, minDuration: 30, detail: ["nrmssd": nrmssd, "shannon": se, "tpr": tpr, "cosen": ce, "pwave": ps ?? -1])
         }
         // pauses: an RR > 2.0 s between two clean beats
         if let p = cleanWin.last(where: { $0.rr > 2000 && $0.t > now - 5 }) {

@@ -1,6 +1,7 @@
 // Live ECG band state for the whole app: one native subscription set, an ECG ring buffer for the monitor,
 // recent beats and HR history, per-minute summaries uploaded to the backend, and session sample capture.
 import { useEffect, useSyncExternalStore } from 'react';
+import { AppState } from 'react-native';
 import { Band, isAvailable, type BandMetrics, type BandStatus, type EcgFrame, type FoundDevice, type RecordingEvent, type RhythmEvent } from '../../modules/ky-ecg';
 import { api } from './api';
 
@@ -36,9 +37,17 @@ type Snapshot = {
 
 let snap: Snapshot = { status: null, metrics: null, devices: [], recording: null, lastBeatAt: 0, rr: [], hr: [], frames: 0, rhythm: [] };
 const listeners = new Set<() => void>();
+// No re-renders while the app is in the background (screen locked overnight): iOS kills apps that use > 80 % CPU there.
+// Data keeps flowing into the store; screens catch up once when the app comes back.
+let foreground = AppState.currentState === 'active';
+AppState.addEventListener('change', (s) => {
+  foreground = s === 'active';
+  if (foreground) listeners.forEach((l) => l());
+});
+export const isForeground = () => foreground;
 function set(patch: Partial<Snapshot>) {
   snap = { ...snap, ...patch };
-  listeners.forEach((l) => l());
+  if (foreground) listeners.forEach((l) => l());
 }
 
 // ------------------------------------------------------------------ minute summaries → backend

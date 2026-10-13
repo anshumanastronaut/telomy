@@ -54,6 +54,10 @@ final class KYBand: NSObject {
     private var lastFrameIndex: Int?
     private var droppedFrames = 0
     private var lastError: String?
+    private var lastFrameAt = 0.0
+    private var liveBlockedByRecording = false
+    private var awaitingHolterState = false
+    private var lastPauseSent = 0.0
     /// Diagnostic log (Documents/ky-debug/*.log): raw frames, beats, metrics, status. Pulled over USB/Wi-Fi with devicectl.
     private var debug: FileHandle?
     private var debugDay = ""
@@ -64,6 +68,10 @@ final class KYBand: NSObject {
             CBCentralManagerOptionRestoreIdentifierKey: "telomy.ky.band",
             CBCentralManagerOptionShowPowerAlertKey: true,
         ])
+        if let id = KYCapture.activeId {  // an overnight/therapy session was running when iOS terminated the app
+            capture = try? KYCapture(resume: id)
+            if capture != nil { wantsStream = true; log("capture resumed \(id)") } else { UserDefaults.standard.removeObject(forKey: KYCapture.activeKey) }
+        }
     }
 
     // MARK: public API (main queue)
@@ -80,6 +88,7 @@ final class KYBand: NSObject {
         if let t = holterStart { s["holterStart"] = Double(t) }
         if let e = lastError { s["error"] = e }
         s["sampleRate"] = Self.sampleRate
+        s["liveBlockedByRecording"] = liveBlockedByRecording
         return s
     }
 
@@ -130,6 +139,7 @@ final class KYBand: NSObject {
 
     func startStream() {
         wantsStream = true
+        if liveBlockedByRecording || awaitingHolterState { publish(); return }  // band is recording to memory: stay paused
         if tx != nil { beginStream() } else { autoConnect() }
         publish()
     }
@@ -172,6 +182,16 @@ final class KYBand: NSObject {
                                       "events": insight.events.map { ["type": $0.type, "start": ($0.start) + (firstSampleTime ?? 0), "end": $0.end + (firstSampleTime ?? 0)] }
                                           .filter { ($0["end"] as? Double ?? 0) >= (c.meta["startedAt"] as? Double ?? 0) }]  // only this session
         if let v = m.rmssd300 { summary["rmssd300End"] = v }
+        let t0 = c.meta["startedAt"] as? Double ?? Date().timeIntervalSince1970
+        let wall = Date().timeIntervalSince1970 - t0
+        if wall > 2 * 3600, let n = KYSleepNight.analyze(beats: c.beatTimes.map { $0 - t0 }, durationSec: wall) {
+            var sl: [String: Any] = ["totalSleepMin": n.totalSleepMin, "efficiency": n.efficiency, "wasoMin": n.wakeAfterOnsetMin,
+                                     "awakenings": n.awakenings, "hypnogram": n.asleep.map { $0 ? 1 : 0 }, "epochSec": 30]
+            if let v = n.sleepOnsetMin { sl["onsetMin"] = v }
+            if let v = n.sleepHr { sl["sleepHr"] = v }
+            if let v = n.sleepRmssd { sl["sleepRmssd"] = v }
+            summary["sleep"] = sl
+        }
         e["summary"] = summary
         let url = c.finish(extra: e)
         log("capture stop \(c.id) → \(url.lastPathComponent)")
@@ -179,17 +199,37 @@ final class KYBand: NSObject {
     }
 
     var captureId: String? { capture?.id }
+    var captureMeta: [String: Any]? { capture?.meta }
 
     func startRecording() {
         let now = UInt32(Date().timeIntervalSince1970)
         send(KYRequest.holterTime(set: now))
         send(KYRequest.holter(start: true, durationSec: 24 * 3600))
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in self?.pollRecording() }
+        // Firmware B1_1.00.39 does not write to memory while it streams (dry run 2026-10-12: only non-streaming time was
+        // stored). So recording to memory pauses the live stream; it resumes when the recording stops.
+        if wantsStream { pauseStreamForRecording() }
+    }
+
+    private func pauseStreamForRecording() {
+        send(KYRequest.ecg(start: false, durationSec: 0))
+        streamStartedAt = nil
+        liveBlockedByRecording = true
+        log("live stream paused: band is recording to memory")
+        if state == .streaming { set(.connected) } else { publish() }
     }
 
     func stopRecording() {
         send(KYRequest.holter(start: false))
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in self?.pollRecording() }
+        if liveBlockedByRecording {
+            liveBlockedByRecording = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                guard let self, self.wantsStream, self.sync == nil else { return }
+                self.send(KYRequest.ecg(start: true, durationSec: 3600)); self.streamStartedAt = Date()
+            }
+            publish()
+        }
     }
 
     /// Downloads the on-device recording to Documents/ky-recordings/<start>.holter and analyses it.
@@ -220,7 +260,7 @@ final class KYBand: NSObject {
 
     private func publish() {
         emit?("onStatus", status())
-        log("status \(state.rawValue) lead=\(leadOn.map { "\($0)" } ?? "?") batt=\(info?.battery ?? -1)")
+        log("status \(state.rawValue) holter=\(holterState) blocked=\(liveBlockedByRecording) lead=\(leadOn.map { "\($0)" } ?? "?") batt=\(info?.battery ?? -1)")
     }
 
     func log(_ line: String) {
@@ -265,7 +305,13 @@ final class KYBand: NSObject {
         set(.connected)
         keepAlive?.invalidate()
         keepAlive = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.tick() }
-        if wantsStream { beginStream() }
+        // don't start the live stream until we know the band isn't recording to memory (that would stop the recording)
+        awaitingHolterState = wantsStream
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, self.awaitingHolterState else { return }
+            self.awaitingHolterState = false
+            if self.wantsStream { self.beginStream() }
+        }
     }
 
     private func beginStream() {
@@ -281,7 +327,8 @@ final class KYBand: NSObject {
     private func tick() {
         send(KYRequest.deviceInfo)
         send(KYRequest.leadState)
-        if wantsStream, let s = streamStartedAt, Date().timeIntervalSince(s) > 50 * 60 {
+        send(KYRequest.holterState)
+        if wantsStream, !liveBlockedByRecording, let s = streamStartedAt, Date().timeIntervalSince(s) > 50 * 60 {
             streamStartedAt = Date()
             send(KYRequest.ecg(start: true, durationSec: 3600))  // re-arm the band's timed stream
         }
@@ -299,7 +346,18 @@ final class KYBand: NSObject {
         case .leadState(let l):
             log("lead on=\(l.isLeadOn) drops=\(l.dropCount)")
             leadOn = l.isLeadOn; analyzer.leadOn = l.isLeadOn; publish()
-        case .holterState(let s): holterState = s; publish()
+        case .holterState(let s):
+            holterState = s
+            let recording = [.single, .sleep, .continuous].contains(s)
+            if awaitingHolterState {
+                awaitingHolterState = false
+                if recording { pauseStreamForRecording() }
+                else if wantsStream { beginStream() }
+            } else if !recording && liveBlockedByRecording {  // recording ended on the band (e.g. full/low battery)
+                liveBlockedByRecording = false
+                if wantsStream && sync == nil { beginStream() }
+            }
+            publish()
         case .holterTime(let t): holterStart = t; publish()
         case .ecgFrame(let f): handleFrame(f)
         case .other(let cmd, let payload):
@@ -313,6 +371,12 @@ final class KYBand: NSObject {
         if let last = lastFrameIndex, f.frameIndex > last + 1 { droppedFrames += f.frameIndex - last - 1 }
         lastFrameIndex = f.frameIndex
         let now = Date().timeIntervalSince1970
+        lastFrameAt = now
+        if liveBlockedByRecording, now - lastPauseSent > 10 {  // band still streaming (e.g. a timed stream from before): stop it
+            lastPauseSent = now
+            send(KYRequest.ecg(start: false, durationSec: 0))
+            log("stream frame while recording to memory → stop sent")
+        }
         if firstSampleTime == nil { firstSampleTime = now - Double(f.samples.count) / Self.sampleRate }
         let out = analyzer.process(f.samples)
         capture?.addSamples(f.samples, frameEndUnix: now)
@@ -373,8 +437,25 @@ final class KYBand: NSObject {
         case .progress(let r, let t): emit?("onRecording", ["phase": "progress", "received": r, "total": t])
         case .failed(let msg): emit?("onRecording", ["phase": "failed", "message": msg])
         case .completed(let url, let frames):
+            emit?("onRecording", ["phase": "analysing", "frames": frames])
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                guard let self else { return }
+                var payload = self.analyseRecording(url: url, frames: frames, start: start)
+                let merged = KYCapture.attachRecording(payload: payload, holterURL: url)
+                payload["beatTimes"] = nil
+                if let merged { payload["captureId"] = merged }
+                DispatchQueue.main.async {
+                    self.log("recording analysed: \(frames) frames, merged into \(merged ?? "no capture")")
+                    self.emit?("onRecording", payload)
+                }
+            }
+        }
+    }
+
+    private func analyseRecording(url: URL, frames: Int, start: UInt32) -> [String: Any] {
             var payload: [String: Any] = ["phase": "completed", "path": url.path, "frames": frames, "start": Double(start)]
             if let all = try? KYHolterFile.frames(at: url) {
+                payload["samples"] = all.reduce(0) { $0 + $1.samples.count }
                 let a = KYAnalyzer(sampleRate: Self.sampleRate)
                 let ins = Self.makeInsight()
                 var rr: [Double] = []
@@ -404,16 +485,20 @@ final class KYBand: NSObject {
                 if let v = KYHRV.sdnn(c.nn) { payload["sdnn"] = v }
                 payload["artefactPercent"] = c.artefactPercent
                 payload["rr"] = c.nn.map { ($0 * 10).rounded() / 10 }
+                payload["beatTimes"] = beatTimes.map { Double(start) + $0 }
             }
-            emit?("onRecording", payload)
-        }
+            return payload
     }
 }
 
 extension KYBand: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ c: CBCentralManager) {
         switch c.state {
-        case .poweredOn: set(peripheral?.state == .connected ? state : .idle); autoConnect()
+        case .poweredOn:
+            set(peripheral?.state == .connected ? state : .idle)
+            if let p = peripheral, p.state == .connected, tx == nil {  // restored by iOS while connected: rediscover the channel
+                p.delegate = self; set(.connecting); p.discoverServices([Self.serviceUUID])
+            } else { autoConnect() }
         case .unauthorized: set(.unauthorized)
         case .unsupported: set(.unsupported)
         default: set(.off)

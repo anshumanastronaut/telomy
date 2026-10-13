@@ -2,7 +2,7 @@
 // Raw ECG, beats, HR/HRV, quality and rhythm events are saved locally and can be shared with the research team.
 import { router, Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { AppState, Pressable, TextInput, View } from 'react-native';
 import { acquireStream, Band, bandAvailable, useBand } from '@/lib/band';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, Empty, Row, Screen, Section, T, useToast } from '@/ui/core';
@@ -28,6 +28,8 @@ const THERAPIES: Therapy[] = [
   { id: 'hydrogen', name: 'Molecular hydrogen inhalation', fields: [DUR, { key: 'flow_ml_min', label: 'Flow', unit: 'mL/min' }] },
   { id: 'iv', name: 'IV drip', fields: [DUR, { key: 'formula', label: 'Formula', unit: '' }, { key: 'volume_ml', label: 'Volume', unit: 'mL' }] },
   { id: 'float', name: 'Flotation', fields: [DUR], caution: 'Keep the sensor out of the salt water.' },
+  { id: 'sleep', name: 'Overnight sleep', fields: [{ key: 'bedtime_note', label: 'Anything unusual today', unit: '' }],
+    caution: 'Wet the electrodes, charge the band, and plug in the phone. Keep the phone within ~3 m of the bed with Bluetooth on. You can lock the phone; the app keeps recording.' },
   { id: 'hbot', name: 'Hyperbaric oxygen (HBOT)', fields: [], blocked: "Don't wear this band in a hyperbaric chamber. Its manual forbids use in oxygen-rich or pressurised environments (fire risk; rated only to 1060 hPa)." },
   { id: 'breathwork', name: 'Breathwork', fields: [DUR, { key: 'pattern', label: 'Pattern', unit: '' }] },
   { id: 'exercise', name: 'Exercise', fields: [DUR, { key: 'type', label: 'Type', unit: '' }] },
@@ -37,6 +39,11 @@ const PHASES = [
   { key: 'baseline', label: 'Baseline', hint: 'Sit still 3–5 min before' },
   { key: 'therapy', label: 'In therapy', hint: 'Entering the machine' },
   { key: 'recovery', label: 'Recovery', hint: 'Out of the machine' },
+];
+const SLEEP_PHASES = [
+  { key: 'baseline', label: 'In bed', hint: 'Reading, winding down' },
+  { key: 'therapy', label: 'Lights out', hint: 'Trying to sleep' },
+  { key: 'recovery', label: 'Awake', hint: 'Up for the day' },
 ];
 const RATINGS = ['energy', 'calm', 'pain', 'sleepiness'] as const;
 
@@ -73,11 +80,24 @@ export default function Capture() {
   const [running, setRunning] = useState(!!Band.captureId());
   const [, tick] = useState(0);
   const release = useRef<null | (() => void)>(null);
+  const phases = therapy?.id === 'sleep' ? SLEEP_PHASES : PHASES;
+
+  // the app may have been relaunched mid-session (e.g. overnight): restore the screen from the native capture
+  useEffect(() => {
+    const meta = Band.captureMeta();
+    if (!meta) return;
+    setTherapy(THERAPIES.find((t) => t.id === meta.therapyId) ?? null);
+    setSettings(meta.settings ?? {}); setPre(meta.pre ?? pre);
+    setStartedAt(meta.startedAt ?? 0);
+    const last = [...(meta.phases ?? [])].reverse().find((x: any) => x.phase !== 'marker');
+    if (last) { setPhase(last.phase); setPhaseAt(last.t); }
+    setRunning(true);
+  }, []);
 
   useEffect(() => {
     if (!bandAvailable) return;
     release.current = acquireStream();
-    const h = setInterval(() => tick((x) => x + 1), 1000);
+    const h = setInterval(() => { if (AppState.currentState === 'active') tick((x) => x + 1); }, 1000);
     return () => { clearInterval(h); release.current?.(); };
   }, []);
 
@@ -92,6 +112,8 @@ export default function Capture() {
     if (!therapy) return;
     const r = Band.startCapture({ therapy: therapy.name, therapyId: therapy.id, settings, pre, firstPhase: 'baseline', tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
     if (r.error) return show(r.error, 'alert');
+    // No band-memory backup: firmware B1_1.00.39 stores little or nothing when its memory recording and the live stream
+    // are mixed (dry runs 2026-10-12/13). The live stream is the reliable path; the session survives app relaunches.
     setRunning(true); setPhase('baseline'); setPhaseAt(now); setStartedAt(now);
   }
   function setPh(k: string) { Band.markPhase(k); setPhase(k); setPhaseAt(now); }
@@ -100,7 +122,7 @@ export default function Capture() {
     const r = Band.stopCapture({ post, notes, settings });
     setRunning(false);
     if (r.error) return show(r.error, 'alert');
-    show('Session saved on this phone.', 'success');
+    show(therapy?.id === 'sleep' ? 'Night saved and analysed on this phone.' : 'Session saved on this phone.', 'success');
     router.replace('/captures');
   }
 
@@ -169,7 +191,7 @@ export default function Capture() {
             <T v="h3" style={{ flex: 1 }}>Recording · {startedAt ? mmss(now - startedAt) : '–'}</T>
             <Chip label={id ?? ''} />
           </Row>
-          <T v="small">{phase ? `${PHASES.find((x) => x.key === phase)?.label ?? phase} for ${mmss(now - phaseAt)}` : ''} · keeps recording with the screen locked</T>
+          <T v="small">{phase ? `${phases.find((x) => x.key === phase)?.label ?? phase} for ${mmss(now - phaseAt)}` : ''} · keeps recording with the screen locked</T>
         </Card>
         <Card>
           <Row style={{ alignItems: 'flex-end' }}>
@@ -184,10 +206,15 @@ export default function Capture() {
           </Row>
           <T v="small">Signal {m?.signal ?? '–'} · {m?.activity ?? '–'} · confidence {m?.hrConfidence ?? '–'}</T>
         </Card>
-        <EcgMonitor live height={150} />
+        {b.status?.liveBlockedByRecording ? (
+          <Card tone="teal">
+            <T v="h3">Recording on the band</T>
+            <T v="body">The band is saving the full night to its own memory, so the live graph pauses (the band can't do both at once). You can lock the phone or even leave it in another room. In the morning tap Stop: the night syncs to the phone and is analysed.</T>
+          </Card>
+        ) : <EcgMonitor live height={150} />}
         <Section title="Phase">
           <Row gap={8}>
-            {PHASES.map((ph) => (
+            {phases.map((ph) => (
               <Pressable key={ph.key} onPress={() => setPh(ph.key)} style={{ flex: 1 }} accessibilityRole="button" accessibilityState={{ selected: phase === ph.key }}>
                 <View style={{ padding: 12, borderRadius: radius.md, backgroundColor: phase === ph.key ? p.copper : p.surfaceAlt, alignItems: 'center' }}>
                   <T v="h3" color={phase === ph.key ? '#fff' : p.text}>{ph.label}</T>
@@ -211,7 +238,7 @@ export default function Capture() {
           <TextInput value={notes} onChangeText={setNotes} placeholder="Notes for the team" multiline placeholderTextColor={p.faint}
             style={{ minHeight: 70, color: p.text, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10 }} />
         </Section>
-        <Button kind="danger" title="Stop & save session" icon="stop.circle" onPress={finish} />
+        <Button kind="danger" title={therapy?.id === 'sleep' ? 'Good morning — stop & analyse the night' : 'Stop & save session'} icon="stop.circle" onPress={finish} />
       </Screen>
       {toast}
     </View>

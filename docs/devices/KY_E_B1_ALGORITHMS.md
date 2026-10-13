@@ -13,14 +13,18 @@ The detector is Pan–Tompkins with Hamilton–Tompkins thresholds:
 
 The coefficients were chosen by a sweep on the train split (F1 96.58 → 97.62).
 
+**Re-learn after silence (added 2026-10-13).** A large motion artefact could lift the noise level to QRS size. From then on, every real beat was filed as noise and the levels never recovered. On the first recorded night, the detector went silent from 01:31 until morning. Now, after 3 s with no accepted beat, both levels are re-learned over the next 2 s, as at start-up. Re-run on that night, it finds 26,162 beats against 26,218 from an independent detector.
+
 Validation used PhysioNet records resampled to 100 Hz, matching within ±150 ms (`~/telomy-lab/validate`, data outside the repo):
 
 | Database | Records | Se | +P | HR MAE |
 |---|---|---|---|---|
-| MIT-BIH Arrhythmia (mitdb) | 48 | 97.99 % | 97.36 % | 5.9 bpm |
-| Normal Sinus Rhythm (nsrdb) | 18 | 99.14 % | 98.65 % | 1.4 bpm |
-| Atrial Fibrillation (afdb) | 23 | 94.73 % | 93.57 % | 4.1 bpm |
-| Sleep (slpdb) | 18 | 99.79 % | 99.33 % | 1.4 bpm |
+| MIT-BIH Arrhythmia (mitdb) | 16 | 98.39 % | 97.37 % | 5.8 bpm |
+| Normal Sinus Rhythm (nsrdb) | 5 | 99.55 % | 98.57 % | 1.3 bpm |
+| Atrial Fibrillation (afdb) | 14 | 95.23 % | 95.44 % | 4.2 bpm |
+| Sleep (slpdb) | 10 | 99.79 % | 99.23 % | 1.4 bpm |
+
+Scoring covers only the annotated range of each record (`score_beats2.py`). Before the re-learn fix, heart rate was unavailable for 10.5 % of the nsrdb time, because the detector got stuck there too. It is now available 100 % of the time.
 
 Known weak cases:
 - very low amplitude below ±0.2 mV (afdb 07162);
@@ -97,7 +101,7 @@ The slpdb subjects have sleep apnoea, so healthy sleepers should score higher. T
 
 | Event | Rule |
 |---|---|
-| `af_pattern` | Over 60-s windows, all of: nRMSSD > 0.12, normalised Shannon entropy > 0.70, turning-point ratio 0.54–1.20, COSEn > −2.2. Episode ≥ 30 s. Features: Dash et al. 2009; COSEn: Lake & Moorman 2011 |
+| `af_pattern` | Over 60-s windows, all of: nRMSSD > 0.15, normalised Shannon entropy > 0.80, turning-point ratio 0.40–1.40, COSEn > −1.4. Episode ≥ 30 s. Features: Dash et al. 2009; COSEn: Lake & Moorman 2011 |
 | `pause` | RR > 2 s with clean signal |
 | `bradycardia` | < 40 bpm awake / < 35 asleep, sustained |
 | `tachycardia_rest` | > 100 bpm at rest, sustained |
@@ -110,8 +114,14 @@ AF thresholds were calibrated on the afdb train split and tested on 7 held-out r
 
 | | Se | Sp | False-positive windows on nsrdb (96 h) |
 |---|---|---|---|
-| Calibrated (in use) | 96.8 % | 86.7 % | 7.0 % |
-| Literature defaults | 98.8 % | 80.1 % | 9.3 % |
+| **In use** (after the COSEn fix, 2026-10-13) | 91.7 % | **99.4 %** | **3.5 %** |
+| Before (COSEn sign bug) | 96.8 % | 86.7 % | 7.0 % |
+
+COSEn had the sign of ln(2r) flipped, which put every window about 5.6 above the cut-off, so that test passed everything. Fixed, it sits in the published range: the first night's median is −2.2, and AF is above −1.4.
+
+The first recorded night (a young, healthy sleeper with strong respiratory sinus arrhythmia) raised 5 false AF flags before the fix and 0 after.
+
+A P-wave consistency score is computed and logged (`afLog` f[4]) but does **not** gate. On the KY-E-B1 chest lead, P waves average only about 30 µV, too small to judge reliably.
 
 Single-lead 100 Hz screening has real false positives. Every event shows the disclaimer and links to the ECG for a clinician.
 

@@ -1,7 +1,7 @@
 // Live ECG and HRV visuals: monitor-style sweep on ECG paper, beating heart, RR tachogram, HR trend, static strip.
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, View, type LayoutChangeEvent } from 'react-native';
+import { Animated, AppState, Easing, Pressable, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { bandAvailable, ecg, useBand } from '@/lib/band';
 import { fonts, usePalette } from '@/lib/theme';
@@ -41,8 +41,12 @@ export function EcgMonitor({ seconds = 5, height = 190, gain = 1, live }: { seco
       if (ts - last > 33) { last = ts; tick((x) => x + 1); }
       raf.current = requestAnimationFrame(loop);
     };
-    raf.current = requestAnimationFrame(loop);
-    return () => { if (raf.current) cancelAnimationFrame(raf.current); };
+    const run = () => { if (raf.current == null) raf.current = requestAnimationFrame(loop); };
+    const halt = () => { if (raf.current != null) cancelAnimationFrame(raf.current); raf.current = null; };
+    // stop drawing in the background: a locked phone must not spend CPU on an invisible sweep
+    const sub = AppState.addEventListener('change', (s) => (s === 'active' ? run() : halt()));
+    if (AppState.currentState === 'active') run();
+    return () => { sub.remove(); halt(); };
   }, [live]);
 
   const pxPerSec = w / seconds;

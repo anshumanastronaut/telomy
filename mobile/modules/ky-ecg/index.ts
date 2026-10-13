@@ -19,6 +19,8 @@ export type BandStatus = {
   firmware?: string;
   leadOn?: boolean;
   holterState?: string;
+  /** The band is recording to its own memory, and its firmware pauses the live stream meanwhile. */
+  liveBlockedByRecording?: boolean;
   holterStart?: number;
   droppedFrames: number;
   sampleRate: number;
@@ -63,9 +65,10 @@ export type RhythmEvent = { type: string; start: number; end: number; detail: Re
 export type SleepSummary = { totalSleepMin: number; efficiency: number; wasoMin: number; awakenings: number; hypnogram: number[]; onsetMin?: number; sleepHr?: number; sleepRmssd?: number };
 export type RecordingEvent =
   | { phase: 'started'; total: number; from: number }
+  | { phase: 'analysing'; frames: number }
   | { phase: 'progress'; received: number; total: number }
   | { phase: 'failed'; message: string }
-  | { phase: 'completed'; path: string; frames: number; start: number; durationSec?: number; beats?: number; meanHr?: number; rmssd?: number; sdnn?: number; artefactPercent?: number; rr?: number[]; events?: RhythmEvent[]; sleep?: SleepSummary };
+  | { phase: 'completed'; path: string; frames: number; start: number; durationSec?: number; beats?: number; meanHr?: number; rmssd?: number; sdnn?: number; artefactPercent?: number; rr?: number[]; events?: RhythmEvent[]; sleep?: SleepSummary; captureId?: string };
 export type FoundDevice = { id: string; name: string; rssi: number };
 export type CaptureMeta = {
   id: string; format: string; therapy: string; settings?: Record<string, unknown>; phases?: { phase: string; t: number; note?: string }[];
@@ -102,8 +105,10 @@ type Native = {
   updateCapture(meta: Record<string, unknown>): void;
   stopCapture(extra: Record<string, unknown>): { id?: string; bundlePath?: string; error?: string };
   captureId(): string | null;
+  captureMeta(): Record<string, any> | null;
   listCaptures(): CaptureMeta[];
   deleteCapture(id: string): void;
+  reanalyseCapture(id: string): Promise<{ id?: string; summary?: Record<string, any>; error?: string }>;
   addListener<K extends keyof Events>(event: K, listener: Events[K]): EventSubscription;
 };
 
@@ -132,8 +137,12 @@ export const Band = {
   updateCapture: (meta: Record<string, unknown>) => native?.updateCapture(meta),
   stopCapture: (extra: Record<string, unknown>) => native?.stopCapture(extra) ?? { error: 'Band module unavailable' },
   captureId: () => native?.captureId() ?? null,
+  /** Meta of the session being captured (survives app relaunch), or null. */
+  captureMeta: (): Record<string, any> | null => native?.captureMeta() ?? null,
   listCaptures: (): CaptureMeta[] => native?.listCaptures() ?? [],
   deleteCapture: (id: string) => native?.deleteCapture(id),
+  /** Re-run the current analysis over a saved session's raw ECG (off the main thread). */
+  reanalyseCapture: async (id: string) => (native ? native.reanalyseCapture(id) : { error: 'Band module unavailable' }),
   on<K extends keyof Events>(event: K, listener: Events[K]): { remove: () => void } {
     return native ? native.addListener(event, listener) : { remove: noop };
   },

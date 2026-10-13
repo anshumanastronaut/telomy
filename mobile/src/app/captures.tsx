@@ -13,6 +13,7 @@ export default function Captures() {
   const p = usePalette();
   const { toast, show } = useToast();
   const [list, setList] = useState<CaptureMeta[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
   const refresh = useCallback(() => setList(bandAvailable ? Band.listCaptures() : []), []);
   useFocusEffect(refresh);
 
@@ -32,6 +33,15 @@ export default function Captures() {
     } catch (e: any) { show(`Not uploaded: ${e.message}`, 'alert'); }
   }
 
+  async function reanalyse(c: CaptureMeta) {
+    setBusy(c.id);
+    const r = await Band.reanalyseCapture(c.id);
+    setBusy(null);
+    if (r.error) return show(r.error, 'alert');
+    show('Re-analysed with the latest algorithms.', 'success');
+    refresh();
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]} onRefresh={refresh}>
@@ -47,10 +57,14 @@ export default function Captures() {
               <Row><T v="h3" style={{ flex: 1 }}>{c.therapy}</T><Chip label={`${Math.floor(dur / 60)} min`} /></Row>
               <T v="small">{new Date(c.startedAt * 1000).toLocaleString()} · {(c.phases ?? []).filter((x) => x.phase !== 'marker').map((x) => x.phase).join(' → ')}</T>
               <T v="small">{s.beats ?? 0} beats · {(c.bundleBytes ?? 0) > 0 ? `${((c.bundleBytes ?? 0) / 1e6).toFixed(1)} MB` : 'no export'}{s.events?.length ? ` · ${s.events.length} rhythm/signal events` : ''}</T>
+              {s.sleep ? (
+                <T v="small">Sleep {Math.floor(s.sleep.totalSleepMin / 60)} h {Math.round(s.sleep.totalSleepMin % 60)} min · efficiency {Math.round(s.sleep.efficiency * 100)}% · {s.sleep.awakenings} awakenings{s.sleep.sleepHr ? ` · sleeping HR ${Math.round(s.sleep.sleepHr)}` : ''}{s.sleep.sleepRmssd ? ` · HRV ${Math.round(s.sleep.sleepRmssd)} ms` : ''}</T>
+              ) : null}
               {c.notes ? <T v="small" color={p.muted}>“{c.notes}”</T> : null}
               <Row style={{ flexWrap: 'wrap' }}>
                 <Button kind="primary" title="Share" icon="square.and.arrow.up" onPress={() => share(c)} />
                 <Button kind="secondary" title="Upload" icon="icloud.and.arrow.up" onPress={() => upload(c)} />
+                <Button kind="secondary" title={busy === c.id ? 'Analysing…' : 'Re-analyse'} icon="arrow.clockwise" disabled={!!busy} onPress={() => reanalyse(c)} />
                 <Button kind="ghost" title="Delete" onPress={() => { Band.deleteCapture(c.id); refresh(); }} />
               </Row>
             </Card>

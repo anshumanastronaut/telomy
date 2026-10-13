@@ -223,9 +223,12 @@ export default function Monitor() {
             </Row>
             {rec ? (
               <T v="small">
-                {rec.phase === 'started' ? `Syncing ${rec.total} frames…` : rec.phase === 'progress' ? `Syncing ${Math.round((100 * rec.received) / Math.max(1, rec.total))} %` : rec.phase === 'failed' ? `Sync failed: ${rec.message}` :
+                {rec.phase === 'started' ? `Syncing ${rec.total} frames…` : rec.phase === 'progress' ? `Syncing ${Math.round((100 * rec.received) / Math.max(1, rec.total))} %` : rec.phase === 'failed' ? `Sync failed: ${rec.message}` : rec.phase === 'analysing' ? `Analysing ${Math.round(rec.frames * 0.87 / 60)} min of ECG…` :
                   `Synced ${Math.round((rec.durationSec ?? 0) / 60)} min · ${rec.beats ?? 0} beats · mean ${fmt(rec.meanHr)} bpm · RMSSD ${fmt(rec.rmssd)} ms`}
               </T>
+            ) : null}
+            {rec?.phase === 'completed' && rec.sleep ? (
+              <T v="body">Night (band backup): slept {Math.floor(rec.sleep.totalSleepMin / 60)} h {Math.round(rec.sleep.totalSleepMin % 60)} min · efficiency {Math.round(rec.sleep.efficiency * 100)}% · {rec.sleep.awakenings} awakenings{rec.sleep.sleepHr ? ` · sleeping HR ${Math.round(rec.sleep.sleepHr)}` : ''}{rec.sleep.sleepRmssd ? ` · HRV ${Math.round(rec.sleep.sleepRmssd)} ms` : ''}. Estimate from heart rhythm, not a sleep study.{rec.captureId ? ' Added to your Overnight sleep session (Saved sessions → Share).' : ''}</T>
             ) : null}
           </Card>
         </Section>

@@ -59,12 +59,17 @@ def load(path: str) -> Capture:
     fs = float(e["fs"])
     raw = np.frombuffer(base64.b64decode(e["data"]), dtype="<i2").astype(np.float64)
     meta = b["meta"]
-    t0 = meta.get("ecgStartUnix") or meta.get("startedAt", 0.0)
+    # segments [{sample, unix}] restart the clock after gaps (band out of range, app relaunched)
+    segs = meta.get("segments") or [{"sample": 0, "unix": meta.get("ecgStartUnix") or meta.get("startedAt", 0.0)}]
+    ecg_t = np.empty(raw.size)
+    for k, sg in enumerate(segs):
+        end = segs[k + 1]["sample"] if k + 1 < len(segs) else raw.size
+        ecg_t[sg["sample"]:end] = sg["unix"] + np.arange(end - sg["sample"]) / fs
     beats = []
     for row in csv.DictReader(b.get("beats_csv", "").splitlines()):
         beats.append({"t": float(row["t_unix"]), "rr_ms": float(row["rr_ms"]) if row["rr_ms"] else None,
                       "amplitude_uv": float(row["amplitude_uv"])})
-    return Capture(meta, fs, raw, t0 + np.arange(raw.size) / fs, beats, b.get("metrics", []), b.get("events", []))
+    return Capture(meta, fs, raw, ecg_t, beats, b.get("metrics", []), b.get("events", []))
 
 
 def summary(c: Capture) -> str:

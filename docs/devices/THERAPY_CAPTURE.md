@@ -58,7 +58,20 @@ One JSON file, `<id>.telomy.json`, where id is `YYYYMMDD-HHMMSS-<therapy>`:
 }
 ```
 
-All times are **unix seconds**. Sample *i* of the ECG is at `ecgStartUnix + i / 100`.
+All times are **unix seconds**. The ECG may have gaps (band out of range, app relaunched by iOS). `meta.segments` is
+`[{sample, unix}, …]`, and sample *i* belongs to the last segment with `sample ≤ i`, at `unix + (i − sample) / 100`.
+The reader script handles this. `meta.resumes` counts relaunches, and `wallSec` vs `durationSec` gives wall time vs recorded ECG.
+
+**Overnight sleep** is a capture type of its own:
+- Its phases are In bed, Lights out and Awake, stored as baseline / therapy / recovery.
+- It records the **live stream only**. With firmware B1_1.00.39, the band's on-board memory recording stored little or nothing when mixed with live streaming (dry runs 2026-10-12/13), so it is not used.
+- On stop, `summary.sleep` holds the whole-night estimate: total sleep, efficiency, WASO, awakenings, sleeping HR and HRV, and a hypnogram per 30-s epoch.
+
+**Re-analyse** (Saved sessions) re-runs the current algorithms over a session's raw ECG on the phone:
+- each gap-free segment is analysed separately;
+- `beats.csv`, the summary and the bundle are rewritten;
+- the original live beats are kept as `beats-live.csv`;
+- `meta.analysis.version` records which algorithms produced the numbers.
 The ECG is the raw band signal, unfiltered, so any pipeline can be re-run on it. Size is about 0.7 MB per 10 min.
 
 ### `metrics` fields (computed live on the phone)

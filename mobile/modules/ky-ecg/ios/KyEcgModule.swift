@@ -33,7 +33,14 @@ public class KyEcgModule: Module {
         Function("updateCapture") { (meta: [String: Any]) in KYBand.shared.updateCapture(meta) }
         Function("stopCapture") { (extra: [String: Any]) in KYBand.shared.stopCapture(extra: extra) }
         Function("captureId") { KYBand.shared.captureId }
+        Function("captureMeta") { KYBand.shared.captureMeta }
         Function("listCaptures") { KYCapture.list() }
         Function("deleteCapture") { (id: String) in KYCapture.delete(id: id) }
+        AsyncFunction("reanalyseCapture") { (id: String, promise: Promise) in
+            let resting = UserDefaults.standard.double(forKey: "ky.restingHr")
+            DispatchQueue.global(qos: .userInitiated).async {
+                promise.resolve(KYCapture.reanalyse(id: id, restingHr: resting > 30 ? resting : 65))
+            }
+        }
     }
 }
