@@ -69,6 +69,11 @@ export type RecordingEvent =
   | { phase: 'progress'; received: number; total: number }
   | { phase: 'failed'; message: string }
   | { phase: 'completed'; path: string; frames: number; start: number; durationSec?: number; beats?: number; meanHr?: number; rmssd?: number; sdnn?: number; artefactPercent?: number; rr?: number[]; events?: RhythmEvent[]; sleep?: SleepSummary; captureId?: string };
+export type HealthDay = {
+  date: string; steps?: number; distanceKm?: number; activeKcal?: number; exerciseMin?: number; flights?: number;
+  restingHr?: number; walkingHr?: number; hrvSdnn?: number; respRate?: number; spo2?: number; vo2max?: number;
+  weightKg?: number; bodyFatPct?: number; sleepMin?: number; workouts?: { type: number; min: number; start: number }[];
+};
 export type UserEvent = { kind: string; label: string; note?: string; t?: number; amount?: string };
 export type FoundDevice = { id: string; name: string; rssi: number };
 export type CaptureMeta = {
@@ -111,6 +116,8 @@ type Native = {
   deleteCapture(id: string): void;
   wellnessAppend(kind: string, record: Record<string, unknown>): void;
   addUserEvent(e: Record<string, unknown>): { captureId?: string; t?: number };
+  healthAuthorize(): Promise<{ ok: boolean; error?: string }>;
+  healthDaily(days: number): Promise<HealthDay[]>;
   wellnessRead(kind: string, days: number): Promise<Record<string, any>[]>;
   reanalyseCapture(id: string): Promise<{ id?: string; summary?: Record<string, any>; error?: string }>;
   addListener<K extends keyof Events>(event: K, listener: Events[K]): EventSubscription;
@@ -146,6 +153,10 @@ export const Band = {
   listCaptures: (): CaptureMeta[] => native?.listCaptures() ?? [],
   deleteCapture: (id: string) => native?.deleteCapture(id),
   /** Log a user event (meal, supplement, alcohol, custom…) into the running capture and the on-phone store. */
+  /** Ask for read access to Apple Health (steps, energy, exercise, vitals, sleep, workouts). */
+  healthAuthorize: async () => (native ? native.healthAuthorize() : { ok: false, error: 'Not available' }),
+  /** Daily Apple Health summaries for the last `days` days, oldest first. */
+  healthDaily: async (days: number): Promise<HealthDay[]> => (native ? native.healthDaily(days) : []),
   addUserEvent: (e: UserEvent) => native?.addUserEvent(e as any) ?? { },
   /** Append a record to the on-phone wellness store (Documents/wellness/<kind>/<day>.jsonl). */
   wellnessAppend: (kind: string, record: Record<string, unknown>) => native?.wellnessAppend(kind, record),

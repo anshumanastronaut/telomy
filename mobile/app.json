@@ -23,7 +23,9 @@
         "NSLocalNetworkUsageDescription": "Telomy connects to your Telomy server on this Wi-Fi network to save your ECG, heart rate and HRV.",
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
-        "CADisableMinimumFrameDurationOnPhone": true
+        "CADisableMinimumFrameDurationOnPhone": true,
+        "NSHealthShareUsageDescription": "Telomy reads steps, activity, workouts, sleep and vitals from Apple Health to build your daily scores. Telomy never writes to Health.",
+        "NSHealthUpdateUsageDescription": "Telomy does not write to Apple Health."
       },
       "appleTeamId": "M483297A5P",
       "buildNumber": "5"

@@ -47,20 +47,24 @@ For comparison, before the sequence model a per-epoch softmax gave κ 0.32, and 
 
 All at 100 Hz through the Telomy beat detector.
 
-**Features.** 21 per 60-s window:
+**Features.** 20 per 60-s window:
 - RR irregularity: CV, nRMSSD, pNN50/20, normalised Shannon entropy, turning-point ratio, COSEn, SD1/SD2, irregular fraction, MAD/range/min/max ratios;
 - P-wave consistency and amplitude;
 - R-amplitude CV, beat coverage, high-frequency noise, flat fraction.
 
-**Model.** Gradient-boosted trees (55 rounds × 4 classes). An AF flag needs P(AF) > 0.63 in **two consecutive windows** (60 s, step 30 s). The previous threshold rule stays as a fallback.
+Beat count was dropped because it depends on the window length.
 
-**Validation**
+**Model.** Gradient-boosted trees (≤ 15 leaves, early-stopped at 47 rounds × 4 classes). An AF flag needs P(AF) > 0.63 in **two consecutive windows** (60 s, step 30 s). The previous threshold rule stays as a fallback.
+
+**Validation** (on 60-s windows of held-out afdb / nsrdb records)
 
 | | AF sensitivity | AF specificity | False-alarm windows, 24-h normal recordings |
 |---|---|---|---|
-| Previous rule (same 60-s windows) | 0.67 | 0.983 | 11.4 % |
+| Previous rule | 0.67 | 0.983 | 11.4 % |
 | CinC-only model | 0.88 | 0.977 | 10.2 % |
-| **Shipped model** (held-out afdb / nsrdb records) | **0.84** | **0.995** | **0.86 %** |
+| **Shipped model** (CinC + long-record windows, 2-window confirmation) | **0.80** | **0.993** | **0.02 %** |
 | CinC 2017 5-fold CV, 4 classes | challenge F1 0.78 (winners 0.83 at 300 Hz) | | |
 
-**Swift port vs Python.** Over 400 windows the largest feature difference is 1e-5, and the AF decision agrees 100 %.
+**Swift port vs Python.** Over 400 windows the largest feature difference is 6e-6, and the AF decision agrees 100 %.
+
+Two sessions built this in parallel on 2026-10-14. The shipped files are the shared loader/feature format (`KYRhythmModel.swift`) with the domain-adapted weights from `telomy-lab/af2017/domain_export.py`.

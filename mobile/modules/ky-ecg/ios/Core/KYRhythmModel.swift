@@ -9,11 +9,13 @@ public final class KYRhythmModel {
     struct Tree { let f: [Int]; let t: [Double]; let l: [Int]; let r: [Int]; let leaf: [Bool]; let v: [Double] }
     let trees: [[Tree]], base: [Double]
     public let afThreshold: Double
+    /// Consecutive positive 60-s windows needed before an AF flag (held-out false alarms 0.02 % with 2).
+    public let persistWindows: Int
 
     public init?(json data: Data) {
         guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let b = o["baseline"] as? [Double],
               let tr = o["trees"] as? [[[String: Any]]] else { return nil }
-        base = b; afThreshold = o["af_threshold"] as? Double ?? 0.5
+        base = b; afThreshold = o["af_threshold"] as? Double ?? 0.5; persistWindows = o["persist_windows"] as? Int ?? 2
         trees = tr.map { it in it.map { d in
             Tree(f: d["f"] as! [Int], t: (d["t"] as! [NSNumber]).map(\.doubleValue), l: d["l"] as! [Int], r: d["r"] as! [Int],
                  leaf: (d["leaf"] as! [Int]).map { $0 != 0 }, v: (d["v"] as! [NSNumber]).map(\.doubleValue))

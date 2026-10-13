@@ -29,6 +29,12 @@ public class KyEcgModule: Module {
         Function("syncRecording") { KYBand.shared.syncRecording() }
         Function("log") { (line: String) in KYBand.shared.log("js " + line) }
         Function("startCapture") { (meta: [String: Any]) in KYBand.shared.startCapture(meta: meta) }
+        AsyncFunction("healthAuthorize") { (promise: Promise) in
+            KYHealth.shared.authorize { ok, err in promise.resolve(["ok": ok, "error": err as Any]) }
+        }
+        AsyncFunction("healthDaily") { (days: Int, promise: Promise) in
+            KYHealth.shared.daily(days: days) { promise.resolve($0) }
+        }
         Function("addUserEvent") { (e: [String: Any]) in KYBand.shared.addUserEvent(e) }
         Function("markPhase") { (phase: String, note: String?) in KYBand.shared.markPhase(phase, note: note) }
         Function("updateCapture") { (meta: [String: Any]) in KYBand.shared.updateCapture(meta) }
