@@ -64,15 +64,15 @@ export default function Bookings() {
           <Card>
             <T v="label">Member</T>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-              {members.data?.map((x) => <Pressable key={x.id} onPress={() => setM(x.id)}><Chip label={x.name} fg={m === x.id ? '#fff' : p.text} bg={m === x.id ? p.teal : p.surfaceAlt} /></Pressable>)}
+              {members.data?.map((x) => <Pressable key={x.id} onPress={() => setM(x.id)}><Chip label={x.name} fg={m === x.id ? p.onAccent : p.text} bg={m === x.id ? p.teal : p.surfaceAlt} /></Pressable>)}
             </ScrollView>
             <T v="label">Service</T>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {services.data?.map((x) => <Pressable key={x.id} onPress={() => setS(x.id)}><Chip label={x.name} fg={s === x.id ? '#fff' : p.text} bg={s === x.id ? p.teal : p.surfaceAlt} /></Pressable>)}
+              {services.data?.map((x) => <Pressable key={x.id} onPress={() => setS(x.id)}><Chip label={x.name} fg={s === x.id ? p.onAccent : p.text} bg={s === x.id ? p.teal : p.surfaceAlt} /></Pressable>)}
             </View>
             <T v="label">Time · {day(off)}</T>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {[7, 8, 9, 10, 11, 16, 17, 18, 19].map((h) => <Pressable key={h} onPress={() => setHour(h)}><Chip label={`${h}:00`} fg={hour === h ? '#fff' : p.text} bg={hour === h ? p.teal : p.surfaceAlt} /></Pressable>)}
+              {[7, 8, 9, 10, 11, 16, 17, 18, 19].map((h) => <Pressable key={h} onPress={() => setHour(h)}><Chip label={`${h}:00`} fg={hour === h ? p.onAccent : p.text} bg={hour === h ? p.teal : p.surfaceAlt} /></Pressable>)}
             </View>
             <Button title="Book" disabled={!m || !s} onPress={async () => {
               try {

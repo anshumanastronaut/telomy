@@ -45,7 +45,7 @@ export default function TherapyPlan() {
           {(goals.data ?? []).map((g) => (
             <Pressable key={g.id} onPress={() => setGoal(g.id)} accessibilityRole="button" accessibilityState={{ selected: goal === g.id }} testID={`goal-${g.id}`}
               style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: goal === g.id ? p.teal : p.surface, borderWidth: 1, borderColor: goal === g.id ? p.teal : p.border }}>
-              <T v="small" color={goal === g.id ? '#fff' : p.text}>{g.label}</T>
+              <T v="small" color={goal === g.id ? p.onAccent : p.text}>{g.label}</T>
             </Pressable>
           ))}
         </View>
@@ -54,7 +54,7 @@ export default function TherapyPlan() {
           {[2, 3, 4, 5, 6].map((n) => (
             <Pressable key={n} onPress={() => setPerWeek(n)} accessibilityRole="button"
               style={{ flex: 1, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: perWeek === n ? p.teal : p.surface, borderWidth: 1, borderColor: p.border }}>
-              <T v="body" color={perWeek === n ? '#fff' : p.text}>{n}</T>
+              <T v="body" color={perWeek === n ? p.onAccent : p.text}>{n}</T>
             </Pressable>
           ))}
         </Row>

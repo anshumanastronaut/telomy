@@ -89,7 +89,7 @@ export default function Voice() {
           <Animated.View style={{ transform: [{ scale: pulse }] }}>
             <Pressable onPress={toggle} accessibilityRole="button" accessibilityLabel={recording ? 'Stop and send' : 'Start talking'} testID="mic"
               style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center', backgroundColor: recording ? p.copper : p.teal, opacity: busy ? 0.5 : 1 }}>
-              <Icon name={recording ? 'stop.fill' : 'mic.fill'} size={40} color="#fff" />
+              <Icon name={recording ? 'stop.fill' : 'mic.fill'} size={40} color={p.onAccent} />
             </Pressable>
           </Animated.View>
           <T v="small">{busy ? 'Listening back… transcribing on your Telomy server' : recording ? 'Listening — tap to send' : 'Tap to talk'}</T>

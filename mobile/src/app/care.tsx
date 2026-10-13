@@ -36,7 +36,7 @@ export default function Care() {
               <T v="small">Next: {c.next} · ₹{c.fee}</T>
               {sel === c.id ? (
                 <View style={{ gap: 8 }}>
-                  <Row>{c.modes.map((m: string) => <Pressable key={m} onPress={() => setMode(m)}><Chip label={m} fg={mode === m ? '#fff' : p.text} bg={mode === m ? p.teal : p.surfaceAlt} /></Pressable>)}</Row>
+                  <Row>{c.modes.map((m: string) => <Pressable key={m} onPress={() => setMode(m)}><Chip label={m} fg={mode === m ? p.onAccent : p.text} bg={mode === m ? p.teal : p.surfaceAlt} /></Pressable>)}</Row>
                   <Row>{slots.map((s, i) => (
                     <Pressable key={i} onPress={() => setSlot(i)} style={{ flex: 1, padding: 10, borderRadius: radius.md, borderWidth: 1, borderColor: slot === i ? p.teal : p.border, alignItems: 'center' }}>
                       <T v="small" color={slot === i ? p.teal : p.text}>{fmtDate(s.toISOString())} 10:30</T>

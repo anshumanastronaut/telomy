@@ -4,12 +4,13 @@ import { Alert, View } from 'react-native';
 
 import { api, useApi } from '@/lib/api';
 import { useRole } from '@/lib/role';
-import { usePalette } from '@/lib/theme';
+import { setAppearance, useAppearance, usePalette } from '@/lib/theme';
 import { Ring } from '@/ui/charts';
-import { Card, Chip, Divider, ListRow, Row, Screen, Section, T } from '@/ui/core';
+import { Card, Chip, Divider, ListRow, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
 
 export default function Profile() {
+  const appearance = useAppearance();
   const p = usePalette();
   const prof = useApi<any>('/profile');
   const comp = useApi<any>('/completeness');
@@ -63,6 +64,10 @@ export default function Profile() {
         <ListRow icon="chart.bar.doc.horizontal" title="Research contribution" subtitle="Studies your data helps" onPress={() => router.push('/research')} />
         <ListRow icon="target" title="Goals" subtitle="Activity and nutrition targets" onPress={() => router.push('/goals')} />
       </Group>
+
+      <Section title="Appearance">
+        <Segmented options={[{ key: 'dark', label: 'Dark' }, { key: 'light', label: 'Light' }, { key: 'system', label: 'System' }]} value={appearance} onChange={setAppearance} />
+      </Section>
 
       <Group title="App">
         <ListRow icon="sparkles" title="Replay onboarding" onPress={() => router.push('/onboarding')} />

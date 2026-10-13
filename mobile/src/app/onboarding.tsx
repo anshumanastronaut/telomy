@@ -127,7 +127,7 @@ export default function Onboarding() {
       {step === 4 && (
         <>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: p.teal, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="sparkle" color="#fff" size={24} />
+            <Icon name="sparkle" color={p.onAccent} size={24} />
           </View>
           <T v="h1">I'm Sinc.</T>
           <T v="body">

@@ -88,8 +88,8 @@ export default function Routine() {
         {today.data?.items?.length && !preview ? (
           <Section title={`Today · ${today.data.weekday}`}>
             <Row>
-              <Pressable onPress={() => setDrinking(false)} style={{ flex: 1 }}><Chip label="Not drinking today" fg={!drinking ? '#fff' : p.text} bg={!drinking ? p.teal : p.surfaceAlt} /></Pressable>
-              <Pressable onPress={() => setDrinking(true)} style={{ flex: 1 }}><Chip label="Drinking today" fg={drinking ? '#fff' : p.text} bg={drinking ? p.copper : p.surfaceAlt} /></Pressable>
+              <Pressable onPress={() => setDrinking(false)} style={{ flex: 1 }}><Chip label="Not drinking today" fg={!drinking ? p.onAccent : p.text} bg={!drinking ? p.teal : p.surfaceAlt} /></Pressable>
+              <Pressable onPress={() => setDrinking(true)} style={{ flex: 1 }}><Chip label="Drinking today" fg={drinking ? p.onAccent : p.text} bg={drinking ? p.copper : p.surfaceAlt} /></Pressable>
             </Row>
             {today.data.items.filter((i: any) => ['smoke', 'alcohol', 'caffeine', 'supplement', 'walk', 'meal'].includes(i.kind)).map((it: any) => (
               <Card key={it.key}>

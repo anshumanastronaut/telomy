@@ -42,7 +42,7 @@ export default function Meds() {
           <Card>
             <TextInput value={name} onChangeText={setName} placeholder="Name, e.g. Atorvastatin" placeholderTextColor={p.faint} style={inp(p)} />
             <TextInput value={dose} onChangeText={setDose} placeholder="Dose, e.g. 10 mg" placeholderTextColor={p.faint} style={inp(p)} />
-            <Row>{Object.keys(times).map((f) => <Pressable key={f} onPress={() => setFreq(f)} accessibilityRole="radio" accessibilityState={{ selected: freq === f }}><Chip label={f} fg={freq === f ? '#fff' : p.text} bg={freq === f ? p.teal : p.surfaceAlt} /></Pressable>)}</Row>
+            <Row>{Object.keys(times).map((f) => <Pressable key={f} onPress={() => setFreq(f)} accessibilityRole="radio" accessibilityState={{ selected: freq === f }}><Chip label={f} fg={freq === f ? p.onAccent : p.text} bg={freq === f ? p.teal : p.surfaceAlt} /></Pressable>)}</Row>
             <Button title="Add" disabled={!name.trim()} onPress={async () => {
               const r = await api('/meds', { body: { name, dose, frequency: freq, times: times[freq] } });
               setName(''); setDose(''); reload();

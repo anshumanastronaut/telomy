@@ -44,7 +44,7 @@ export default function Rx() {
       <Row>
         <Pressable onPress={() => setChosen({ ...chosen, [i.id]: !chosen[i.id] })} accessibilityRole="checkbox" accessibilityState={{ checked: !!chosen[i.id] }}
           style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: p.teal, backgroundColor: chosen[i.id] ? p.teal : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-          {chosen[i.id] ? <T v="small" color="#fff">✓</T> : null}
+          {chosen[i.id] ? <T v="small" color={p.onAccent}>✓</T> : null}
         </Pressable>
         <T v="h3" style={{ flex: 1 }}>{i.name}</T>
         <Chip label={STATUS[i.status] ?? i.status} fg={i.rx ? p.copper : p.teal} bg={i.rx ? p.copperSoft : p.tealSoft} />
@@ -70,7 +70,7 @@ export default function Rx() {
               {(goals.data ?? []).map((g) => (
                 <Pressable key={g.id} onPress={() => setGoal(g.id)} accessibilityRole="button"
                   style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: goal === g.id ? p.teal : p.surface, borderWidth: 1, borderColor: goal === g.id ? p.teal : p.border }}>
-                  <T v="small" color={goal === g.id ? '#fff' : p.text}>{g.label}</T>
+                  <T v="small" color={goal === g.id ? p.onAccent : p.text}>{g.label}</T>
                 </Pressable>
               ))}
             </View>

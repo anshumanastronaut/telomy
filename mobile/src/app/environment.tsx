@@ -20,7 +20,7 @@ export default function Environment() {
       {CITIES.map((c) => (
         <Pressable key={c} onPress={() => onChange(c)} accessibilityRole="button"
           style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: value === c ? p.teal : p.surface, borderWidth: 1, borderColor: value === c ? p.teal : p.border }}>
-          <T v="small" color={value === c ? '#fff' : p.text}>{c}</T>
+          <T v="small" color={value === c ? p.onAccent : p.text}>{c}</T>
         </Pressable>
       ))}
     </View>

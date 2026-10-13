@@ -37,7 +37,7 @@ export default function Studies() {
           <Row style={{ flexWrap: 'wrap' }}>
             {OUTCOMES.map(([k, l]) => (
               <Pressable key={k} onPress={() => setOut(k)}>
-                <Chip label={l} fg={out === k ? '#fff' : p.text} bg={out === k ? p.teal : p.surfaceAlt} />
+                <Chip label={l} fg={out === k ? p.onAccent : p.text} bg={out === k ? p.teal : p.surfaceAlt} />
               </Pressable>
             ))}
           </Row>

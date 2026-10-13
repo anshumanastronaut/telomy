@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import React, { useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, useApi } from '@/lib/api';
@@ -61,6 +61,13 @@ export default function Sinc() {
     setTimeout(() => setNotice(null), 4000);
   }
 
+  const [kbd, setKbd] = useState(false);
+  useEffect(() => {
+    const a = Keyboard.addListener('keyboardWillShow', () => setKbd(true));
+    const b = Keyboard.addListener('keyboardWillHide', () => setKbd(false));
+    return () => { a.remove(); b.remove(); };
+  }, []);
+
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: p.bg }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={60}>
@@ -68,11 +75,10 @@ export default function Sinc() {
           <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
             <Logo kind="mark" width={28} tone="dark" />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <T v="h3">Sinc</T>
-            <T v="small">{health.data?.sinc ? `Reads your Vault · ${health.data.sinc}` : 'Reads your Vault'}</T>
+            <T v="small" numberOfLines={1}>{health.data?.sinc ? `Reads your Vault · ${health.data.sinc}` : 'Reads your Vault'}</T>
           </View>
-          <Spacer />
           <Pressable onPress={() => setHistory(!history)} hitSlop={10} accessibilityLabel="Chat history">
             <Icon name="clock.arrow.circlepath" color={p.teal} />
           </Pressable>
@@ -117,7 +123,7 @@ export default function Sinc() {
         <Row style={{ paddingHorizontal: space[4], paddingBottom: 6 }}>
           {(['normal', 'deep'] as const).map((m) => (
             <Pressable key={m} onPress={() => setMode(m)} accessibilityRole="tab" accessibilityState={{ selected: mode === m }} testID={`mode-${m}`}>
-              <Chip label={m === 'normal' ? 'Quick answer' : 'Deep research · with citations'} fg={mode === m ? '#fff' : p.text} bg={mode === m ? p.teal : p.surfaceAlt} icon={m === 'deep' ? 'books.vertical' : 'bolt'} />
+              <Chip label={m === 'normal' ? 'Quick answer' : 'Deep research · with citations'} fg={mode === m ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={mode === m ? p.teal : p.surfaceAlt} icon={m === 'deep' ? 'books.vertical' : 'bolt'} />
             </Pressable>
           ))}
         </Row>
@@ -126,22 +132,23 @@ export default function Sinc() {
             <T v="small" color={p.success}>{notice}</T>
           </View>
         ) : null}
-        <Row style={{ padding: space[3], borderTopWidth: 1, borderTopColor: p.border, backgroundColor: p.surface }}>
+        {/* composer floats above the glass tab bar; drops to the keyboard when typing */}
+        <Row style={{ marginHorizontal: space[3], marginBottom: kbd ? 8 : 98, padding: 6, paddingLeft: 4, borderRadius: 28, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border }}>
           <TextInput
             value={text}
             onChangeText={setText}
             placeholder="Ask about your data"
             placeholderTextColor={p.faint}
             multiline
-            style={{ flex: 1, minHeight: 40, maxHeight: 120, color: p.text, fontSize: 15, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: p.bg, borderRadius: radius.md }}
+            style={{ flex: 1, minHeight: 40, maxHeight: 120, color: p.text, fontSize: 15, paddingHorizontal: 12, paddingVertical: 10 }}
             accessibilityLabel="Message Sinc"
             testID="sinc-input"
           />
           <Pressable onPress={() => router.push('/voice')} accessibilityLabel="Talk to Sinc" testID="sinc-mic" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: p.copper, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="mic.fill" size={18} color="#fff" />
+            <Icon name="mic.fill" size={18} color={p.onAccent} />
           </Pressable>
           <Pressable onPress={() => send(text)} disabled={busy || !text.trim()} accessibilityLabel="Send" testID="sinc-send" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: text.trim() ? p.teal : p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-            {busy ? <ActivityIndicator color="#fff" /> : <Icon name="arrow.up" size={18} color={text.trim() ? '#fff' : p.faint} />}
+            {busy ? <ActivityIndicator color={p.onAccent} /> : <Icon name="arrow.up" size={18} color={text.trim() ? p.onAccent : p.faint} />}
           </Pressable>
         </Row>
       </KeyboardAvoidingView>
@@ -154,7 +161,7 @@ function Bubble({ m, onDraft }: { m: Msg; onDraft: (id: number) => void }) {
   if (m.role === 'user')
     return (
       <View style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: p.copper, borderRadius: radius.lg, padding: space[3] }}>
-        <T v="body" color="#fff">{m.content}</T>
+        <T v="body" color={p.onAccent}>{m.content}</T>
       </View>
     );
   if (m.pending)

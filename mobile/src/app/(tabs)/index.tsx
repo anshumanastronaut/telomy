@@ -58,7 +58,7 @@ export default function Home() {
           <Icon name="stethoscope" size={22} color={p.teal} />
           {h.pending_reviews ? (
             <View style={{ position: 'absolute', top: -6, right: -8, backgroundColor: p.copper, borderRadius: 8, paddingHorizontal: 5 }}>
-              <T v="small" color="#fff" style={{ fontSize: 10 }}>
+              <T v="small" color={p.onAccent} style={{ fontSize: 10 }}>
                 {h.pending_reviews}
               </T>
             </View>
@@ -112,7 +112,7 @@ export default function Home() {
           </Card>
         ) : null}
         <Card style={{ flex: 1 }} tone="copper" onPress={() => router.push('/(tabs)/sessions')}>
-          <T v="label">Next action</T>
+          <Row><T v="label" style={{ flex: 1 }}>Today’s plan</T><Icon name="chevron.right" size={11} color={p.faint} /></Row>
           <T v="h3">{h.next_action.title}</T>
           <T v="small">{h.next_action.when}</T>
           {h.next_action.protocol ? <T v="small">{h.next_action.protocol}</T> : null}

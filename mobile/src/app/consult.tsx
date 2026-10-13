@@ -29,7 +29,7 @@ export default function Consult() {
           </Pressable>
         ))}
       </Section>
-      <Row>{['video', 'audio', 'chat'].map((m) => <Pressable key={m} onPress={() => setMode(m)}><Chip label={m} fg={mode === m ? '#fff' : p.text} bg={mode === m ? p.teal : p.surfaceAlt} /></Pressable>)}</Row>
+      <Row>{['video', 'audio', 'chat'].map((m) => <Pressable key={m} onPress={() => setMode(m)}><Chip label={m} fg={mode === m ? p.onAccent : p.text} bg={mode === m ? p.teal : p.surfaceAlt} /></Pressable>)}</Row>
       <TextInput value={reason} onChangeText={setReason} placeholder="What would you like to discuss?" placeholderTextColor={p.faint} multiline
         style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
       {done ? <Card tone="teal"><T v="body">{done}</T></Card> : null}

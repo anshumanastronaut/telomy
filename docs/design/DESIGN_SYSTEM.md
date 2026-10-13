@@ -113,3 +113,25 @@ QA contact sheets of every screen per role: `qa/user.jpg`, `qa/doctor.jpg`, `qa/
 Plain, specific, honest. Name things as people know them. Say "no reliable signal yet" when that is true. Errors say what happened and
 what to do. Medical outputs say "draft for clinician review" until signed. Never promise outcomes (claims firewall in
 [CLINICAL_SAFETY](../CLINICAL_SAFETY.md)).
+
+## 9. Telomy Ink: dark-first language (2026-10-13)
+
+Telomy is **dark-first**, like WHOOP, Ultrahuman and Apple Fitness. Ink is a brand colour, and colour is reserved for data. The Cloud Dancer light theme stays one tap away: You → Appearance (Dark · Light · System). The setting is stored in AsyncStorage `telomy.appearance`. Use `useScheme()`, never `useColorScheme()`.
+
+| Token | Dark (default) | Light |
+|---|---|---|
+| bg / surface / surfaceAlt | `#090D0B` / `#121916` / `#1A231F` | `#F0EEE9` / `#FFFFFF` / `#E8E5DE` |
+| text / muted / faint | `#F1F0EB` / `#9BA39F` / `#69726D` | unchanged |
+| teal (chrome accent) | `#5CC9A7` | `#1F5C4E` |
+| onAccent (text on teal/copper fills) | `#07110D` | `#FFFFFF` |
+| success / warn / danger | `#4FD08F` / `#F2B94B` / `#FF6B57` | unchanged |
+| Metric colours (both themes) | Recovery green/amber/red · Sleep `#8EA8FF` · Strain `#FF9A5A` · Stress `#F2B94B` · ECG trace `#45E39E` | |
+
+**Rules**
+- **Shape:** radii are 8/12/16/22; buttons and segmented controls are pills; list-row icons sit in tinted circles.
+- **Navigation:** 5 tabs (Today · Vault · Therapy · Sinc · You) on a floating Liquid Glass bar (`expo-glass-effect`). Plan is a card on Today. Screens keep 120 pt of bottom padding, and bottom composers float 98 pt up when the keyboard is closed.
+- **Titles:** `h1` is the large title (Fraunces 32), the same on every tab root. Numbers use Fraunces tabular figures.
+- **Heroes:** the ink gradient (`#121C18 → #0B1210`) with a hairline border is used for Today, metric details and the Live ECG heart rate.
+- **ECG:** in dark mode a bedside-monitor trace (green with a glow on a faint green grid); in light mode clinical ECG paper.
+- **Colour use:** text on an accent fill uses `p.onAccent`, never a hard-coded `#fff`.
+- See `TODAY_UI.md` for the Today hierarchy and the research behind it.

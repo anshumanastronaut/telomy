@@ -23,8 +23,8 @@ type V = 'display' | 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'label' | 'num' | '
 export function T({ v = 'body', color, style, ...rest }: TextProps & { v?: V; color?: string }) {
   const p = usePalette();
   const base: Record<V, TextStyle> = {
-    display: { fontFamily: fonts.display, fontSize: 34, lineHeight: 40, color: p.text },
-    h1: { fontFamily: fonts.display, fontSize: 26, lineHeight: 32, color: p.text },
+    display: { fontFamily: fonts.display, fontSize: 40, lineHeight: 46, color: p.text },
+    h1: { fontFamily: fonts.display, fontSize: 32, lineHeight: 38, color: p.text, letterSpacing: -0.3 },
     h2: { fontFamily: fonts.display, fontSize: 20, lineHeight: 26, color: p.text },
     h3: { fontSize: 16, fontWeight: '600', lineHeight: 22, color: p.text },
     body: { fontSize: 15, lineHeight: 22, color: p.text },
@@ -192,8 +192,10 @@ export function Button({
   testID?: string;
 }) {
   const p = usePalette();
-  const bg = { primary: p.teal, copper: p.copper, secondary: p.surface, ghost: 'transparent', danger: p.dangerSoft }[kind];
-  const fg = { primary: '#FFFFFF', copper: '#FFFFFF', secondary: p.text, ghost: p.teal, danger: p.danger }[kind];
+  const bg = { primary: p.teal, copper: p.copper, secondary: p.surfaceAlt, ghost: 'transparent', danger: p.dangerSoft }[kind];
+  // dark-first: bright teal/copper fills carry ink text for contrast; light mode keeps white on deep teal
+  const onFill = p.onAccent;
+  const fg = { primary: onFill, copper: onFill, secondary: p.text, ghost: p.teal, danger: p.danger }[kind];
   return (
     <Pressable
       testID={testID}
@@ -206,12 +208,11 @@ export function Button({
       }}
       style={({ pressed }) => [
         {
-          minHeight: 48,
-          borderRadius: radius.md,
-          paddingHorizontal: space[4],
+          minHeight: 50,
+          borderRadius: radius.pill,
+          paddingHorizontal: space[5],
           backgroundColor: bg,
-          borderWidth: kind === 'secondary' ? 1 : 0,
-          borderColor: p.border,
+          borderWidth: 0,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
@@ -298,8 +299,8 @@ export function ListRow({
       accessibilityRole={onPress ? 'button' : undefined}
       style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3], opacity: pressed ? 0.7 : 1, minHeight: 44 })}>
       {icon ? (
-        <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={icon} size={16} color={p.teal} />
+        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: p.tealSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={15} color={p.teal} />
         </View>
       ) : null}
       <View style={{ flex: 1, gap: 2 }}>
@@ -322,7 +323,7 @@ export function Divider() {
 export function Segmented<K extends string>({ options, value, onChange }: { options: { key: K; label: string }[]; value: K; onChange: (k: K) => void }) {
   const p = usePalette();
   return (
-    <View style={{ flexDirection: 'row', backgroundColor: p.surfaceAlt, borderRadius: radius.md, padding: 3 }}>
+    <View style={{ flexDirection: 'row', backgroundColor: p.surfaceAlt, borderRadius: radius.pill, padding: 3 }}>
       {options.map((o) => {
         const on = o.key === value;
         return (
@@ -331,7 +332,8 @@ export function Segmented<K extends string>({ options, value, onChange }: { opti
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             onPress={() => onChange(o.key)}
-            style={{ flex: 1, paddingVertical: 8, borderRadius: radius.sm, backgroundColor: on ? p.surface : 'transparent', alignItems: 'center' }}>
+            style={{ flex: 1, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: on ? (p.isDark ? p.borderStrong : p.surface) : 'transparent', alignItems: 'center',
+              shadowColor: '#000', shadowOpacity: on ? 0.15 : 0, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } }}>
             <Text style={{ fontSize: 13, fontFamily: ff(600), color: on ? p.text : p.muted  }}>{o.label}</Text>
           </Pressable>
         );
@@ -345,7 +347,7 @@ export function Toast({ text, tone = 'neutral' }: { text: string | null; tone?: 
   if (!text) return null;
   const border = tone === 'success' ? p.success : tone === 'alert' ? p.danger : p.border;
   return (
-    <View style={{ position: 'absolute', bottom: 100, left: 16, right: 16, backgroundColor: p.surface, borderRadius: radius.md, borderLeftWidth: 4, borderLeftColor: border, padding: space[4], shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12, elevation: 4 }}>
+    <View style={{ position: 'absolute', bottom: 104, left: 16, right: 16, backgroundColor: p.surfaceAlt, borderRadius: radius.lg, borderLeftWidth: 4, borderLeftColor: border, padding: space[4], shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12, elevation: 4 }}>
       <T v="body">{text}</T>
     </View>
   );

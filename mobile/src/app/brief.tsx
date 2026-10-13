@@ -17,7 +17,7 @@ export default function Brief() {
     <Screen edges={[]}>
       <T v="body" color={p.muted}>A one-page brief for a specialist: the labs they care about with every previous value and date, your wearable trends, Sinc's patterns marked as reviewed or not, and your supplements. Also exported as FHIR for clinic systems.</T>
       <Row style={{ flexWrap: 'wrap' }}>
-        {(list.data ?? []).map((s) => <Pressable key={s.id} onPress={() => setSp(s.id)}><Chip label={s.title} fg={sp === s.id ? '#fff' : p.text} bg={sp === s.id ? p.teal : p.surfaceAlt} /></Pressable>)}
+        {(list.data ?? []).map((s) => <Pressable key={s.id} onPress={() => setSp(s.id)}><Chip label={s.title} fg={sp === s.id ? p.onAccent : p.text} bg={sp === s.id ? p.teal : p.surfaceAlt} /></Pressable>)}
       </Row>
       <Card>
         {!fhir.data ? <Loading what="Assembling…" /> : (

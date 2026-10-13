@@ -30,7 +30,7 @@ export default function Welcome() {
           <Pressable key={r.k} testID={`role-${r.k}`} onPress={() => setSel(r.k)} accessibilityRole="radio" accessibilityState={{ selected: on }}
             style={{ flexDirection: 'row', gap: space[3], alignItems: 'center', padding: space[4], borderRadius: radius.lg, borderWidth: on ? 2 : 1, borderColor: on ? p.teal : p.border, backgroundColor: on ? p.tealSoft : p.surface }}>
             <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: on ? p.teal : p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name={r.icon} color={on ? '#fff' : p.teal} />
+              <Icon name={r.icon} color={on ? p.onAccent : p.teal} />
             </View>
             <View style={{ flex: 1, gap: 2 }}>
               <T v="h3">{r.title}</T>

@@ -10,6 +10,7 @@ import { Icon, T } from '@/ui/core';
 const FS = 100;
 /** Playback cushion: frames arrive every ~0.87 s; drawing this far behind real time gives a continuous sweep. */
 export const CUSHION_S = 1.0;
+const TRACE = '#45E39E';
 
 /** ECG paper: 25 mm/s and 10 mm/mV (gain 1) — small squares 0.04 s / 0.1 mV, large 0.2 s / 0.5 mV. */
 function Paper({ w, h, pxPerSec, color, strong }: { w: number; h: number; pxPerSec: number; color: string; strong: string }) {
@@ -75,14 +76,16 @@ export function EcgMonitor({ seconds = 5, height = 190, gain = 1, live }: { seco
     }
   }
   return (
-    <View onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)} style={{ height, borderRadius: 10, overflow: 'hidden', backgroundColor: p.surface }}
+    <View onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)} style={{ height, borderRadius: 16, overflow: 'hidden', backgroundColor: p.isDark ? '#040706' : p.surface }}
       accessible accessibilityLabel={stale ? 'ECG: waiting for signal' : 'Live ECG trace'}>
       {w > 0 ? (
         <Svg width={w} height={height}>
-          <Paper w={w} h={height} pxPerSec={pxPerSec} color={p.copperSoft} strong={p.copper + '55'} />
-          {previous ? <Path d={previous} stroke={p.text} strokeOpacity={0.35} strokeWidth={1.4} fill="none" strokeLinejoin="round" /> : null}
-          {current ? <Path d={current} stroke={p.text} strokeWidth={1.8} fill="none" strokeLinejoin="round" /> : null}
-          {current ? <Circle cx={cx} cy={y(ecg.at(head))} r={3.5} fill={p.teal} /> : null}
+          {/* dark: bedside-monitor green on a faint green grid with a glow; light: clinical ECG paper */}
+          <Paper w={w} h={height} pxPerSec={pxPerSec} color={p.isDark ? 'rgba(79,208,143,0.06)' : p.copperSoft} strong={p.isDark ? 'rgba(79,208,143,0.16)' : p.copper + '55'} />
+          {previous ? <Path d={previous} stroke={p.isDark ? TRACE : p.text} strokeOpacity={0.3} strokeWidth={1.4} fill="none" strokeLinejoin="round" /> : null}
+          {current && p.isDark ? <Path d={current} stroke={TRACE} strokeOpacity={0.18} strokeWidth={7} fill="none" strokeLinejoin="round" strokeLinecap="round" /> : null}
+          {current ? <Path d={current} stroke={p.isDark ? TRACE : p.text} strokeWidth={1.8} fill="none" strokeLinejoin="round" /> : null}
+          {current ? <Circle cx={cx} cy={y(ecg.at(head))} r={p.isDark ? 4 : 3.5} fill={p.isDark ? '#E9FFF4' : p.teal} /> : null}
           {/* 1 mV calibration pulse */}
           <Path d={`M4,${height / 2} L8,${height / 2} L8,${height / 2 - pxPerMv} L18,${height / 2 - pxPerMv} L18,${height / 2} L22,${height / 2}`} stroke={p.muted} strokeWidth={1} fill="none" />
           <SvgText x={w - 6} y={height - 6} fill={p.muted} fontSize={10} textAnchor="end" fontFamily={fonts.body}>25 mm/s · {10 * gain} mm/mV · 0.5–40 Hz</SvgText>

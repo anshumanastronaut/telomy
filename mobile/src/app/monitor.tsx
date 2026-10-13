@@ -1,4 +1,5 @@
 // Live ECG monitor for the KY-E-B1 band: pairing, live ECG sweep, HR, HRV, signal quality, ECG strips, 24-h recording.
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -134,18 +135,18 @@ export default function Monitor() {
           <Chip label={q.label} fg={qfg} bg={qbg} />
         </Row>
 
-        <Card>
+        <LinearGradient colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
           <Row style={{ alignItems: 'flex-end' }}>
             <BeatHeart lastBeatAt={b.lastBeatAt} size={30} />
-            <T v="numLg" color={m?.hrConfidence === 'low' ? p.muted : undefined} accessibilityLabel={`Heart rate ${fmt(m?.hr)} beats per minute`}>{fmt(m?.hr)}</T>
+            <T v="display" color={m?.hrConfidence === 'low' ? 'rgba(255,255,255,0.45)' : '#fff'} style={{ fontSize: 84, lineHeight: 90 }} accessibilityLabel={`Heart rate ${fmt(m?.hr)} beats per minute`}>{fmt(m?.hr)}</T>
             <View style={{ marginBottom: 10 }}>
-              <T v="body" color={p.muted}>bpm</T>
-              {m?.hrSd != null ? <T v="small">± {Math.max(1, Math.round(m.hrSd))}</T> : null}
+              <T v="body" color="rgba(255,255,255,0.6)">bpm</T>
+              {m?.hrSd != null ? <T v="small" color="rgba(255,255,255,0.5)">± {Math.max(1, Math.round(m.hrSd))}</T> : null}
             </View>
             <View style={{ flex: 1 }} />
             <View style={{ alignItems: 'flex-end', marginBottom: 6 }}>
-              <T v="label">HRV · RMSSD</T>
-              <T v="num">{m?.rmssdSmooth != null && (m.hrvState === 'ok' || m.hrvState === 'active') ? fmt(m.rmssdSmooth) : '–'} <T v="small">ms</T></T>
+              <T v="label" color="rgba(255,255,255,0.55)">HRV · RMSSD</T>
+              <T v="num" color="#fff" style={{ fontSize: 30 }}>{m?.rmssdSmooth != null && (m.hrvState === 'ok' || m.hrvState === 'active') ? fmt(m.rmssdSmooth) : '–'} <T v="small">ms</T></T>
             </View>
           </Row>
           <Row style={{ flexWrap: 'wrap' }}>
@@ -154,8 +155,8 @@ export default function Monitor() {
             {m?.signal && m.signal !== 'clean' ? <Chip label={m.signal === 'motion' ? 'Movement in signal' : m.signal === 'noisy' ? 'Noisy signal' : m.signal.replace('_', ' ')} fg={p.warn} bg={p.warnSoft} /> : null}
             {m?.restingHr ? <Chip label={`Your resting ≈ ${Math.round(m.restingHr)} bpm`} /> : null}
           </Row>
-          <T v="small">{m?.hrConfidence === 'low' ? 'Holding the last reliable value while the signal is noisy.' : q.hint}</T>
-        </Card>
+          <T v="small" color="rgba(255,255,255,0.6)">{m?.hrConfidence === 'low' ? 'Holding the last reliable value while the signal is noisy.' : q.hint}</T>
+        </LinearGradient>
 
         <Card style={{ gap: space[2] }}>
           <Row>

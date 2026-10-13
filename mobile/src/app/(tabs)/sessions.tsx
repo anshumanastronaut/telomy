@@ -60,7 +60,7 @@ export default function Sessions() {
               {items.map((it: any, i: number) => (
                 <Pressable key={it.id} onPress={() => toggle(it.id, !it.done)} accessibilityRole="checkbox" accessibilityState={{ checked: it.done }} testID={`check-${it.id}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderTopWidth: i ? 1 : 0, borderTopColor: p.border, minHeight: 48 }}>
                   <View style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: it.done ? p.teal : p.borderStrong, backgroundColor: it.done ? p.teal : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                    {it.done ? <Icon name="checkmark" size={12} color="#fff" /> : null}
+                    {it.done ? <Icon name="checkmark" size={12} color={p.onAccent} /> : null}
                   </View>
                   <View style={{ flex: 1 }}>
                     <T v="body" style={{ textDecorationLine: it.done ? 'line-through' : 'none' }}>{it.title}</T>

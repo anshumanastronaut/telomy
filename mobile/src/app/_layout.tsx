@@ -5,16 +5,16 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { useColorScheme, View } from 'react-native';
+import { View } from 'react-native';
 
 import { RoleProvider } from '@/lib/role';
-import { fonts, usePalette } from '@/lib/theme';
+import { fonts, usePalette, useScheme } from '@/lib/theme';
 import { Intro } from '@/ui/intro';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
-  const scheme = useColorScheme();
+  const scheme = useScheme();
   const p = usePalette();
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   const theme = { ...base, colors: { ...base.colors, background: p.bg, card: p.bg, text: p.text, border: p.border, primary: p.teal } };

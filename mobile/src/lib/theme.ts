@@ -1,4 +1,6 @@
 // Telomy design tokens (UI Design System v1.0): Cloud Dancer / Ink, teal = science, copper = human.
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSyncExternalStore } from 'react';
 import { Platform, useColorScheme } from 'react-native';
 
 const light = {
@@ -22,39 +24,66 @@ const light = {
   dangerSoft: '#F6E0DB',
   graphite: '#5A5A58',
   overlay: 'rgba(20,20,18,0.35)',
+  isDark: false,
+  onAccent: '#FFFFFF',  // text/icons on teal, copper or other accent fills
 };
 
+// "Telomy Ink" (2026-10): dark-first, layered surfaces, colour reserved for data (WHOOP / Ultrahuman / Apple Fitness).
 const dark: typeof light = {
-  bg: '#121413',
-  surface: '#1B1E1C',
-  surfaceAlt: '#242825',
-  text: '#ECEAE4',
-  muted: '#A19F97',
-  faint: '#77756E',
-  border: '#2E332F',
-  borderStrong: '#454B46',
-  teal: '#6FBBA4',
-  tealSoft: '#1E3A33',
-  copper: '#D69466',
-  copperSoft: '#3A2A20',
-  success: '#6CC394',
-  successSoft: '#1E3528',
-  warn: '#E0A84A',
-  warnSoft: '#3A2F1A',
-  danger: '#E07B69',
-  dangerSoft: '#3E2320',
-  graphite: '#A3A3A0',
-  overlay: 'rgba(0,0,0,0.55)',
+  bg: '#090D0B',
+  surface: '#121916',
+  surfaceAlt: '#1A231F',
+  text: '#F1F0EB',
+  muted: '#9BA39F',
+  faint: '#69726D',
+  border: '#212B26',
+  borderStrong: '#34403A',
+  teal: '#5CC9A7',
+  tealSoft: '#14302A',
+  copper: '#E39B68',
+  copperSoft: '#352419',
+  success: '#4FD08F',
+  successSoft: '#123325',
+  warn: '#F2B94B',
+  warnSoft: '#3A2E14',
+  danger: '#FF6B57',
+  dangerSoft: '#3D1C17',
+  graphite: '#A5ABA8',
+  overlay: 'rgba(0,0,0,0.6)',
+  isDark: true,
+  onAccent: '#07110D',
 };
 
 export type Palette = typeof light;
 
+// Appearance: Telomy is dark-first. Profile → Appearance can switch to Light or follow the system.
+export type Appearance = 'dark' | 'light' | 'system';
+const APPEARANCE_KEY = 'telomy.appearance';
+let appearance: Appearance = 'dark';
+const appearanceListeners = new Set<() => void>();
+AsyncStorage.getItem(APPEARANCE_KEY).then((v) => {
+  if (v === 'dark' || v === 'light' || v === 'system') { appearance = v; appearanceListeners.forEach((l) => l()); }
+}).catch(() => {});
+export function setAppearance(a: Appearance) {
+  appearance = a; appearanceListeners.forEach((l) => l());
+  AsyncStorage.setItem(APPEARANCE_KEY, a).catch(() => {});
+}
+export function useAppearance(): Appearance {
+  return useSyncExternalStore((cb) => { appearanceListeners.add(cb); return () => appearanceListeners.delete(cb); }, () => appearance);
+}
+/** The scheme in effect ('dark' | 'light'). Use instead of useColorScheme(). */
+export function useScheme(): 'dark' | 'light' {
+  const sys = useColorScheme();
+  const a = useAppearance();
+  return a === 'system' ? (sys === 'dark' ? 'dark' : 'light') : a;
+}
+
 export function usePalette(): Palette {
-  return useColorScheme() === 'dark' ? dark : light;
+  return useScheme() === 'dark' ? dark : light;
 }
 
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 5: 20, 6: 24, 8: 32, 10: 40 };
-export const radius = { sm: 6, md: 10, lg: 14, xl: 20, pill: 999 };
+export const radius = { sm: 8, md: 12, lg: 16, xl: 22, pill: 999 };
 
 // Typography (UI Design System v1.0): Inter for UI, Fraunces as the display serif.
 // The Telomy wordmark typeface is used only in the logo, splash and boot animation.

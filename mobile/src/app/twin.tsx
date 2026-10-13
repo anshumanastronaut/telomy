@@ -88,7 +88,7 @@ export default function Twin() {
             {d.presets.map((x: any) => (
               <Pressable key={x.id} onPress={() => setPreset(x.id)} accessibilityRole="button" testID={`preset-${x.id}`}
                 style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: preset === x.id ? p.teal : p.surface, borderWidth: 1, borderColor: preset === x.id ? p.teal : p.border }}>
-                <T v="small" color={preset === x.id ? '#fff' : p.text}>{x.label.split(' (')[0]}</T>
+                <T v="small" color={preset === x.id ? p.onAccent : p.text}>{x.label.split(' (')[0]}</T>
               </Pressable>
             ))}
           </View>
@@ -96,7 +96,7 @@ export default function Twin() {
             {[1, 5, 10].map((y) => (
               <Pressable key={y} onPress={() => setYears(y)} accessibilityRole="button"
                 style={{ flex: 1, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: years === y ? p.teal : p.surface, borderWidth: 1, borderColor: p.border }}>
-                <T v="body" color={years === y ? '#fff' : p.text}>{y} year{y > 1 ? 's' : ''}</T>
+                <T v="body" color={years === y ? p.onAccent : p.text}>{y} year{y > 1 ? 's' : ''}</T>
               </Pressable>
             ))}
           </Row>
@@ -136,8 +136,8 @@ export default function Twin() {
       {tab === 'today' && dayT?.has_routine ? (
         <>
           <Row>
-            <Pressable onPress={() => setDrinking(false)} style={{ flex: 1 }}><Chip label="Non-drinking day" fg={!drinking ? '#fff' : p.text} bg={!drinking ? p.teal : p.surfaceAlt} /></Pressable>
-            <Pressable onPress={() => setDrinking(true)} style={{ flex: 1 }}><Chip label="Drinking day" fg={drinking ? '#fff' : p.text} bg={drinking ? p.copper : p.surfaceAlt} /></Pressable>
+            <Pressable onPress={() => setDrinking(false)} style={{ flex: 1 }}><Chip label="Non-drinking day" fg={!drinking ? p.onAccent : p.text} bg={!drinking ? p.teal : p.surfaceAlt} /></Pressable>
+            <Pressable onPress={() => setDrinking(true)} style={{ flex: 1 }}><Chip label="Drinking day" fg={drinking ? p.onAccent : p.text} bg={drinking ? p.copper : p.surfaceAlt} /></Pressable>
           </Row>
           <Card>
             <T v="label">Caffeine in your blood (mg)</T>

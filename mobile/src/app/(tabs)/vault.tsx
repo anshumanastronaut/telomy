@@ -53,7 +53,7 @@ export function Pill({ on, label, onPress }: { on: boolean; label: string; onPre
       accessibilityRole="tab"
       accessibilityState={{ selected: on }}
       style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, backgroundColor: on ? p.teal : p.surface, borderWidth: 1, borderColor: on ? p.teal : p.border }}>
-      <T v="small" color={on ? '#fff' : p.text} style={{ fontWeight: '600' }}>
+      <T v="small" color={on ? p.onAccent : p.text} style={{ fontWeight: '600' }}>
         {label}
       </T>
     </Pressable>

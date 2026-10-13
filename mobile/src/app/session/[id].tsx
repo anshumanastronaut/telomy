@@ -170,7 +170,7 @@ function Scale({ value, onChange }: { value: number; onChange: (v: number) => vo
         <Pressable key={v} onPress={() => onChange(v)} accessibilityRole="button" accessibilityLabel={`${v}`}
           style={{ flex: 1, height: 30, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center',
             backgroundColor: value === v ? p.teal : p.surfaceAlt }}>
-          <T v="small" color={value === v ? '#fff' : p.text}>{v}</T>
+          <T v="small" color={value === v ? p.onAccent : p.text}>{v}</T>
         </Pressable>
       ))}
     </Row>

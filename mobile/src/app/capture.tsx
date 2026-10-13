@@ -56,7 +56,7 @@ function Scale({ label, value, onChange }: { label: string; value: number; onCha
         {Array.from({ length: 11 }, (_, i) => (
           <Pressable key={i} onPress={() => onChange(i)} accessibilityLabel={`${label} ${i}`}
             style={{ flex: 1, height: 30, borderRadius: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: i === value ? p.teal : p.surfaceAlt }}>
-            <T v="small" color={i === value ? '#fff' : p.text}>{i}</T>
+            <T v="small" color={i === value ? p.onAccent : p.text}>{i}</T>
           </Pressable>
         ))}
       </Row>
@@ -144,7 +144,7 @@ export default function Capture() {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {THERAPIES.map((t) => (
                 <Pressable key={t.id} onPress={() => setTherapy(t)} accessibilityRole="button" accessibilityState={{ selected: therapy?.id === t.id }}>
-                  <Chip label={t.name} fg={therapy?.id === t.id ? '#fff' : p.text} bg={therapy?.id === t.id ? p.teal : p.surfaceAlt} />
+                  <Chip label={t.name} fg={therapy?.id === t.id ? p.onAccent : p.text} bg={therapy?.id === t.id ? p.teal : p.surfaceAlt} />
                 </Pressable>
               ))}
             </View>
@@ -218,8 +218,8 @@ export default function Capture() {
             {phases.map((ph) => (
               <Pressable key={ph.key} onPress={() => setPh(ph.key)} style={{ flex: 1 }} accessibilityRole="button" accessibilityState={{ selected: phase === ph.key }}>
                 <View style={{ padding: 12, borderRadius: radius.md, backgroundColor: phase === ph.key ? p.copper : p.surfaceAlt, alignItems: 'center' }}>
-                  <T v="h3" color={phase === ph.key ? '#fff' : p.text}>{ph.label}</T>
-                  <T v="small" color={phase === ph.key ? '#fff' : p.muted}>{ph.hint}</T>
+                  <T v="h3" color={phase === ph.key ? p.onAccent : p.text}>{ph.label}</T>
+                  <T v="small" color={phase === ph.key ? p.onAccent : p.muted}>{ph.hint}</T>
                 </View>
               </Pressable>
             ))}
