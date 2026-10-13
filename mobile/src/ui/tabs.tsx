@@ -31,7 +31,7 @@ export function RoleTabs({ role, children }: { role: Role; children: React.React
           <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" tintColor={scheme === 'dark' ? 'rgba(18,25,22,0.55)' : 'rgba(255,255,255,0.55)'} />
         </View>
       ),
-      tabBarLabelStyle: { fontSize: 10, fontFamily: fonts.bold, letterSpacing: 0.2 } }}>
+      tabBarLabelStyle: { fontSize: 11, fontFamily: fonts.bold, letterSpacing: 0.2 } }}>
       {children}
     </Tabs>
   );

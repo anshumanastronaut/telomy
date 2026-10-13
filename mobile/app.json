@@ -22,7 +22,8 @@
         ],
         "NSLocalNetworkUsageDescription": "Telomy connects to your Telomy server on this Wi-Fi network to save your ECG, heart rate and HRV.",
         "NSSupportsLiveActivities": true,
-        "NSSupportsLiveActivitiesFrequentUpdates": true
+        "NSSupportsLiveActivitiesFrequentUpdates": true,
+        "CADisableMinimumFrameDurationOnPhone": true
       },
       "appleTeamId": "M483297A5P",
       "buildNumber": "5"

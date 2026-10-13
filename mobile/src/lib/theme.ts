@@ -9,7 +9,7 @@ const light = {
   surfaceAlt: '#E8E5DE',
   text: '#1B1C1A',
   muted: '#6B6A64',
-  faint: '#9A988F',
+  faint: '#78766E',  // ≥ 4.5:1 on bg (HIG small-text contrast)
   border: '#D9D5CC',
   borderStrong: '#B9B4A8',
   teal: '#1F5C4E',
@@ -35,7 +35,7 @@ const dark: typeof light = {
   surfaceAlt: '#1A231F',
   text: '#F1F0EB',
   muted: '#9BA39F',
-  faint: '#69726D',
+  faint: '#7F8984',  // ≥ 4.5:1 on bg
   border: '#212B26',
   borderStrong: '#34403A',
   teal: '#5CC9A7',

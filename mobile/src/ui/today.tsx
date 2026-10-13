@@ -6,6 +6,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { SFSymbol } from 'expo-symbols';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
+import ReAnimated, { Easing as ReEasing, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import Svg, { Circle, Defs, Line, LinearGradient as SvgGrad, Path, RadialGradient, Stop } from 'react-native-svg';
 
 import { useBand } from '@/lib/band';
@@ -16,6 +17,8 @@ import { Icon, Row, T } from '@/ui/core';
 import { LastNightCard, ScoreRing } from '@/ui/wellness';
 import { DayTimeline } from '@/ui/trends';
 
+const EASE_OUT = ReEasing.bezier(0.23, 1, 0.32, 1);
+
 /** Narrow colour vocabulary: recovery state, sleep, strain, stress (same on every screen). */
 export const C = {
   green: '#4FD08F', amber: '#F2B94B', red: '#FF6B57', none: 'rgba(255,255,255,0.35)',
@@ -24,14 +27,16 @@ export const C = {
 };
 export const stateColor = (v: number | null) => (v == null ? C.none : v >= 67 ? C.green : v >= 34 ? C.amber : C.red);
 
-function useCountUp(target: number | null, ms = 1100) {
+function useCountUp(target: number | null, ms = 700) {
   const [v, setV] = useState(0);
   const a = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
   useEffect(() => {
     if (target == null) return;
+    if (reduced) { setV(target); return; }   // Reduce Motion: show the value, no count-up
     a.setValue(0);
     const id = a.addListener(({ value }) => setV(Math.round(value)));
-    Animated.timing(a, { toValue: target, duration: ms, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    Animated.timing(a, { toValue: target, duration: ms, easing: Easing.bezier(0.23, 1, 0.32, 1), useNativeDriver: false }).start();
     return () => a.removeListener(id);
   }, [target]);
   return target == null ? null : v;
@@ -51,8 +56,11 @@ export function RecoveryDial({ value, size = 212, label }: { value: number | nul
   };
   const len = (Math.PI * 2 * r * sweep) / 360;
   const anim = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
   useEffect(() => {
-    Animated.timing(anim, { toValue: value == null ? 0 : value / 100, duration: 1200, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    const to = value == null ? 0 : value / 100;
+    if (reduced) { anim.setValue(to); return; }
+    Animated.timing(anim, { toValue: to, duration: 700, easing: Easing.bezier(0.23, 1, 0.32, 1), useNativeDriver: false }).start();
   }, [value]);
   const offset = anim.interpolate({ inputRange: [0, 1], outputRange: [len, 0] });
   const shown = useCountUp(value);
@@ -78,7 +86,7 @@ export function RecoveryDial({ value, size = 212, label }: { value: number | nul
       </Svg>
       <View style={{ position: 'absolute', top: size * 0.25, alignItems: 'center' }}>
         <Row gap={2} style={{ alignItems: 'flex-start' }}>
-          <T v="display" color="#fff" style={{ fontSize: 64, lineHeight: 72 }}>{shown == null ? '—' : shown}</T>
+          <T v="display" color="#fff" style={{ fontSize: 64, lineHeight: 72, letterSpacing: -1.5 }}>{shown == null ? '—' : shown}</T>
           {shown != null ? <T v="h2" color="rgba(255,255,255,0.6)" style={{ marginTop: 14 }}>%</T> : null}
         </Row>
         <T v="h3" color={col} style={{ letterSpacing: 0.3 }}>{label}</T>
@@ -91,12 +99,12 @@ function Doorway({ icon, color, title, value, sub, ring, max, onPress }: {
   icon: SFSymbol; color: string; title: string; value: string; sub: string; ring: number | null; max: number; onPress: () => void;
 }) {
   return (
-    <Pressable onPress={() => { Haptics.selectionAsync(); onPress(); }} accessibilityRole="button" accessibilityLabel={`${title} ${value}`}
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title} ${value}`}
       style={({ pressed }) => ({ flex: 1, padding: 14, gap: 2, borderRadius: radius.xl, transform: [{ scale: pressed ? 0.97 : 1 }],
         backgroundColor: pressed ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' })}>
       <Row gap={5}>
         <Icon name={icon} size={11} color={color} />
-        <T v="label" color="rgba(255,255,255,0.6)" style={{ fontSize: 10, flex: 1 }}>{title}</T>
+        <T v="label" color="rgba(255,255,255,0.6)" style={{ fontSize: 11, flex: 1 }}>{title}</T>
         <Icon name="chevron.right" size={10} color="rgba(255,255,255,0.35)" />
       </Row>
       <Row style={{ alignItems: 'center' }}>
@@ -192,15 +200,17 @@ export function WellnessToday({ age }: { age?: number | null }) {
   const s = w.today.stress;
   return (
     <View style={{ gap: space[3] }}>
-      <TodayHero w={w} />
-      {w.last ? <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /> : null}
-      <DayTimeline w={w} />
+      <ReAnimated.View entering={FadeInDown.duration(320).easing(EASE_OUT)}><TodayHero w={w} /></ReAnimated.View>
+      {w.last ? <ReAnimated.View entering={FadeInDown.duration(320).delay(60).easing(EASE_OUT)}><LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /></ReAnimated.View> : null}
+      <ReAnimated.View entering={FadeInDown.duration(320).delay(120).easing(EASE_OUT)}><DayTimeline w={w} /></ReAnimated.View>
+      <ReAnimated.View entering={FadeInDown.duration(320).delay(180).easing(EASE_OUT)}>
       <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
         <BodyTile icon="waveform.path" color="#C98A1B" title="Stress" value={s.score == null ? '—' : `${s.score}`} unit={s.score == null ? undefined : '/100'}
           sub={s.minutes ? `${s.stressMin} stressed · ${s.calmMin} calm min` : 'Wear the band during the day'} onPress={() => router.push('/wellness/stress')} />
         <BodyTile icon="figure.run" color="#2F8F6B" title="Fitness" value={w.vo2 ? `${Math.round(w.vo2)}` : '—'} unit={w.vo2 ? 'VO₂max' : undefined}
           sub={w.restingHr ? `Resting HR ${Math.round(w.restingHr)} bpm` : 'Needs calm minutes with the band'} onPress={() => router.push('/wellness/recovery')} />
       </Row>
+      </ReAnimated.View>
     </View>
   );
 }

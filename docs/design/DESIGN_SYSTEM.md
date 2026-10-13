@@ -135,3 +135,46 @@ Telomy is **dark-first**, like WHOOP, Ultrahuman and Apple Fitness. Ink is a bra
 - **ECG:** in dark mode a bedside-monitor trace (green with a glow on a faint green grid); in light mode clinical ECG paper.
 - **Colour use:** text on an accent fill uses `p.onAccent`, never a hard-coded `#fff`.
 - See `TODAY_UI.md` for the Today hierarchy and the research behind it.
+
+## 10. Apple-quality rules we follow (2026-10-14)
+
+Distilled from the Apple HIG review checklist (github.com/dickwu/apple-design-skill) and Emil Kowalski's apple-design, animate-expo and design-engineering skills (github.com/emilkowalski/skills).
+
+**Text and contrast**
+- Text is at least 11 pt; body is 15–17 pt.
+- Small text has at least 4.5:1 contrast; ≥ 18 pt or bold needs 3:1. That is why `faint` is `#7F8984` (dark) / `#78766E` (light).
+- Large numerals get negative tracking: display −0.8, numLg −1, the 64 pt dial −1.5.
+
+**Colour**
+- One colour means one thing everywhere: recovery green/amber/red, sleep stages (Awake `#E0894F`, Light `#8EA8FF`, Deep `#4B5FD1`, REM `#4FC8E3`), strain orange, stress amber.
+- Meaning is never carried by colour alone: every coloured element also has a label.
+
+**Touch and haptics**
+- Touch targets are at least 44 pt (use `hitSlop` when the visual is smaller).
+- Press feedback is scale 0.97–0.985 on touch-down.
+- Haptics only where they earn their place:
+  - commit (primary, copper or danger button) → light impact;
+  - selection change (segmented control, chips) → selection tick;
+  - saved or success → success notification;
+  - plain navigation → none;
+  - one haptic per action, on the same frame as the visual change.
+
+**Motion**
+- Animate only `transform` and `opacity`. Never use `ease-in`.
+- Use ease-out `bezier(0.23, 1, 0.32, 1)` for entering and reveals.
+- Score reveals (once per open) take 700 ms. Press feedback takes 100–150 ms.
+- Today's cards enter with a 60 ms stagger (Reanimated `FadeInDown`, 320 ms).
+- Reduce Motion: rings, the dial and count-ups jump straight to their value, with opacity only.
+
+**Surfaces**
+- Liquid Glass is only for functional chrome: the tab bar and the Live Activity. It is never used for content.
+- Sheets are native form sheets with a grabber and detents (`event`), one at a time.
+
+**Destructive actions and alerts**
+- Destructive actions use an alert with Cancel (delete session, reset test data).
+- Alerts are rare and never shown on launch.
+
+**Loading, empty states and craft**
+- Loading shows something immediately and says what is happening ("Analysing your night on the phone…").
+- Empty states explain and invite the next action.
+- Craft checkpoint: there is one bold element per screen (the Recovery dial, the donut, the HR hero) and everything around it is quiet. The light cream-serif-copper theme is a common template, which is one more reason Telomy defaults to Ink.

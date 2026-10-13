@@ -211,7 +211,7 @@ final class KYCapture {
         return nil
     }
 
-    static let analysisVersion = "2026-10-13c (night metrics, breathing rate, sleep from ECG start)"
+    static let analysisVersion = "2026-10-14b (4-stage sleep, HMC 151 nights)"
 
     /// Re-run the current analysis over a saved session's raw ECG (each gap-free segment separately, as live) and rewrite
     /// beats.csv, the summary (beats, HR/HRV, rhythm events, whole-night sleep) and the export bundle. The original live
@@ -276,9 +276,22 @@ final class KYCapture {
             if let v = n.sleepOnsetMin { sl["onsetMin"] = v }
             if let v = n.sleepHr { sl["sleepHr"] = v }
             if let v = n.sleepRmssd { sl["sleepRmssd"] = v }
+            var asleep = n.asleep
+            // 4-stage model (Wake/Light/Deep/REM) when the weights are bundled: it replaces the sleep/wake estimate
+            if let st = KYSleepStager.shared {
+                let r = st.stage(beatTimes: beatRows.map(\.t), amplitudes: beatRows.map(\.amp), t0: tS, epochs: Int(wall / 30))
+                let ss = KYSleepStager.summarize(r.stages)
+                if (ss["totalSleepMin"] as? Double ?? 0) > 60 {
+                    for (k, v) in ss { sl[k] = v }
+                    sl["stages"] = r.stages
+                    sl["hypnogram"] = r.stages.map { $0 > 0 ? 1 : 0 }
+                    sl["model"] = "stager-v2 (HMC 151 nights, ECG-only)"
+                    asleep = r.stages.map { $0 > 0 }
+                }
+            }
             summary["sleep"] = sl
             summary["night"] = KYNightMetrics.compute(beats: beatRows.map { KYNightMetrics.Beat(t: $0.t, rr: $0.rr, amp: $0.amp) },
-                                                      asleep: n.asleep, t0: tS)
+                                                      asleep: asleep, t0: tS)
         }
         meta["summary"] = summary
         meta["analysis"] = ["version": analysisVersion, "at": Date().timeIntervalSince1970, "source": "reanalysed on phone"]

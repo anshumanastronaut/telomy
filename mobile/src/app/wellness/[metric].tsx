@@ -10,7 +10,7 @@ import { Button, Card, Empty, Loading, Row, Screen, Section, Segmented, T } from
 import { C, DetailHero } from '@/ui/today';
 import { TrendChart } from '@/ui/trends';
 import { nightSeries, normalBand, type Wellness } from '@/lib/wellness';
-import { ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
+import { StageBreakdown, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
 
 const METHODS: Record<string, { title: string; how: string; sources: string[] }> = {
   recovery: {
@@ -20,8 +20,8 @@ const METHODS: Record<string, { title: string; how: string; sources: string[] }>
   },
   sleep: {
     title: 'Sleep',
-    how: 'Sleep and wake are estimated every 30 s from your heart rhythm (a model trained on PhysioNet sleep-lab nights). The score combines duration, efficiency, time to fall asleep, time awake, wake-ups, overnight HRV vs your normal, the heart-rate drop in sleep and timing regularity. Breathing rate comes from the breathing rhythm in your ECG.',
-    sources: ['Hirshkowitz M et al. 2015, Sleep Health: NSF sleep duration', 'Ohayon M et al. 2017, Sleep Health: NSF sleep-quality indicators', 'Phillips AJK et al. 2017, Sci Rep: sleep regularity', 'Charlton PH et al. 2016, Physiol Meas: respiratory rate from the ECG', 'Karlen W et al. 2013, IEEE TBME: smart fusion'],
+    how: 'Wake, light, deep and REM sleep are estimated every 30 s from your heart rhythm and ECG-derived breathing by a small neural network (convolution + bidirectional GRU) trained on 151 hospital sleep-lab nights with expert scoring. ECG-only staging agrees with a full sleep study about 2 in 3 epochs; treat stage minutes as estimates. The score combines duration, efficiency, time to fall asleep, time awake, wake-ups, overnight HRV vs your normal, the heart-rate drop in sleep and timing regularity. Breathing rate comes from the breathing rhythm in your ECG.',
+    sources: ['Hirshkowitz M et al. 2015, Sleep Health: NSF sleep duration', 'Ohayon M et al. 2017, Sleep Health: NSF sleep-quality indicators', 'Phillips AJK et al. 2017, Sci Rep: sleep regularity', 'Sridhar N et al. 2020, npj Digit Med: sleep staging from instantaneous heart rate', 'Radha M et al. 2019, Sci Rep: sleep stages from HRV with LSTM', 'Alvarez-Estevez D, Rijsman R 2021, PLoS One: HMC sleep staging database', 'Ohayon M et al. 2004, Sleep: normative sleep architecture', 'Charlton PH et al. 2016, Physiol Meas: respiratory rate from the ECG', 'Karlen W et al. 2013, IEEE TBME: smart fusion'],
   },
   strain: {
     title: 'Strain',
@@ -69,6 +69,7 @@ export default function WellnessDetail() {
           <>
             <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
             <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} embedded />
+            {w.last.stages?.length ? <Section title="Sleep stages"><Card><StageBreakdown n={w.last} /></Card></Section> : null}
             <Card>
               <Segmented options={[{ key: 'hr', label: 'Heart rate' }, { key: 'hrv', label: 'HRV' }]} value={hrKind} onChange={setHrKind} />
               <NightHrChart n={w.last} kind={hrKind} />

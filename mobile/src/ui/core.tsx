@@ -23,7 +23,7 @@ type V = 'display' | 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'label' | 'num' | '
 export function T({ v = 'body', color, style, ...rest }: TextProps & { v?: V; color?: string }) {
   const p = usePalette();
   const base: Record<V, TextStyle> = {
-    display: { fontFamily: fonts.display, fontSize: 40, lineHeight: 46, color: p.text },
+    display: { fontFamily: fonts.display, fontSize: 40, lineHeight: 46, color: p.text, letterSpacing: -0.8 },
     h1: { fontFamily: fonts.display, fontSize: 32, lineHeight: 38, color: p.text, letterSpacing: -0.3 },
     h2: { fontFamily: fonts.display, fontSize: 20, lineHeight: 26, color: p.text },
     h3: { fontSize: 16, fontWeight: '600', lineHeight: 22, color: p.text },
@@ -31,7 +31,7 @@ export function T({ v = 'body', color, style, ...rest }: TextProps & { v?: V; co
     small: { fontSize: 13, lineHeight: 18, color: p.muted },
     label: { fontSize: 11, letterSpacing: 1.4, fontWeight: '600', textTransform: 'uppercase', color: p.muted },
     num: { fontFamily: fonts.display, fontSize: 24, fontVariant: ['tabular-nums'], color: p.text },
-    numLg: { fontFamily: fonts.display, fontSize: 52, lineHeight: 58, fontVariant: ['tabular-nums'], color: p.text },
+    numLg: { fontFamily: fonts.display, fontSize: 52, lineHeight: 58, fontVariant: ['tabular-nums'], color: p.text, letterSpacing: -1 },
   };
   const flat = (StyleSheet.flatten([base[v], color ? { color } : null, style]) ?? {}) as TextStyle;
   const isDisplay = flat.fontFamily === fonts.display;
@@ -203,7 +203,8 @@ export function Button({
       accessibilityLabel={title}
       disabled={disabled || loading}
       onPress={() => {
-        Haptics.selectionAsync().catch(() => {});
+        // haptics only where they earn their place: commits get a light impact, plain navigation none
+        if (kind === 'primary' || kind === 'copper' || kind === 'danger') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
         onPress();
       }}
       style={({ pressed }) => [
@@ -331,7 +332,7 @@ export function Segmented<K extends string>({ options, value, onChange }: { opti
             key={o.key}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            onPress={() => onChange(o.key)}
+            onPress={() => { if (o.key !== value) Haptics.selectionAsync().catch(() => {}); onChange(o.key); }}
             style={{ flex: 1, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: on ? (p.isDark ? p.borderStrong : p.surface) : 'transparent', alignItems: 'center',
               shadowColor: '#000', shadowOpacity: on ? 0.15 : 0, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } }}>
             <Text style={{ fontSize: 13, fontFamily: ff(600), color: on ? p.text : p.muted  }}>{o.label}</Text>

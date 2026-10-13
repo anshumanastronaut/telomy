@@ -224,6 +224,10 @@ public final class KYInsight {
     private var raw = [Float](repeating: 0, count: 8192)
     private var rawCount = 0
     private var cleanBeatSamples: [Int] = []
+    private var recentBeats: [(sample: Double, amp: Double)] = []   // all beats (rhythm model works on every beat)
+    private var lastModelWindow: Double = 0
+    private var modelPositives: [Bool] = []
+    public private(set) var lastRhythmProbs: [Double]?              // [Normal, AF, Other, Noisy] of the last 60-s window
 
     public init(sampleRate fs: Double = 100, restingHr: Double = 65) {
         self.fs = fs
@@ -248,6 +252,7 @@ public final class KYInsight {
             let used = kalman.update(time: t, rrMs: rr, quality: windowClean ? q : q * 0.4)
             beats.append((t, rr, clean, used))
             if clean { cleanBeatSamples.append(Int(b.sample.rounded())); if cleanBeatSamples.count > 80 { cleanBeatSamples.removeFirst() } }
+            recentBeats.append((b.sample, b.amplitude)); if recentBeats.count > 200 { recentBeats.removeFirst(recentBeats.count - 200) }
         }
         kalman.coast(to: now)
         beats.removeAll { $0.t < now - 900 }
@@ -400,8 +405,26 @@ public final class KYInsight {
         track("poor_signal", active: badFrac > 0.7, minDuration: 60, detail: ["fraction": badFrac])
         guard noise.last != .noContact else { return }
 
-        // AF pattern on the last 64 clean beats
-        if rr.count >= 40 {
+        // AF: trained model on 60-s windows every 30 s, confirmed by consecutive windows (KYRhythmModel); the
+        // threshold rule below is the fallback when the model is not bundled.
+        if let model = KYRhythmModel.shared {
+            if now - lastModelWindow >= 30 && rawCount >= 6000 {
+                lastModelWindow = now
+                let start = rawCount - 6000
+                let x = (start..<rawCount).map { Double(raw[$0 & 8191]) }
+                let wb = recentBeats.filter { $0.sample >= Double(start) && $0.sample < Double(rawCount) }
+                if wb.count >= 20 {
+                    let f = KYRhythmModel.features(x: x, beats: wb.map { $0.sample - Double(start) }, amps: wb.map(\.amp))
+                    let pr = model.predict(f)
+                    lastRhythmProbs = pr
+                    modelPositives.append(pr[1] > model.afThreshold); if modelPositives.count > 10 { modelPositives.removeFirst() }
+                    let af = modelPositives.count >= model.persistWindows && modelPositives.suffix(model.persistWindows).allSatisfy { $0 }
+                    afWindows.append((now, af)); afWindows.removeAll { $0.t < now - 3600 }
+                    if keepLogs { afLog.append((now, f + [pr[1], pr[3]], af)) }
+                    track("af_pattern", active: af, minDuration: 30, detail: ["p_af": pr[1], "p_noisy": pr[3], "model_v": 1])
+                }
+            }
+        } else if rr.count >= 40 {
             let w = Array(rr.suffix(64))
             let mean = w.reduce(0, +) / Double(w.count)
             let d = zip(w, w.dropFirst()).map { $1 - $0 }

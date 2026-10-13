@@ -2,7 +2,7 @@
 import { router, Stack, useFocusEffect } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { api } from '@/lib/api';
 import { Band, bandAvailable } from '@/lib/band';
 import { usePalette } from '@/lib/theme';
@@ -65,7 +65,10 @@ export default function Captures() {
                 <Button kind="primary" title="Share" icon="square.and.arrow.up" onPress={() => share(c)} />
                 <Button kind="secondary" title="Upload" icon="icloud.and.arrow.up" onPress={() => upload(c)} />
                 <Button kind="secondary" title={busy === c.id ? 'Analysing…' : 'Re-analyse'} icon="arrow.clockwise" disabled={!!busy} onPress={() => reanalyse(c)} />
-                <Button kind="ghost" title="Delete" onPress={() => { Band.deleteCapture(c.id); refresh(); }} />
+                <Button kind="ghost" title="Delete" onPress={() => Alert.alert('Delete this session?', 'The ECG, beats and notes on this phone are removed. Shared or uploaded copies are not affected.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Delete', style: 'destructive', onPress: () => { Band.deleteCapture(c.id); refresh(); } },
+                ])} />
               </Row>
             </Card>
           );

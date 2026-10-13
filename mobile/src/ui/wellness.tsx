@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { radius, space, usePalette, type Palette } from '@/lib/theme';
 import { coachLine, fmtClock, fmtDur, useWellness, type Contributor, type Night, type Score, type Wellness } from '@/lib/wellness';
@@ -24,12 +25,15 @@ export function ScoreRing({ value, max = 100, size = 96, stroke = 9, color, trac
 }) {
   const r = (size - stroke) / 2, circ = 2 * Math.PI * r;
   const anim = useRef(new Animated.Value(0)).current;
+  const reduced = useReducedMotion();
   useEffect(() => {
-    Animated.timing(anim, { toValue: value == null ? 0 : Math.max(0, Math.min(1, value / max)), duration: 1100, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    const to = value == null ? 0 : Math.max(0, Math.min(1, value / max));
+    if (reduced) { anim.setValue(to); return; }
+    Animated.timing(anim, { toValue: to, duration: 700, easing: Easing.bezier(0.23, 1, 0.32, 1), useNativeDriver: false }).start();
   }, [value, max]);
   const offset = anim.interpolate({ inputRange: [0, 1], outputRange: [circ, 0] });
   return (
-    <Pressable onPress={() => { Haptics.selectionAsync(); onPress?.(); }} accessibilityRole="button" accessibilityLabel={`${label ?? ''} ${center}`} style={{ alignItems: 'center', gap: 6 }}>
+    <Pressable onPress={() => onPress?.()} accessibilityRole="button" accessibilityLabel={`${label ?? ''} ${center}`} style={{ alignItems: 'center', gap: 6 }}>
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={size} height={size} style={{ position: 'absolute' }}>
           <Circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
@@ -37,40 +41,96 @@ export function ScoreRing({ value, max = 100, size = 96, stroke = 9, color, trac
             strokeDasharray={`${circ} ${circ}`} strokeDashoffset={offset as any} rotation={-90} origin={`${size / 2}, ${size / 2}`} />
         </Svg>
         <T v="num" color="#fff" style={{ fontSize: size > 140 ? 52 : size > 90 ? 28 : 22, lineHeight: size > 140 ? 60 : undefined }}>{center}</T>
-        {sub ? <T v="small" color="rgba(255,255,255,0.65)" style={{ fontSize: 10, marginTop: -2 }}>{sub}</T> : null}
+        {sub ? <T v="small" color="rgba(255,255,255,0.65)" style={{ fontSize: 11, marginTop: -2 }}>{sub}</T> : null}
       </View>
       {label ? <T v="small" color="rgba(255,255,255,0.85)" style={{ fontWeight: '600', letterSpacing: 0.5 }}>{label.toUpperCase()}</T> : null}
     </Pressable>
   );
 }
 
-/** Asleep/awake timeline: merged runs as rounded bars, wake on a raised lane, hour ticks. */
-export function Hypnogram({ n, height = 46 }: { n: Night; height?: number }) {
+/** Stage colours (one colour = one meaning, same on every screen). */
+export const STAGE = [
+  { k: 'Awake', c: '#E0894F' }, { k: 'Light', c: '#8EA8FF' }, { k: 'Deep', c: '#4B5FD1' }, { k: 'REM', c: '#4FC8E3' },
+];
+const LANE = [0, 3, 1, 2]; // top → bottom: Awake, REM, Light, Deep (Oura/Apple order)
+
+/** Hypnogram: 4 lanes (Awake · REM · Light · Deep) when the stage model ran, else asleep/awake. Hour ticks below. */
+export function Hypnogram({ n, height }: { n: Night; height?: number }) {
   const p = usePalette();
   const [w, setW] = useState(0);
-  const N = n.hypnogram.length || 1;
+  const staged = !!n.stages?.length;
+  const seq = staged ? n.stages!.map((v) => (v < 0 ? 0 : v)) : n.hypnogram.map((v) => (v ? 1 : 0));
+  const lanes = staged ? 4 : 2;
+  const H = height ?? (staged ? 96 : 46), laneH = H / lanes, labelW = staged ? 44 : 0;
+  const N = seq.length || 1;
   const runs: { v: number; a: number; b: number }[] = [];
-  n.hypnogram.forEach((v, i) => { const r = runs[runs.length - 1]; if (r && r.v === v) r.b = i + 1; else runs.push({ v, a: i, b: i + 1 }); });
-  const X = (i: number) => (i / N) * w;
+  seq.forEach((v, i) => { const r = runs[runs.length - 1]; if (r && r.v === v) r.b = i + 1; else runs.push({ v, a: i, b: i + 1 }); });
+  const plotW = Math.max(0, w - labelW);
+  const X = (i: number) => labelW + (i / N) * plotW;
+  const laneOf = (v: number) => (staged ? LANE.indexOf(v) : v ? 1 : 0);
+  const col = (v: number) => (staged ? STAGE[v].c : v ? '#6F8CF0' : '#E0894F');
+  const Y = (v: number) => laneOf(v) * laneH + laneH * 0.18;
   const hours: number[] = [];
   for (let t = Math.ceil(n.start / 3600) * 3600; t < n.start + N * n.epochSec; t += 3600) hours.push(t);
   return (
-    <View onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)} style={{ gap: 4 }}>
+    <View onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)} style={{ gap: 4 }}
+      accessible accessibilityLabel={staged ? `Sleep stages: deep ${Math.round(n.deepMin ?? 0)} min, REM ${Math.round(n.remMin ?? 0)} min, light ${Math.round(n.lightMin ?? 0)} min` : 'Asleep and awake timeline'}>
       {w ? (
-        <Svg width={w} height={height + 14}>
-          {hours.map((t) => { const x = X((t - n.start) / n.epochSec); return <Line key={t} x1={x} x2={x} y1={0} y2={height} stroke={p.border} strokeWidth={1} />; })}
+        <Svg width={w} height={H + 16}>
+          {staged ? LANE.map((v, li) => (
+            <SvgText key={v} x={0} y={li * laneH + laneH * 0.62} fontSize={11} fill={p.muted}>{STAGE[v].k}</SvgText>
+          )) : null}
+          {hours.map((t) => { const x = X((t - n.start) / n.epochSec); return <Line key={t} x1={x} x2={x} y1={0} y2={H} stroke={p.border} strokeWidth={1} />; })}
+          {/* thin connectors between stages, like a step plot */}
+          {runs.slice(1).map((r, k) => {
+            const prev = runs[k];
+            return <Line key={'c' + k} x1={X(r.a)} x2={X(r.a)} y1={Y(prev.v) + laneH * 0.32} y2={Y(r.v) + laneH * 0.32} stroke={p.borderStrong} strokeWidth={1} />;
+          })}
           {runs.map((r, k) => (
-            <Rect key={k} x={X(r.a) + 0.5} width={Math.max(2, X(r.b) - X(r.a) - 1)} rx={3}
-              y={r.v ? height * 0.42 : height * 0.06} height={r.v ? height * 0.52 : height * 0.26}
-              fill={r.v ? '#6F8CF0' : '#E0894F'} opacity={r.v ? 0.95 : 0.9} />
+            <Rect key={k} x={X(r.a)} width={Math.max(2, X(r.b) - X(r.a) - 0.5)} rx={3} y={Y(r.v)} height={laneH * 0.64} fill={col(r.v)} />
           ))}
-          {hours.map((t) => { const x = X((t - n.start) / n.epochSec); return x > 18 && x < w - 18 ? <SvgText key={'l' + t} x={x} y={height + 12} fontSize={10} fill={p.muted} textAnchor="middle">{new Date(t * 1000).getHours()}</SvgText> : null; })}
+          {hours.map((t) => { const x = X((t - n.start) / n.epochSec); return x > labelW + 10 && x < w - 10 ? <SvgText key={'l' + t} x={x} y={H + 13} fontSize={11} fill={p.muted} textAnchor="middle">{new Date(t * 1000).getHours()}</SvgText> : null; })}
         </Svg>
-      ) : <View style={{ height: height + 14 }} />}
-      <Row gap={14}>
-        <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#6F8CF0' }} /><T v="small">Asleep</T></Row>
-        <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#E0894F' }} /><T v="small">Awake</T></Row>
-      </Row>
+      ) : <View style={{ height: H + 16 }} />}
+      {!staged ? (
+        <Row gap={14}>
+          <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#6F8CF0' }} /><T v="small">Asleep</T></Row>
+          <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#E0894F' }} /><T v="small">Awake</T></Row>
+        </Row>
+      ) : null}
+    </View>
+  );
+}
+
+/** Stage breakdown with typical adult ranges (Ohayon et al. 2004 normative sleep architecture). */
+export function StageBreakdown({ n }: { n: Night }) {
+  const p = usePalette();
+  if (n.deepMin == null || n.remMin == null || n.lightMin == null) return null;
+  const awake = n.wasoMin ?? 0;
+  const tot = n.deepMin + n.remMin + n.lightMin + awake || 1;
+  const rows = [
+    { i: 0, min: awake, typical: '' },
+    { i: 3, min: n.remMin, typical: '20–25 %' },
+    { i: 1, min: n.lightMin, typical: '50–60 %' },
+    { i: 2, min: n.deepMin, typical: '13–23 %' },
+  ];
+  return (
+    <View style={{ gap: space[3] }}>
+      <View style={{ flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
+        {rows.map((r) => (r.min > 0 ? <View key={r.i} style={{ flex: r.min, backgroundColor: STAGE[r.i].c }} /> : null))}
+      </View>
+      {rows.map((r) => (
+        <Row key={r.i}>
+          <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: STAGE[r.i].c }} />
+          <T v="body" style={{ flex: 1 }}>{STAGE[r.i].k}</T>
+          <T v="body" style={{ fontVariant: ['tabular-nums'] }}>{fmtDur(r.min)}</T>
+          <T v="small" style={{ width: 92, textAlign: 'right' }}>{r.i === 0 ? '' : `${Math.round((100 * r.min) / Math.max(1, n.tstMin))}% · ${r.typical}`}</T>
+        </Row>
+      ))}
+      <T v="small">
+        {n.remLatencyMin != null ? `First REM ${Math.round(n.remLatencyMin)} min after falling asleep · ` : ''}{n.remCycles ? `${n.remCycles} sleep cycles · ` : ''}
+        % of time asleep; typical ranges for adults. Estimated from heart rhythm, not a sleep study.
+      </T>
     </View>
   );
 }
@@ -95,16 +155,16 @@ export function NightHrChart({ n, height = 120, kind = 'hr' }: { n: Night; heigh
           {[lo, hi].map((v, i) => (
             <React.Fragment key={i}>
               <Line x1={28} x2={w} y1={Y(v)} y2={Y(v)} stroke={p.border} strokeDasharray="3 4" />
-              <SvgText x={0} y={Y(v) + 4} fontSize={10} fill={p.muted}>{Math.round(v)}</SvgText>
+              <SvgText x={0} y={Y(v) + 4} fontSize={11} fill={p.muted}>{Math.round(v)}</SvgText>
             </React.Fragment>
           ))}
           <Path d={d} stroke={col} strokeWidth={2} fill="none" strokeLinejoin="round" />
           <Circle cx={X(min[0])} cy={Y(min[1])} r={4.5} fill={col} stroke={p.surface} strokeWidth={2} />
-          <SvgText x={Math.min(w - 96, Math.max(30, X(min[0]) - 28))} y={Y(min[1]) + (kind === 'hr' ? 16 : -8)} fontSize={10} fill={p.text}>
+          <SvgText x={Math.min(w - 96, Math.max(30, X(min[0]) - 28))} y={Y(min[1]) + (kind === 'hr' ? 16 : -8)} fontSize={11} fill={p.text}>
             {kind === 'hr' ? `low ${Math.round(min[1])}` : `peak ${Math.round(min[1])}`} · {fmtClock(min[0])}
           </SvgText>
-          <SvgText x={28} y={height - 2} fontSize={10} fill={p.muted}>{fmtClock(t0)}</SvgText>
-          <SvgText x={w - 34} y={height - 2} fontSize={10} fill={p.muted}>{fmtClock(t1)}</SvgText>
+          <SvgText x={28} y={height - 2} fontSize={11} fill={p.muted}>{fmtClock(t0)}</SvgText>
+          <SvgText x={w - 34} y={height - 2} fontSize={11} fill={p.muted}>{fmtClock(t1)}</SvgText>
         </Svg>
       ) : <View style={{ height }} />}
     </View>
@@ -157,6 +217,16 @@ export function LastNightCard({ n, sleep, history = [], embedded }: { n: Night; 
       </Row>
       </>}
       <Hypnogram n={n} />
+      {n.stages?.length && n.deepMin != null && n.remMin != null ? (
+        <Row gap={space[2]}>
+          {[{ i: 2, m: n.deepMin }, { i: 3, m: n.remMin }, { i: 1, m: n.lightMin ?? 0 }].map((x) => (
+            <View key={x.i} style={{ flex: 1, gap: 2, paddingVertical: 8, paddingHorizontal: 10, borderRadius: radius.md, backgroundColor: STAGE[x.i].c + '1F' }}>
+              <T v="small" color={STAGE[x.i].c} style={{ fontWeight: '600', fontSize: 12 }}>{STAGE[x.i].k}</T>
+              <T v="num" style={{ fontSize: 18 }}>{fmtDur(x.m)}</T>
+            </View>
+          ))}
+        </Row>
+      ) : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
         <MiniMetric icon="heart.fill" color={p.danger} label="Lowest HR" value={n.lowestHr ? `${Math.round(n.lowestHr)} bpm` : '—'} delta={d('lowestHr')} goodUp={false}
           sub={n.lowestHrAt ? `at ${fmtClock(n.lowestHrAt)}${n.lowestHrPos != null && n.lowestHrPos > 0.66 ? ' · late' : ''}` : undefined} />
@@ -234,9 +304,9 @@ export function NightTrend({ nights }: { nights: Night[] }) {
     <Row style={{ alignItems: 'flex-end', height: 120 }} gap={8}>
       {last.map((n) => (
         <View key={n.id} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-          <T v="small" style={{ fontSize: 10 }}>{n.sleepRmssd ? Math.round(n.sleepRmssd) : ''}</T>
+          <T v="small" style={{ fontSize: 11 }}>{n.sleepRmssd ? Math.round(n.sleepRmssd) : ''}</T>
           <View style={{ width: '70%', height: (n.tstMin / max) * 80, borderRadius: 4, backgroundColor: n.tstMin >= 420 ? '#5B7FD6' : p.copper }} />
-          <T v="small" style={{ fontSize: 10 }}>{new Date(n.end * 1000).toLocaleDateString('en-GB', { weekday: 'narrow' })}</T>
+          <T v="small" style={{ fontSize: 11 }}>{new Date(n.end * 1000).toLocaleDateString('en-GB', { weekday: 'narrow' })}</T>
         </View>
       ))}
     </Row>

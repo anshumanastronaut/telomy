@@ -12,5 +12,6 @@ Pod::Spec.new do |s|
   s.dependency 'ExpoModulesCore'
   s.frameworks     = 'CoreBluetooth'
   s.source_files   = '**/*.swift'
+  s.resource_bundles = { 'KyEcgModels' => ['Resources/*.json'] }  # sleep-stager weights (telomy-lab/sleepstage)
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'SWIFT_COMPILATION_MODE' => 'wholemodule' }
 end

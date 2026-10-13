@@ -58,7 +58,7 @@ export default function Home() {
           <Icon name="stethoscope" size={22} color={p.teal} />
           {h.pending_reviews ? (
             <View style={{ position: 'absolute', top: -6, right: -8, backgroundColor: p.copper, borderRadius: 8, paddingHorizontal: 5 }}>
-              <T v="small" color={p.onAccent} style={{ fontSize: 10 }}>
+              <T v="small" color={p.onAccent} style={{ fontSize: 11 }}>
                 {h.pending_reviews}
               </T>
             </View>

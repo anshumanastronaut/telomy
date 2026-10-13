@@ -15,6 +15,8 @@ export type Night = {
   hrDropPct?: number; respRate?: number; hypnogram: number[]; epochSec: number;
   hr5: [number, number, number][]; hrv5: [number, number, number][]; events: { type: string; start: number; end: number }[];
   midpoint: number;  // unix time of the sleep midpoint
+  stages?: number[];  // 4-stage model per 30-s epoch: 0 wake, 1 light, 2 deep, 3 REM, -1 no data
+  lightMin?: number; deepMin?: number; remMin?: number; remLatencyMin?: number; remCycles?: number;
 };
 export type MinuteRec = { ts: string; hr: number; rmssd?: number; quality?: string; activity?: string; sleep?: string; motion?: number | null; resting?: number };
 export type Contributor = { key: string; label: string; score: number | null; value: string; note: string };
@@ -57,6 +59,7 @@ export function nightsFrom(captures: CaptureMeta[]): Night[] {
       sleepHr: nm.avgSleepHr ?? sl.sleepHr, sleepRmssd: nm.sleepRmssd ?? sl.sleepRmssd, lateRmssd: nm.lateRmssd,
       lowestHr: nm.lowestHr, lowestHrAt: nm.lowestHrAt, lowestHrPos: nm.lowestHrPos, hrDropPct: nm.hrDropPct, respRate: nm.respRate,
       hypnogram: hyp, epochSec: epoch, hr5: nm.hr5 ?? [], hrv5: nm.hrv5 ?? [], events: s.events ?? [], midpoint: mid,
+      stages: sl.stages, lightMin: sl.lightMin, deepMin: sl.deepMin, remMin: sl.remMin, remLatencyMin: sl.remLatencyMin, remCycles: sl.remCycles,
     });
   }
   return out.sort((a, b) => a.end - b.end);
@@ -74,32 +77,42 @@ export function nightsFrom(captures: CaptureMeta[]): Night[] {
 export function sleepScore(n: Night, history: Night[]): Score {
   const prev = history.filter((h) => h.end < n.end).slice(-30);
   const c: (Contributor & { w: number })[] = [];
-  c.push({ key: 'duration', label: 'Total sleep', w: 0.3, value: fmtDur(n.tstMin), note: 'Adults need 7–9 h',
+  c.push({ key: 'duration', label: 'Total sleep', w: 0.25, value: fmtDur(n.tstMin), note: 'Adults need 7–9 h',
     score: knots(n.tstMin / 60, [[4, 0], [5, 35], [6, 65], [7, 100], [9, 100], [10, 90], [11, 75]]) });
-  c.push({ key: 'efficiency', label: 'Efficiency', w: 0.15, value: `${Math.round(n.efficiency * 100)}%`, note: '85 % or more is good',
+  c.push({ key: 'efficiency', label: 'Efficiency', w: 0.12, value: `${Math.round(n.efficiency * 100)}%`, note: '85 % or more is good',
     score: knots(n.efficiency * 100, [[65, 0], [74, 25], [85, 75], [90, 100]]) });
-  if (n.onsetMin != null) c.push({ key: 'latency', label: 'Time to fall asleep', w: 0.1, value: `${Math.round(n.onsetMin)} min`, note: '15 min or less is good',
+  if (n.onsetMin != null) c.push({ key: 'latency', label: 'Time to fall asleep', w: 0.08, value: `${Math.round(n.onsetMin)} min`, note: '15 min or less is good',
     score: knots(n.onsetMin, [[15, 100], [30, 70], [45, 30], [60, 0]]) });
-  c.push({ key: 'waso', label: 'Awake after falling asleep', w: 0.1, value: `${Math.round(n.wasoMin)} min`, note: '20 min or less is good',
+  c.push({ key: 'waso', label: 'Awake after falling asleep', w: 0.08, value: `${Math.round(n.wasoMin)} min`, note: '20 min or less is good',
     score: knots(n.wasoMin, [[20, 100], [35, 65], [50, 30], [80, 0]]) });
-  c.push({ key: 'awakenings', label: 'Wake-ups', w: 0.05, value: `${n.awakenings}`, note: 'Brief wake-ups are normal; fewer is better',
+  if (n.deepMin != null && n.tstMin > 0) {
+    const f = n.deepMin / n.tstMin;
+    c.push({ key: 'deep', label: 'Deep sleep', w: 0.09, value: `${fmtDur(n.deepMin)} · ${Math.round(f * 100)}%`, note: 'Typical 13–23 % for adults (less with age)',
+      score: knots(f, [[0.03, 0], [0.08, 40], [0.13, 85], [0.16, 100], [0.25, 100], [0.35, 85]]) });
+  }
+  if (n.remMin != null && n.tstMin > 0) {
+    const f = n.remMin / n.tstMin;
+    c.push({ key: 'rem', label: 'REM sleep', w: 0.09, value: `${fmtDur(n.remMin)} · ${Math.round(f * 100)}%`, note: 'Typical 20–25 % of sleep',
+      score: knots(f, [[0.05, 0], [0.12, 45], [0.18, 85], [0.2, 100], [0.26, 100], [0.33, 80]]) });
+  }
+  c.push({ key: 'awakenings', label: 'Wake-ups', w: 0.04, value: `${n.awakenings}`, note: 'Brief wake-ups are normal; fewer is better',
     score: knots(n.awakenings, [[2, 100], [4, 65], [6, 30], [9, 0]]) });
   if (n.sleepRmssd) {
     const base = prev.map((h) => h.sleepRmssd).filter(Boolean).map((v) => Math.log(v!));
     if (base.length >= 3) {
       const z = (Math.log(n.sleepRmssd) - mean(base)) / Math.max(0.05, sd(base));
-      c.push({ key: 'restoration', label: 'Restoration (HRV)', w: 0.15, value: `${Math.round(n.sleepRmssd)} ms`, note: 'Overnight HRV vs your normal',
+      c.push({ key: 'restoration', label: 'Restoration (HRV)', w: 0.13, value: `${Math.round(n.sleepRmssd)} ms`, note: 'Overnight HRV vs your normal',
         score: clamp(70 + 20 * z) });
     } else {
-      c.push({ key: 'restoration', label: 'Restoration (HRV)', w: 0.15, value: `${Math.round(n.sleepRmssd)} ms`, note: `Learning your normal (${base.length}/3 nights)`, score: null });
+      c.push({ key: 'restoration', label: 'Restoration (HRV)', w: 0.13, value: `${Math.round(n.sleepRmssd)} ms`, note: `Learning your normal (${base.length}/3 nights)`, score: null });
     }
   }
-  if (n.hrDropPct != null) c.push({ key: 'drop', label: 'Heart-rate drop', w: 0.1, value: `${Math.round(n.hrDropPct)}%`, note: 'A 10 % or larger drop in sleep is typical',
+  if (n.hrDropPct != null) c.push({ key: 'drop', label: 'Heart-rate drop', w: 0.08, value: `${Math.round(n.hrDropPct)}%`, note: 'A 10 % or larger drop in sleep is typical',
     score: knots(n.hrDropPct, [[0, 0], [5, 30], [10, 70], [15, 100]]) });
   const mids = [...prev.slice(-6), n].map((h) => { const d = new Date(h.midpoint * 1000); return ((d.getHours() + 12) % 24) * 60 + d.getMinutes(); });
   if (mids.length >= 3) {
     const s = sd(mids);
-    c.push({ key: 'regularity', label: 'Regular timing', w: 0.05, value: `±${Math.round(s)} min`, note: 'Same sleep timing every night helps',
+    c.push({ key: 'regularity', label: 'Regular timing', w: 0.04, value: `±${Math.round(s)} min`, note: 'Same sleep timing every night helps',
       score: knots(s, [[30, 100], [60, 60], [90, 20], [120, 0]]) });
   }
   const used = c.filter((x) => x.score != null);
@@ -252,6 +265,8 @@ export type Wellness = {
   yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void; sessionsToday: DayEvent[]; userEvents: UserEventRec[];
 };
 
+/** Must equal KYCapture.analysisVersion: nights analysed by an older version are re-analysed once on the phone. */
+export const ANALYSIS_VERSION = '2026-10-14b (4-stage sleep, HMC 151 nights)';
 const reanalysed = new Set<string>();
 let pending: Promise<void> | null = null;
 const reloaders = new Set<() => void>();
@@ -262,7 +277,7 @@ export function useWellness(ageHint?: number | null): Wellness {
     const caps = bandAvailable ? Band.listCaptures() : [];
     // nights recorded before the night metrics existed: re-analyse once (in the background) so they get them.
     // One shared job: every mounted instance waits for it, then all reload.
-    const stale = (caps as any[]).filter((c) => c.therapyId === 'sleep' && c.endedAt && (c.summary as any)?.sleep?.t0 == null && !reanalysed.has(c.id));
+    const stale = (caps as any[]).filter((c) => c.therapyId === 'sleep' && c.endedAt && c.analysis?.version !== ANALYSIS_VERSION && !reanalysed.has(c.id));
     if (stale.length && !pending) {
       pending = (async () => { for (const c of stale) { reanalysed.add(c.id); await Band.reanalyseCapture(c.id); } })()
         .finally(() => { pending = null; reloaders.forEach((r) => r()); });

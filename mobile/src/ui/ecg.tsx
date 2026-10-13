@@ -88,7 +88,7 @@ export function EcgMonitor({ seconds = 5, height = 190, gain = 1, live }: { seco
           {current ? <Circle cx={cx} cy={y(ecg.at(head))} r={p.isDark ? 4 : 3.5} fill={p.isDark ? '#E9FFF4' : p.teal} /> : null}
           {/* 1 mV calibration pulse */}
           <Path d={`M4,${height / 2} L8,${height / 2} L8,${height / 2 - pxPerMv} L18,${height / 2 - pxPerMv} L18,${height / 2} L22,${height / 2}`} stroke={p.muted} strokeWidth={1} fill="none" />
-          <SvgText x={w - 6} y={height - 6} fill={p.muted} fontSize={10} textAnchor="end" fontFamily={fonts.body}>25 mm/s · {10 * gain} mm/mV · 0.5–40 Hz</SvgText>
+          <SvgText x={w - 6} y={height - 6} fill={p.muted} fontSize={11} textAnchor="end" fontFamily={fonts.body}>25 mm/s · {10 * gain} mm/mV · 0.5–40 Hz</SvgText>
           {stale ? <SvgText x={w / 2} y={height / 2 - 8} fill={p.muted} fontSize={14} textAnchor="middle" fontFamily={fonts.medium}>Waiting for ECG…</SvgText> : null}
         </Svg>
       ) : null}
@@ -129,8 +129,8 @@ export function Tachogram({ rr, height = 90 }: { rr: { t: number; rr: number }[]
           <Line x1={0} x2={w} y1={height - 14} y2={height - 14} stroke={p.border} />
           <Path d={d} stroke={p.teal} strokeWidth={1.8} fill="none" />
           {pts.map((q, i) => <Circle key={i} cx={x(i)} cy={yv(q.rr)} r={1.6} fill={p.teal} />)}
-          <SvgText x={0} y={10} fill={p.muted} fontSize={10} fontFamily={fonts.body}>{Math.round(hi - 20)} ms</SvgText>
-          <SvgText x={0} y={height - 2} fill={p.muted} fontSize={10} fontFamily={fonts.body}>{Math.round(lo + 20)} ms · last {pts.length} beats</SvgText>
+          <SvgText x={0} y={10} fill={p.muted} fontSize={11} fontFamily={fonts.body}>{Math.round(hi - 20)} ms</SvgText>
+          <SvgText x={0} y={height - 2} fill={p.muted} fontSize={11} fontFamily={fonts.body}>{Math.round(lo + 20)} ms · last {pts.length} beats</SvgText>
         </Svg>
       ) : null}
     </View>
@@ -157,8 +157,8 @@ export function HrTrend({ hr, height = 110, minutes = 30 }: { hr: { t: number; h
           <Path d={area} fill={p.danger} fillOpacity={0.08} />
           <Path d={d} stroke={p.danger} strokeWidth={2} fill="none" />
           <Circle cx={x(now)} cy={yv(pts[pts.length - 1].hr)} r={3.5} fill={p.danger} />
-          <SvgText x={0} y={10} fill={p.muted} fontSize={10} fontFamily={fonts.body}>{hi} bpm</SvgText>
-          <SvgText x={0} y={height - 2} fill={p.muted} fontSize={10} fontFamily={fonts.body}>{lo} bpm · last {Math.round((now - pts[0].t) / 60) || 1} min</SvgText>
+          <SvgText x={0} y={10} fill={p.muted} fontSize={11} fontFamily={fonts.body}>{hi} bpm</SvgText>
+          <SvgText x={0} y={height - 2} fill={p.muted} fontSize={11} fontFamily={fonts.body}>{lo} bpm · last {Math.round((now - pts[0].t) / 60) || 1} min</SvgText>
         </Svg>
       ) : null}
     </View>

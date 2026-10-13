@@ -68,7 +68,7 @@ export function DayTimeline({ w }: { w: Wellness }) {
                 <Circle cx={X(e.t)} cy={top + 6} r={5} fill={kindOf(e.kind).color} stroke={p.surface} strokeWidth={1.5} />
               </React.Fragment>
             ))}
-            {ticks.map((t) => <SvgText key={'l' + t} x={X(t)} y={H - 2} fontSize={10} fill={p.muted} textAnchor="middle">{fmtClock(t)}</SvgText>)}
+            {ticks.map((t) => <SvgText key={'l' + t} x={X(t)} y={H - 2} fontSize={11} fill={p.muted} textAnchor="middle">{fmtClock(t)}</SvgText>)}
           </Svg>
         ) : <View style={{ height: H }} />}
       </View>
@@ -137,10 +137,10 @@ export function TrendChart({ title, points, color, unit, band, decimals = 0, hig
             {band ? <Line x1={padL} x2={width - padR} y1={Y(band.mean)} y2={Y(band.mean)} stroke={color} strokeOpacity={0.35} strokeDasharray="4 4" /> : null}
             {points.length > 1 ? <Path d={d} stroke={color} strokeWidth={2} fill="none" strokeLinejoin="round" /> : null}
             {points.map((q, i) => <Circle key={q.t} cx={X(i)} cy={Y(q.v)} r={i === points.length - 1 ? 4.5 : 2.5} fill={color} stroke={p.surface} strokeWidth={i === points.length - 1 ? 2 : 0} />)}
-            <SvgText x={width - padR + 4} y={Y(hi) + 4} fontSize={10} fill={p.muted}>{hi.toFixed(decimals)}</SvgText>
-            <SvgText x={width - padR + 4} y={Y(lo) + 4} fontSize={10} fill={p.muted}>{lo.toFixed(decimals)}</SvgText>
-            <SvgText x={padL} y={H - 4} fontSize={10} fill={p.muted}>{new Date(points[0].t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</SvgText>
-            <SvgText x={width - padR} y={H - 4} fontSize={10} fill={p.muted} textAnchor="end">{new Date(last.t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</SvgText>
+            <SvgText x={width - padR + 4} y={Y(hi) + 4} fontSize={11} fill={p.muted}>{hi.toFixed(decimals)}</SvgText>
+            <SvgText x={width - padR + 4} y={Y(lo) + 4} fontSize={11} fill={p.muted}>{lo.toFixed(decimals)}</SvgText>
+            <SvgText x={padL} y={H - 4} fontSize={11} fill={p.muted}>{new Date(points[0].t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</SvgText>
+            <SvgText x={width - padR} y={H - 4} fontSize={11} fill={p.muted} textAnchor="end">{new Date(last.t * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</SvgText>
           </Svg>
         ) : <View style={{ height: H }} />}
       </View>
