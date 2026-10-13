@@ -115,7 +115,7 @@ export function Card({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={({ pressed }) => [outer, { opacity: pressed ? 0.85 : 1 }]}>
+      style={({ pressed }) => [outer, { opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] }]}>
       {inner}
     </Pressable>
   );
@@ -297,7 +297,7 @@ export function ListRow({
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3], opacity: pressed ? 0.7 : 1, minHeight: 44 })}>
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3], opacity: pressed ? 0.6 : 1, minHeight: 48 })}>
       {icon ? (
         <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: p.tealSoft, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name={icon} size={15} color={p.teal} />

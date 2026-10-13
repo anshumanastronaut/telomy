@@ -19,9 +19,13 @@ export default function CentreDashboard() {
   const done = d.today.filter((b: any) => ['completed', 'checked_in'].includes(b.status)).length;
   return (
     <Screen onRefresh={reload} refreshing={loading}>
-      <Row><Logo kind="mark" width={46} /><Logo kind="word" width={86} /></Row>
-      <T v="small">Halo Longevity Centre (test)</T>
-      <T v="h1">Dashboard</T>
+      <Row gap={12}>
+        <Logo kind="mark" width={34} />
+        <View style={{ flex: 1 }}>
+          <T v="label" numberOfLines={1}>Halo Longevity Centre (test)</T>
+          <T v="h1">Dashboard</T>
+        </View>
+      </Row>
       <Card>
         <Row>
           <Stat label="Revenue this month" value={inr(d.revenue_month)} sub={change != null ? `${change >= 0 ? '+' : ''}${change}% vs ${d.revenue_compare}` : undefined} color={change != null && change < 0 ? p.danger : undefined} />

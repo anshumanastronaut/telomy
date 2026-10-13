@@ -5,6 +5,8 @@ import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { ago, fmtDate, useApi } from '@/lib/api';
 import { radius, space, statusColor, usePalette } from '@/lib/theme';
 import { Sparkline, StackBar } from '@/ui/charts';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { Button, Card, Chip, Divider, Empty, ErrorState, Icon, ListRow, Loading, Row, Screen, Section, Segmented, Spacer, StatusChip, T } from '@/ui/core';
 import { InsightCard } from '@/ui/insight';
 
@@ -84,24 +86,16 @@ function Markers() {
 
   return (
     <>
-      <Card>
-        <T v="label">Across {panels.data.filter((x) => x.markers).length} panels</T>
-        <Row gap={space[4]}>
-          <Count n={counts.n} label="Markers" />
-          <Count n={counts.o} label="Optimal" color={p.success} />
-          <Count n={counts.r} label="In range" color={p.warn} />
-          <Count n={counts.x} label="Out of range" color={p.danger} />
-        </Row>
-        <StackBar parts={[{ value: counts.o, color: p.success }, { value: counts.r, color: p.warn }, { value: counts.x, color: p.danger }]} />
-      </Card>
+      <BiomarkerHero n={counts.n} o={counts.o} r={counts.r} x={counts.x} panels={panels.data.filter((x) => x.markers).length}
+        onOut={() => { setFilter('flag'); }} />
 
       <Row gap={space[2]}>
         <Card style={{ flex: 1 }} onPress={() => router.push('/notes')} testID="notes-link">
-          <T v="label">Clinician notes</T>
+          <Row gap={6}><Icon name="stethoscope" size={15} color={p.teal} /><T v="label" style={{ flex: 1 }}>Clinician notes</T><Icon name="chevron.right" size={10} color={p.faint} /></Row>
           <T v="small">Top 3 priorities + TL;DR</T>
         </Card>
         <Card style={{ flex: 1 }} onPress={() => router.push('/browse')} testID="browse-link">
-          <T v="label">Browse</T>
+          <Row gap={6}><Icon name="square.grid.2x2" size={15} color={p.teal} /><T v="label" style={{ flex: 1 }}>Browse</T><Icon name="chevron.right" size={10} color={p.faint} /></Row>
           <T v="small">By health category</T>
         </Card>
       </Row>
@@ -137,11 +131,7 @@ function Markers() {
                   <T v="body" style={{ flex: 1 }}>
                     {r.condition}
                   </T>
-                  <Chip
-                    label={r.level === 'unknown' ? 'Not enough data' : r.level[0].toUpperCase() + r.level.slice(1)}
-                    fg={r.level === 'high' ? p.danger : r.level === 'moderate' ? p.warn : r.level === 'low' ? p.success : p.muted}
-                    bg={r.level === 'high' ? p.dangerSoft : r.level === 'moderate' ? p.warnSoft : r.level === 'low' ? p.successSoft : p.surfaceAlt}
-                  />
+                  <LevelMeter level={r.level} />
                 </Row>
               </View>
             ))}
@@ -426,5 +416,60 @@ function Reports() {
         Every report stays as its own dated record. Uploading a new one never overwrites an earlier one.
       </T>
     </>
+  );
+}
+
+/** Dark hero: segmented donut of optimal / in range / out of range across all panels. */
+function BiomarkerHero({ n, o, r, x, panels, onOut }: { n: number; o: number; r: number; x: number; panels: number; onOut: () => void }) {
+  const p = usePalette();
+  const size = 132, sw = 12, R = (size - sw) / 2, C = 2 * Math.PI * R, gap = 6;
+  const parts = [{ v: o, c: '#4FD08F' }, { v: r, c: '#F2B94B' }, { v: x, c: '#FF6B57' }].filter((q) => q.v > 0);
+  let acc = 0;
+  const arcs = parts.map((q) => { const len = (q.v / Math.max(1, n)) * C; const a = { off: acc, len: Math.max(0, len - gap), c: q.c }; acc += len; return a; });
+  const rows = [{ k: 'Optimal', v: o, c: '#4FD08F' }, { k: 'In range', v: r, c: '#F2B94B' }, { k: 'Out of range', v: x, c: '#FF6B57' }];
+  return (
+    <LinearGradient colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
+      <T v="label" color="rgba(255,255,255,0.6)">Biomarkers · {panels} panels</T>
+      <Row gap={space[5]}>
+        <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+          <Svg width={size} height={size} style={{ position: 'absolute' }}>
+            <Circle cx={size / 2} cy={size / 2} r={R} stroke="rgba(255,255,255,0.08)" strokeWidth={sw} fill="none" />
+            {arcs.map((a, i) => (
+              <Circle key={i} cx={size / 2} cy={size / 2} r={R} stroke={a.c} strokeWidth={sw} fill="none" strokeLinecap="round"
+                strokeDasharray={`${a.len} ${C}`} strokeDashoffset={-a.off} rotation={-90} origin={`${size / 2}, ${size / 2}`} />
+            ))}
+          </Svg>
+          <T v="display" color="#fff" style={{ fontSize: 36, lineHeight: 42 }}>{n ? Math.round((100 * o) / n) : 0}%</T>
+          <T v="small" color="rgba(255,255,255,0.6)" style={{ fontSize: 11 }}>optimal</T>
+        </View>
+        <View style={{ flex: 1, gap: 10 }}>
+          {rows.map((q) => (
+            <Pressable key={q.k} disabled={q.k !== 'Out of range'} onPress={onOut} accessibilityRole={q.k === 'Out of range' ? 'button' : undefined}>
+              <Row gap={8}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: q.c }} />
+                <T v="small" color="rgba(255,255,255,0.75)" style={{ flex: 1 }}>{q.k}</T>
+                <T v="num" color="#fff" style={{ fontSize: 20 }}>{q.v}</T>
+              </Row>
+            </Pressable>
+          ))}
+          <T v="small" color="rgba(255,255,255,0.45)" style={{ fontSize: 11 }}>{n} markers in total</T>
+        </View>
+      </Row>
+    </LinearGradient>
+  );
+}
+
+/** Three-step level meter (low · moderate · high) instead of a wall of coloured badges. */
+function LevelMeter({ level }: { level: string }) {
+  const p = usePalette();
+  const k = level === 'high' ? 3 : level === 'moderate' ? 2 : level === 'low' ? 1 : 0;
+  const col = k === 3 ? p.danger : k === 2 ? p.warn : k === 1 ? p.success : p.faint;
+  return (
+    <Row gap={8} style={{ minWidth: 96, justifyContent: 'flex-end' }}>
+      <T v="small" color={k ? col : p.muted} style={{ fontSize: 12 }}>{k ? level[0].toUpperCase() + level.slice(1) : 'No data'}</T>
+      <Row gap={3}>
+        {[1, 2, 3].map((i) => <View key={i} style={{ width: 6, height: 6 + i * 4, borderRadius: 2, alignSelf: 'flex-end', backgroundColor: i <= k ? col : p.surfaceAlt }} />)}
+      </Row>
+    </Row>
   );
 }

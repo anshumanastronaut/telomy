@@ -210,9 +210,10 @@ export function LiveBandCard({ onPress }: { onPress: () => void }) {
 }
 
 /** Band entry points that work offline: live ECG, therapy capture, saved sessions. Shown even when the server is unreachable. */
-export function BandTools({ compact = false }: { compact?: boolean }) {
+export function BandTools({ compact = false, liveOnly = false }: { compact?: boolean; liveOnly?: boolean }) {
   const p = usePalette();
   if (!bandAvailable) return null;
+  if (liveOnly) return <LiveBandCard onPress={() => router.push('/monitor')} />;
   return (
     <View style={{ gap: 8 }}>
       <LiveBandCard onPress={() => router.push('/monitor')} />

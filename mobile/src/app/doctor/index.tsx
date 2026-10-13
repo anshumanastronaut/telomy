@@ -17,13 +17,17 @@ export default function DoctorToday() {
   const d = t.data;
   return (
     <Screen onRefresh={() => { t.reload(); w.reload(); }} refreshing={t.loading}>
-      <Row><Logo kind="mark" width={46} /><Logo kind="word" width={86} /></Row>
-      <T v="small">Telomy Care · Dr. Meera Rao</T>
-      <T v="h1">Today</T>
+      <Row gap={12}>
+        <Logo kind="mark" width={34} />
+        <View style={{ flex: 1 }}>
+          <T v="label" numberOfLines={1}>Telomy Care · Dr. Meera Rao</T>
+          <T v="h1">Today</T>
+        </View>
+      </Row>
       <Card>
         <Row>
           <Stat label="Patients" value={d.patients} />
-          <Stat label="Drafts to review" value={d.awaiting_reviews} color={d.awaiting_reviews ? p.copper : undefined} />
+          <Stat label="To review" value={d.awaiting_reviews} color={d.awaiting_reviews ? p.copper : undefined} />
           <Stat label="Overdue labs" value={d.overdue_reports} />
         </Row>
       </Card>

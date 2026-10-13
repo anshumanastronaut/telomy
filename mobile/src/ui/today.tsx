@@ -91,7 +91,7 @@ function Doorway({ icon, color, title, value, sub, ring, max, onPress }: {
 }) {
   return (
     <Pressable onPress={() => { Haptics.selectionAsync(); onPress(); }} accessibilityRole="button" accessibilityLabel={`${title} ${value}`}
-      style={({ pressed }) => ({ flex: 1, padding: 14, gap: 2, borderRadius: radius.xl,
+      style={({ pressed }) => ({ flex: 1, padding: 14, gap: 2, borderRadius: radius.xl, transform: [{ scale: pressed ? 0.97 : 1 }],
         backgroundColor: pressed ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' })}>
       <Row gap={5}>
         <Icon name={icon} size={11} color={color} />
@@ -146,12 +146,14 @@ export function TodayHero({ w }: { w: Wellness }) {
 export function DetailHero({ value, max = 100, unit, label, sub, color, dial }: {
   value: number | null; max?: number; unit?: string; label: string; sub?: string; color: string; dial?: boolean;
 }) {
+  const tenths = useCountUp(value == null ? null : Math.round(max === 100 ? value : value * 10));
+  const shown = tenths == null ? '—' : max === 100 ? `${tenths}` : (tenths / 10).toFixed(1);
   return (
     <LinearGradient colors={[C.ink, C.ink2]} style={{ borderRadius: 28, padding: space[5], alignItems: 'center', gap: space[2], borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
       {dial ? <RecoveryDial value={value} label={label} /> : (
         <>
           <ScoreRing value={value} max={max} size={168} stroke={13} color={color} track="rgba(255,255,255,0.10)"
-            center={value == null ? '—' : max === 100 ? `${Math.round(value)}` : value.toFixed(1)} sub={unit} />
+            center={shown} sub={unit} />
           <T v="h3" color={color}>{label}</T>
         </>
       )}
@@ -164,7 +166,7 @@ function BodyTile({ icon, color, title, value, unit, sub, onPress }: { icon: SFS
   const p = usePalette();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title} ${value}`}
-      style={({ pressed }) => ({ flex: 1, gap: 4, padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border, opacity: pressed ? 0.85 : 1 })}>
+      style={({ pressed }) => ({ flex: 1, gap: 4, padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
       <Row gap={6}>
         <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: color + '22' }}><Icon name={icon} size={13} color={color} /></View>
         <T v="label" style={{ flex: 1 }}>{title}</T>
