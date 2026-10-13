@@ -24,8 +24,15 @@ Code: `mobile/src/ui/today.tsx` and `ui/wellness.tsx`; scores in `lib/wellness.t
 4. **Body:** Stress and Fitness (VO₂max estimate) tiles.
 5. **Your Vault:** Longevity age, biomarkers, next action, insights, domains, pinned signals, Rewind (unchanged).
 
-## Next design passes
-- A daily timeline ("your day so far": sleep → stress → activity), like Oura's Today timeline.
-- Swipe between days on Recovery and Sleep detail.
-- 7- and 30-day trend views with a baseline band (HRV, resting HR, breathing).
-- A widget and Live Activity for the live band.
+## Shipped in later passes
+- **Your day so far** (`ui/trends.tsx` DayTimeline): from wake time to now.
+  - A heart-rate line over state bands: calm, stress, active, asleep.
+  - Therapy sessions are pinned on the line. Data comes from on-phone minutes and captures.
+- **Trends** on the Recovery and Sleep details: 7 or 30 nights, with your normal range shaded (mean ± 1 SD of the previous ≤ 30 nights, Oura/Apple Vitals style). Before night 2, a compact progress state shows instead.
+- **Live Activity** (`targets/live`, `modules/ky-ecg/ios/KYLiveActivity.swift`): live heart rate, HRV and signal on the Lock Screen and in the Dynamic Island while the band streams.
+  - Updated locally every 5 s. No push server or App Group needed.
+  - The subtitle names the running therapy session and elapsed time.
+
+## Next
+- Swipe between days on the detail screens.
+- A home-screen widget for last night and recovery (needs an App Group, so a paid developer account).

@@ -126,6 +126,7 @@ final class KYBand: NSObject {
     func disconnect() {
         userDisconnected = true
         wantsStream = false
+        KYLiveActivity.shared.end()
         if let p = peripheral { central.cancelPeripheralConnection(p) }
     }
 
@@ -147,6 +148,7 @@ final class KYBand: NSObject {
     func stopStream() {
         guard capture == nil else { return }  // a therapy capture keeps the stream alive until it is stopped
         wantsStream = false
+        KYLiveActivity.shared.end()
         send(KYRequest.ecg(start: false, durationSec: 0))
         streamStartedAt = nil
         if state == .streaming { set(.connected) }
@@ -421,6 +423,11 @@ final class KYBand: NSObject {
         if let v = m.artefactPercent60 { mm["artefactPercent"] = v }
         if capture != nil { mm["capturing"] = capture!.id; capture?.addMetrics(mm) }
         emit?("onMetrics", mm)
+        // Lock Screen live heart (ActivityKit), throttled to 5 s inside
+        let live = KYLiveActivity.shared
+        if !live.isRunning { live.start(title: capture.map { ($0.meta["therapy"] as? String) ?? "Session" } ?? "Live heart") }
+        let sub = capture.map { "\(($0.meta["therapy"] as? String) ?? "Session") · \(live.elapsed)" } ?? "Live heart · \(live.elapsed)"
+        live.update(hr: st.hr, hrv: (st.hrvState == "ok" || st.hrvState == "active") ? st.rmssd : nil, signal: st.windowClass, subtitle: sub)
         log("metrics q=\(m.quality.rawValue) hr=\(m.heartRate.map { String(format: "%.1f", $0) } ?? "-") rmssd60=\(m.rmssd60.map { String(format: "%.1f", $0) } ?? "-") rel=\(m.hrvReliable) art=\(m.artefactPercent60.map { String(format: "%.1f", $0) } ?? "-") sqi=\(m.sqi.map { "\($0.key)=\(String(format: "%.2f", $0.value))" }.sorted().joined(separator: ","))")
     }
 
