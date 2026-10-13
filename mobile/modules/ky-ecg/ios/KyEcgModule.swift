@@ -36,6 +36,10 @@ public class KyEcgModule: Module {
         Function("captureMeta") { KYBand.shared.captureMeta }
         Function("listCaptures") { KYCapture.list() }
         Function("deleteCapture") { (id: String) in KYCapture.delete(id: id) }
+        Function("wellnessAppend") { (kind: String, record: [String: Any]) in KYWellnessStore.append(kind: kind, record: record) }
+        AsyncFunction("wellnessRead") { (kind: String, days: Int, promise: Promise) in
+            DispatchQueue.global(qos: .userInitiated).async { promise.resolve(KYWellnessStore.read(kind: kind, days: days)) }
+        }
         AsyncFunction("reanalyseCapture") { (id: String, promise: Promise) in
             let resting = UserDefaults.standard.double(forKey: "ky.restingHr")
             DispatchQueue.global(qos: .userInitiated).async {

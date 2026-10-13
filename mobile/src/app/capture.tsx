@@ -122,7 +122,8 @@ export default function Capture() {
     const r = Band.stopCapture({ post, notes, settings });
     setRunning(false);
     if (r.error) return show(r.error, 'alert');
-    show(therapy?.id === 'sleep' ? 'Night saved and analysed on this phone.' : 'Session saved on this phone.', 'success');
+    if (therapy?.id === 'sleep') return router.replace('/wellness/sleep');  // analysed there (on the phone), then shown
+    show('Session saved on this phone.', 'success');
     router.replace('/captures');
   }
 

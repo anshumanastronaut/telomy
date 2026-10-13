@@ -52,7 +52,11 @@ function set(patch: Partial<Snapshot>) {
 
 // ------------------------------------------------------------------ minute summaries → backend
 
-type Minute = { ts: string; hr: number[]; beats: number; rmssd?: number; sdnn?: number; quality: Record<string, number>; artefact?: number };
+type Minute = {
+  ts: string; hr: number[]; beats: number; rmssd?: number; sdnn?: number; quality: Record<string, number>; artefact?: number;
+  activity: Record<string, number>; sleep: Record<string, number>; motion: number[]; resting?: number;
+};
+const top = (c: Record<string, number>) => Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0];
 let minute: Minute | null = null;
 let outbox: object[] = [];
 
@@ -65,11 +69,17 @@ function localMinute(t: number) {
 function closeMinute() {
   if (!minute) return;
   if (!minute.hr.length) { Band.log(`minute ${minute.ts} skipped: no clean heart rate (${JSON.stringify(minute.quality)})`); return; }
-  const q = Object.entries(minute.quality).sort((a, b) => b[1] - a[1])[0]?.[0];
-  outbox.push({
+  const q = top(minute.quality);
+  const rec = {
     ts: minute.ts,
     hr: Math.round((minute.hr.reduce((a, b) => a + b, 0) / minute.hr.length) * 10) / 10,
     rmssd: minute.rmssd, sdnn: minute.sdnn, beats: minute.beats, quality: q, artefact_pct: minute.artefact,
+  };
+  outbox.push(rec);
+  // on-phone copy for offline scores (strain, stress, zones): see lib/wellness.ts
+  Band.wellnessAppend('minutes', {
+    ...rec, activity: top(minute.activity), sleep: top(minute.sleep), resting: minute.resting,
+    motion: minute.motion.length ? Math.round((minute.motion.reduce((a, b) => a + b, 0) / minute.motion.length) * 100) / 100 : null,
   });
   flush();
 }
@@ -105,12 +115,16 @@ function handleMetrics(raw: BandMetrics) {
   const key = localMinute(raw.t);
   if (!minute || minute.ts !== key) {
     closeMinute();
-    minute = { ts: key, hr: [], beats: 0, quality: {} };
+    minute = { ts: key, hr: [], beats: 0, quality: {}, activity: {}, sleep: {}, motion: [] };
   }
   if (m.hr && (m.quality === 'good' || m.quality === 'acceptable')) minute.hr.push(m.hr);
   minute.quality[m.quality] = (minute.quality[m.quality] ?? 0) + 1;
   if (raw.hrvReliable) { minute.rmssd = raw.rmssd60; minute.sdnn = raw.sdnn60; }
   minute.artefact = raw.artefactPercent;
+  if (raw.activity) minute.activity[raw.activity] = (minute.activity[raw.activity] ?? 0) + 1;
+  if (raw.sleep) minute.sleep[raw.sleep] = (minute.sleep[raw.sleep] ?? 0) + 1;
+  if (raw.motionIndex != null) minute.motion.push(raw.motionIndex);
+  if (raw.restingHr) minute.resting = Math.round(raw.restingHr * 10) / 10;
   const hr = m.hr ? [...snap.hr.filter((p) => p.t > m.t - 1800), { t: m.t, hr: m.hr }] : snap.hr;
   set({ metrics: m, hr });
   sessionCapture.forEach((c) => c.onMetrics(raw));

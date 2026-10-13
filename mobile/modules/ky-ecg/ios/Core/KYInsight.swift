@@ -501,7 +501,13 @@ public final class KYInsight {
                      openEvents: open.values.filter { $0.end - $0.start >= 15 }.map(\.type))
     }
 
+    // 5-min RMSSD changes slowly; recompute at most every 10 s (it was recomputed on every state read)
+    private var rmssd5Cache: (at: Double, v: Double?) = (-1e9, nil)
     private func rmssd5() -> Double? {
+        if now - rmssd5Cache.at < 10 { return rmssd5Cache.v }
+        let v = computeRmssd5(); rmssd5Cache = (now, v); return v
+    }
+    private func computeRmssd5() -> Double? {
         let w = beats.filter { $0.t >= now - 300 && $0.clean }
         guard w.reduce(0, { $0 + $1.rr }) / 300_000 >= 0.8 else { return nil }
         let c = KYArtefacts.correct(w.map(\.rr))

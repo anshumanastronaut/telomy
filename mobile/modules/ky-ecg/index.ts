@@ -108,6 +108,8 @@ type Native = {
   captureMeta(): Record<string, any> | null;
   listCaptures(): CaptureMeta[];
   deleteCapture(id: string): void;
+  wellnessAppend(kind: string, record: Record<string, unknown>): void;
+  wellnessRead(kind: string, days: number): Promise<Record<string, any>[]>;
   reanalyseCapture(id: string): Promise<{ id?: string; summary?: Record<string, any>; error?: string }>;
   addListener<K extends keyof Events>(event: K, listener: Events[K]): EventSubscription;
 };
@@ -141,6 +143,10 @@ export const Band = {
   captureMeta: (): Record<string, any> | null => native?.captureMeta() ?? null,
   listCaptures: (): CaptureMeta[] => native?.listCaptures() ?? [],
   deleteCapture: (id: string) => native?.deleteCapture(id),
+  /** Append a record to the on-phone wellness store (Documents/wellness/<kind>/<day>.jsonl). */
+  wellnessAppend: (kind: string, record: Record<string, unknown>) => native?.wellnessAppend(kind, record),
+  /** Records from the last `days` days of the on-phone wellness store, oldest first. */
+  wellnessRead: async (kind: string, days: number): Promise<Record<string, any>[]> => (native ? native.wellnessRead(kind, days) : []),
   /** Re-run the current analysis over a saved session's raw ECG (off the main thread). */
   reanalyseCapture: async (id: string) => (native ? native.reanalyseCapture(id) : { error: 'Band module unavailable' }),
   on<K extends keyof Events>(event: K, listener: Events[K]): { remove: () => void } {

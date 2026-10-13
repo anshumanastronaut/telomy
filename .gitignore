@@ -29,3 +29,5 @@ qa/sheet_*.jpg
 .DS_Store
 backend/data/ddinter/
 share/
+
+mobile/ios/build-sim/

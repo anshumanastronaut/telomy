@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { SFSymbol } from 'expo-symbols';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { ago, fmtDate, useApi } from '@/lib/api';
@@ -10,6 +10,8 @@ import { Card, Chip, ErrorState, Icon, Loading, Prov, Row, Screen, Section, Spac
 import { BandTools } from '@/ui/ecg';
 import { InsightCard } from '@/ui/insight';
 import { Logo } from '@/ui/logo';
+import { WellnessToday } from '@/ui/wellness';
+import { Band, bandAvailable } from '@/lib/band';
 
 const REWIND = [
   { label: 'Today', days: 0 },
@@ -28,12 +30,16 @@ export default function Home() {
   const p = usePalette();
   const [rewind, setRewind] = useState(0);
   const base = useApi('/home');
+  const prof = useApi<any>('/profile');
+  // real band nights on this phone replace the Vault's HRV / sleep-score cards (the hero above shows them)
+  const hasBandNight = useMemo(() => bandAvailable && Band.listCaptures().some((c: any) => c.therapyId === 'sleep' && c.summary?.sleep), []);
   const asOf = base.data && rewind ? shift(base.data.as_of, rewind) : null;
   const past = useApi(asOf ? `/home?as_of=${asOf}` : null, [asOf]);
   const h = rewind && past.data ? past.data : base.data;
 
-  if (base.error) return <Wrap><BandTools /><ErrorState message={base.error} onRetry={base.reload} /></Wrap>;
-  if (!h) return <Wrap><BandTools /><Loading what="Reading your Vault…" /></Wrap>;
+  // band scores come from the phone, so they show even when the Telomy server is unreachable
+  if (base.error) return <Wrap><WellnessToday /><BandTools /><ErrorState message={base.error} onRetry={base.reload} /></Wrap>;
+  if (!h) return <Wrap><WellnessToday /><BandTools /><Loading what="Reading your Vault…" /></Wrap>;
   const la = h.longevity;
   const today = new Date(h.as_of + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
@@ -63,8 +69,11 @@ export default function Home() {
         </Pressable>
       </Row>
 
+      {!rewind ? <WellnessToday age={prof.data?.age} /> : null}
+
       {h.is_test_profile ? <Chip label="Test profile · dummy data" fg={p.copper} bg={p.copperSoft} icon="flask" /> : null}
 
+      <T v="label" style={{ marginTop: space[2] }}>Your Vault</T>
       <Card onPress={() => router.push('/longevity')} testID="dial" accessibilityLabel="Longevity age details">
         <Row>
           <T v="label">Longevity age</T>
@@ -85,7 +94,7 @@ export default function Home() {
       </Card>
 
       <Row gap={space[3]}>
-        {h.cards.map((c: any) => (
+        {h.cards.filter((c: any) => !(hasBandNight && rewind === 0 && (c.id === 'hrv' || c.id === 'sleep_score'))).map((c: any) => (
           <DataCard key={c.id} c={c} asOf={h.as_of} />
         ))}
       </Row>

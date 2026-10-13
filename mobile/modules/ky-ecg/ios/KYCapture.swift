@@ -202,7 +202,7 @@ final class KYCapture {
         return nil
     }
 
-    static let analysisVersion = "2026-10-13 (detector re-learn, COSEn sign fix)"
+    static let analysisVersion = "2026-10-13c (night metrics, breathing rate, sleep from ECG start)"
 
     /// Re-run the current analysis over a saved session's raw ECG (each gap-free segment separately, as live) and rewrite
     /// beats.csv, the summary (beats, HR/HRV, rhythm events, whole-night sleep) and the export bundle. The original live
@@ -257,15 +257,19 @@ final class KYCapture {
         if let v = KYHRV.rmssd(c.nn) { summary["rmssd"] = v }
         if let v = KYHRV.sdnn(c.nn) { summary["sdnn"] = v }
         summary["artefactPercent"] = c.artefactPercent
-        let wall = (meta["endedAt"] as? Double ?? (beatRows.last?.t ?? t0)) - t0
+        // sleep epochs start where the ECG starts (minutes before the first sample have no data)
+        let tS = segs.first?.1 ?? t0
+        let wall = (meta["endedAt"] as? Double ?? (beatRows.last?.t ?? tS)) - tS
         summary["sleep"] = nil
-        if wall > 2 * 3600, let n = KYSleepNight.analyze(beats: beatRows.map { $0.t - t0 }, durationSec: wall) {
+        if wall > 2 * 3600, let n = KYSleepNight.analyze(beats: beatRows.map { $0.t - tS }, durationSec: wall) {
             var sl: [String: Any] = ["totalSleepMin": n.totalSleepMin, "efficiency": n.efficiency, "wasoMin": n.wakeAfterOnsetMin,
-                                     "awakenings": n.awakenings, "hypnogram": n.asleep.map { $0 ? 1 : 0 }, "epochSec": 30]
+                                     "awakenings": n.awakenings, "hypnogram": n.asleep.map { $0 ? 1 : 0 }, "epochSec": 30, "t0": tS]
             if let v = n.sleepOnsetMin { sl["onsetMin"] = v }
             if let v = n.sleepHr { sl["sleepHr"] = v }
             if let v = n.sleepRmssd { sl["sleepRmssd"] = v }
             summary["sleep"] = sl
+            summary["night"] = KYNightMetrics.compute(beats: beatRows.map { KYNightMetrics.Beat(t: $0.t, rr: $0.rr, amp: $0.amp) },
+                                                      asleep: n.asleep, t0: tS)
         }
         meta["summary"] = summary
         meta["analysis"] = ["version": analysisVersion, "at": Date().timeIntervalSince1970, "source": "reanalysed on phone"]
