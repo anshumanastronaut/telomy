@@ -14,6 +14,7 @@ import { coachLine, fmtDur, useWellness, type Wellness } from '@/lib/wellness';
 import { BeatHeart } from '@/ui/ecg';
 import { Icon, Row, T } from '@/ui/core';
 import { LastNightCard, ScoreRing } from '@/ui/wellness';
+import { DayTimeline } from '@/ui/trends';
 
 /** Narrow colour vocabulary: recovery state, sleep, strain, stress (same on every screen). */
 export const C = {
@@ -190,7 +191,8 @@ export function WellnessToday({ age }: { age?: number | null }) {
     <View style={{ gap: space[3] }}>
       <TodayHero w={w} />
       {w.last ? <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /> : null}
-      <Row gap={space[3]}>
+      <DayTimeline w={w} />
+      <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
         <BodyTile icon="waveform.path" color="#C98A1B" title="Stress" value={s.score == null ? '—' : `${s.score}`} unit={s.score == null ? undefined : '/100'}
           sub={s.minutes ? `${s.stressMin} stressed · ${s.calmMin} calm min` : 'Wear the band during the day'} onPress={() => router.push('/wellness/stress')} />
         <BodyTile icon="figure.run" color="#2F8F6B" title="Fitness" value={w.vo2 ? `${Math.round(w.vo2)}` : '—'} unit={w.vo2 ? 'VO₂max' : undefined}

@@ -8,6 +8,8 @@ import { space, usePalette } from '@/lib/theme';
 import { fmtClock, fmtDur, hrMax, useWellness } from '@/lib/wellness';
 import { Button, Card, Empty, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { C, DetailHero } from '@/ui/today';
+import { TrendChart } from '@/ui/trends';
+import { nightSeries, normalBand, type Wellness } from '@/lib/wellness';
 import { ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
 
 const METHODS: Record<string, { title: string; how: string; sources: string[] }> = {
@@ -50,6 +52,7 @@ export default function WellnessDetail() {
           <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} sub={w.recovery.calibrating} />
           {w.recovery.contributors.length ? <Section title="What moved it"><ContributorList items={w.recovery.contributors} /></Section>
             : <Empty title="No night yet" body="Wear the band to bed and start Overnight sleep. Recovery appears the next morning." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />}
+          <Trends w={w} kind="recovery" />
           {w.restingHr ? (
             <Section title="Heart fitness">
               <Row gap={space[2]}>
@@ -74,7 +77,7 @@ export default function WellnessDetail() {
                 : 'HRV usually rises through the night as recovery takes over.'}</T>
             </Card>
             {w.sleep ? <Section title="Contributors"><ContributorList items={w.sleep.contributors} /></Section> : null}
-            {w.nights.length >= 2 ? <Section title="Last nights"><Card><NightTrend nights={w.nights} /><T v="small">Bars: hours asleep (blue = 7 h or more). Numbers: overnight HRV (ms).</T></Card></Section> : null}
+            <Trends w={w} kind="sleep" />
             <Button kind="secondary" title="Open the full session" icon="folder" onPress={() => router.push('/captures')} />
           </>
         ) : <Empty title="No night yet" body="Wear the band to bed and start Overnight sleep from Therapy → Record therapy." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />
@@ -106,5 +109,47 @@ export default function WellnessDetail() {
         </Card>
       </Section>
     </Screen>
+  );
+}
+
+/** 7 / 30-night trends with the personal normal range shaded (previous ≤ 30 nights, mean ± 1 SD). */
+function Trends({ w, kind }: { w: Wellness; kind: 'recovery' | 'sleep' }) {
+  const [days, setDays] = React.useState<'7' | '30'>('7');
+  if (w.nights.length < 1) return null;
+  if (w.nights.length < 2) {
+    return (
+      <Section title="Trends">
+        <Card style={{ gap: space[3] }}>
+          <T v="body">Trends start after your second night, and your normal range after four.</T>
+          <Row gap={6}>
+            {[0, 1, 2, 3].map((i) => <View key={i} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: i < w.nights.length ? C.sleep : 'rgba(127,127,127,0.2)' }} />)}
+          </Row>
+          <T v="small">{w.nights.length} of 4 nights recorded. Wear the band to bed tonight.</T>
+        </Card>
+      </Section>
+    );
+  }
+  const series = nightSeries(w.nights);
+  const win = series.slice(-Number(days));
+  const pts = (f: (x: (typeof series)[number]) => number | null | undefined) =>
+    win.map((x) => ({ t: x.n.end, v: f(x) })).filter((q): q is { t: number; v: number } => typeof q.v === 'number');
+  const band = (f: (x: (typeof series)[number]) => number | null | undefined) =>
+    normalBand(series.slice(0, -1).slice(-30).map(f).filter((v): v is number => typeof v === 'number'));
+  const charts = kind === 'recovery'
+    ? [
+        { title: 'Recovery', f: (x: any) => x.recovery, color: C.green, unit: '%', up: true, dec: 0 },
+        { title: 'Overnight HRV', f: (x: any) => x.n.sleepRmssd, color: '#5CC9A7', unit: 'ms', up: true, dec: 0 },
+        { title: 'Lowest heart rate', f: (x: any) => x.n.lowestHr, color: '#FF6B57', unit: 'bpm', up: false, dec: 0 },
+      ]
+    : [
+        { title: 'Time asleep', f: (x: any) => x.n.tstMin / 60, color: C.sleep, unit: 'h', up: true, dec: 1 },
+        { title: 'Sleep score', f: (x: any) => x.sleep, color: C.sleep, unit: '', up: true, dec: 0 },
+        { title: 'Breathing rate', f: (x: any) => x.n.respRate, color: '#8EA8FF', unit: '/min', up: false, dec: 1 },
+      ];
+  return (
+    <Section title="Trends">
+      <Segmented options={[{ key: '7', label: '7 nights' }, { key: '30', label: '30 nights' }]} value={days} onChange={setDays} />
+      {charts.map((c) => <TrendChart key={c.title} title={c.title} points={pts(c.f)} band={band(c.f)} color={c.color} unit={c.unit} decimals={c.dec} higherIsBetter={c.up} />)}
+    </Section>
   );
 }

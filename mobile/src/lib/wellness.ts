@@ -227,10 +227,28 @@ export function coachLine(rec: Score, sleep: Score | null, n?: Night) {
 
 // ------------------------------------------------------------------ hook
 
+export type DayEvent = { t: number; end: number; label: string };
+
+/** Per-night scores for trends: each night scored against the nights before it (as it was that morning). */
+export function nightSeries(nights: Night[]) {
+  return nights.map((n) => {
+    const s = sleepScore(n, nights);
+    const r = recoveryScore(n, nights, s, []);
+    return { n, sleep: s.score, recovery: r.score };
+  });
+}
+
+/** Personal normal range: mean ± 1 SD of the previous ≤ 30 values (needs 3). */
+export function normalBand(values: number[]) {
+  if (values.length < 3) return null;
+  const m = mean(values), s = sd(values);
+  return { lo: m - s, hi: m + s, mean: m };
+}
+
 export type Wellness = {
   loading: boolean; nights: Night[]; last?: Night; sleep: Score | null; recovery: Score; age: number;
   today: { minutes: MinuteRec[]; zones: number[]; trimp: number; strain: number; stress: ReturnType<typeof stressFor>; worn: number; activeMin: number };
-  yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void;
+  yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void; sessionsToday: DayEvent[];
 };
 
 const reanalysed = new Set<string>();
@@ -238,7 +256,7 @@ let pending: Promise<void> | null = null;
 const reloaders = new Set<() => void>();
 
 export function useWellness(ageHint?: number | null): Wellness {
-  const [state, setState] = useState<{ nights: Night[]; minutes: MinuteRec[]; age: number } | null>(null);
+  const [state, setState] = useState<{ nights: Night[]; minutes: MinuteRec[]; age: number; sessions: DayEvent[] } | null>(null);
   const load = useCallback(async () => {
     const caps = bandAvailable ? Band.listCaptures() : [];
     // nights recorded before the night metrics existed: re-analyse once (in the background) so they get them.
@@ -253,7 +271,10 @@ export function useWellness(ageHint?: number | null): Wellness {
     let age = ageHint ?? null;
     if (age) Band.wellnessAppend('profile', { age });
     else age = ((await Band.wellnessRead('profile', 60)).filter((p) => p.age).pop()?.age as number) ?? 35;
-    setState({ nights: nightsFrom(caps), minutes, age: age! });
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const sessions: DayEvent[] = (caps as any[]).filter((c) => c.therapyId !== 'sleep' && c.startedAt >= dayStart.getTime() / 1000)
+      .map((c) => ({ t: c.startedAt, end: c.endedAt ?? c.startedAt, label: c.therapy }));
+    setState({ nights: nightsFrom(caps), minutes, age: age!, sessions });
   }, [ageHint]);
   useEffect(() => { reloaders.add(load); load(); return () => { reloaders.delete(load); }; }, [load]);
 
@@ -279,6 +300,6 @@ export function useWellness(ageHint?: number | null): Wellness {
     today: { minutes: tm, zones, trimp, strain: strainFromTrimp(trimp), stress, worn: tm.length,
       activeMin: tm.filter((m) => m.activity === 'active').length },
     yesterdayTrimp: byDay(yKey).length >= 60 ? zonesFor(byDay(yKey), age).trimp : null,
-    restingHr, vo2: restingHr ? vo2max(age, restingHr) : null, reload: load,
+    restingHr, vo2: restingHr ? vo2max(age, restingHr) : null, reload: load, sessionsToday: state?.sessions ?? [],
   };
 }
