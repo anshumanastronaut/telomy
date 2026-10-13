@@ -10,7 +10,7 @@ import { Card, Chip, ErrorState, Icon, Loading, Prov, Row, Screen, Section, Spac
 import { BandTools } from '@/ui/ecg';
 import { InsightCard } from '@/ui/insight';
 import { Logo } from '@/ui/logo';
-import { WellnessToday } from '@/ui/wellness';
+import { WellnessToday } from '@/ui/today';
 import { Band, bandAvailable } from '@/lib/band';
 
 const REWIND = [
@@ -45,14 +45,11 @@ export default function Home() {
 
   return (
     <Wrap onRefresh={base.reload} refreshing={base.loading}>
-      <Row>
-        <Logo kind="mark" width={46} />
-        <Logo kind="word" width={86} />
-      </Row>
-      <Row>
+      <Row gap={space[3]}>
+        <Logo kind="mark" width={34} />
         <View style={{ flex: 1 }}>
-          <T v="small">{rewind ? `Rewound to ${today}` : today}</T>
-          <T v="h1">{greet()}, {h.first_name}</T>
+          <T v="label">{rewind ? `Rewound to ${today}` : new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</T>
+          <T v="h2" numberOfLines={1}>{greet()}, {String(h.first_name ?? '').split(' ')[0]}</T>
         </View>
         <Pressable onPress={() => router.push('/notifications')} accessibilityLabel="Notifications" hitSlop={8} style={{ marginRight: 14 }}>
           <Icon name="bell" size={22} color={p.teal} />

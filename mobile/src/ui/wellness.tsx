@@ -14,32 +14,6 @@ import { Card, Icon, Row, T } from '@/ui/core';
 
 const ACircle = Animated.createAnimatedComponent(Circle);
 
-/** Home block from the band alone (works when the Telomy server is unreachable). */
-export function WellnessToday({ age }: { age?: number | null }) {
-  const w = useWellness(age ?? null);
-  const p = usePalette();
-  if (w.loading) return null;
-  const s = w.today.stress;
-  return (
-    <View style={{ gap: space[3] }}>
-      <TodayHero w={w} coach={coachLine(w.recovery, w.sleep, w.last)} />
-      {w.last ? <LastNightCard n={w.last} sleep={w.sleep} /> : null}
-      <Row gap={space[3]}>
-        <Card style={{ flex: 1 }} onPress={() => router.push('/wellness/stress')}>
-          <Row gap={6}><Icon name="brain.head.profile" size={16} color={p.warn} /><T v="label">Stress</T></Row>
-          <T v="num">{s.score == null ? '—' : s.score}</T>
-          <T v="small">{s.minutes ? `${s.stressMin} stress · ${s.calmMin} calm min` : 'Wear the band in the day'}</T>
-        </Card>
-        <Card style={{ flex: 1 }} onPress={() => router.push('/wellness/recovery')}>
-          <Row gap={6}><Icon name="figure.run" size={16} color={p.teal} /><T v="label">Heart fitness</T></Row>
-          <T v="num">{w.vo2 ? Math.round(w.vo2) : '—'}</T>
-          <T v="small">{w.restingHr ? `VO₂max est. · resting ${Math.round(w.restingHr)} bpm` : 'Needs a few calm minutes with the band'}</T>
-        </Card>
-      </Row>
-    </View>
-  );
-}
-
 export function recoveryColor(p: Palette, v: number | null) {
   return v == null ? p.faint : v >= 67 ? p.success : v >= 34 ? p.warn : p.danger;
 }
@@ -62,7 +36,7 @@ export function ScoreRing({ value, max = 100, size = 96, stroke = 9, color, trac
           <ACircle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="round"
             strokeDasharray={`${circ} ${circ}`} strokeDashoffset={offset as any} rotation={-90} origin={`${size / 2}, ${size / 2}`} />
         </Svg>
-        <T v="num" color="#fff" style={{ fontSize: size > 90 ? 28 : 22 }}>{center}</T>
+        <T v="num" color="#fff" style={{ fontSize: size > 140 ? 52 : size > 90 ? 28 : 22, lineHeight: size > 140 ? 60 : undefined }}>{center}</T>
         {sub ? <T v="small" color="rgba(255,255,255,0.65)" style={{ fontSize: 10, marginTop: -2 }}>{sub}</T> : null}
       </View>
       {label ? <T v="small" color="rgba(255,255,255,0.85)" style={{ fontWeight: '600', letterSpacing: 0.5 }}>{label.toUpperCase()}</T> : null}
@@ -70,58 +44,32 @@ export function ScoreRing({ value, max = 100, size = 96, stroke = 9, color, trac
   );
 }
 
-/** Dark hero: Recovery · Sleep · Strain + readiness + coach line + live heart pill. */
-export function TodayHero({ w, coach }: { w: Wellness; coach: string }) {
-  const p = usePalette();
-  const b = useBand();
-  const live = b.status?.state === 'streaming' && b.metrics?.hr;
-  const rec = w.recovery.score, sl = w.sleep?.score ?? null, st = w.today.worn >= 10 ? w.today.strain : null;
-  return (
-    <LinearGradient colors={['#10231E', '#183A31', '#1F5C4E']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: radius.xl, padding: space[5], gap: space[4] }}>
-      <Row>
-        <View style={{ flex: 1 }}>
-          <T v="label" color="rgba(255,255,255,0.6)">TODAY</T>
-          <T v="h2" color="#fff">{rec == null ? 'Start tonight' : w.recovery.label}</T>
-        </View>
-        <Pressable onPress={() => router.push('/monitor')} accessibilityRole="button" accessibilityLabel="Live heart"
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.12)' }}>
-          {live ? <BeatHeart lastBeatAt={b.lastBeatAt} size={14} /> : <Icon name="heart" size={14} color="rgba(255,255,255,0.7)" />}
-          <T v="small" color="#fff" style={{ fontWeight: '600' }}>{live ? `${Math.round(b.metrics!.hr!)} bpm` : b.status?.state === 'connected' ? 'Band on' : 'Band off'}</T>
-        </Pressable>
-      </Row>
-      <Row style={{ justifyContent: 'space-between' }}>
-        <ScoreRing label="Recovery" value={rec} color={rec == null ? 'rgba(255,255,255,0.3)' : recoveryColor({ ...p, success: '#5FD39A', warn: '#F2B94B', danger: '#FF7A66' } as Palette, rec)}
-          track="rgba(255,255,255,0.12)" center={rec == null ? '—' : `${rec}`} sub={rec == null ? undefined : '%'} onPress={() => router.push('/wellness/recovery')} />
-        <ScoreRing label="Sleep" value={sl} color="#8FB8FF" track="rgba(255,255,255,0.12)" center={sl == null ? '—' : `${sl}`}
-          sub={w.last ? fmtDur(w.last.tstMin) : undefined} onPress={() => router.push('/wellness/sleep')} />
-        <ScoreRing label="Strain" value={st} max={21} color="#F0A36B" track="rgba(255,255,255,0.12)" center={st == null ? '—' : st.toFixed(1)}
-          sub="of 21" onPress={() => router.push('/wellness/strain')} />
-      </Row>
-      {w.recovery.calibrating ? <T v="small" color="rgba(255,255,255,0.6)">{w.recovery.calibrating}</T> : null}
-      <T v="body" color="rgba(255,255,255,0.92)">{coach}</T>
-    </LinearGradient>
-  );
-}
-
-/** Asleep/awake timeline for a night. */
-export function Hypnogram({ n, height = 34 }: { n: Night; height?: number }) {
+/** Asleep/awake timeline: merged runs as rounded bars, wake on a raised lane, hour ticks. */
+export function Hypnogram({ n, height = 46 }: { n: Night; height?: number }) {
   const p = usePalette();
   const [w, setW] = useState(0);
   const N = n.hypnogram.length || 1;
+  const runs: { v: number; a: number; b: number }[] = [];
+  n.hypnogram.forEach((v, i) => { const r = runs[runs.length - 1]; if (r && r.v === v) r.b = i + 1; else runs.push({ v, a: i, b: i + 1 }); });
+  const X = (i: number) => (i / N) * w;
+  const hours: number[] = [];
+  for (let t = Math.ceil(n.start / 3600) * 3600; t < n.start + N * n.epochSec; t += 3600) hours.push(t);
   return (
     <View onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)} style={{ gap: 4 }}>
       {w ? (
-        <Svg width={w} height={height}>
-          {n.hypnogram.map((v, i) => (
-            <Rect key={i} x={(i / N) * w} y={v ? height * 0.3 : 0} width={Math.max(1, w / N + 0.5)} height={v ? height * 0.7 : height * 0.3}
-              fill={v ? '#5B7FD6' : p.copper} opacity={v ? 0.9 : 0.75} />
+        <Svg width={w} height={height + 14}>
+          {hours.map((t) => { const x = X((t - n.start) / n.epochSec); return <Line key={t} x1={x} x2={x} y1={0} y2={height} stroke={p.border} strokeWidth={1} />; })}
+          {runs.map((r, k) => (
+            <Rect key={k} x={X(r.a) + 0.5} width={Math.max(2, X(r.b) - X(r.a) - 1)} rx={3}
+              y={r.v ? height * 0.42 : height * 0.06} height={r.v ? height * 0.52 : height * 0.26}
+              fill={r.v ? '#6F8CF0' : '#E0894F'} opacity={r.v ? 0.95 : 0.9} />
           ))}
+          {hours.map((t) => { const x = X((t - n.start) / n.epochSec); return x > 18 && x < w - 18 ? <SvgText key={'l' + t} x={x} y={height + 12} fontSize={10} fill={p.muted} textAnchor="middle">{new Date(t * 1000).getHours()}</SvgText> : null; })}
         </Svg>
-      ) : <View style={{ height }} />}
-      <Row style={{ justifyContent: 'space-between' }}>
-        <T v="small">{fmtClock(n.start)}</T>
-        <T v="small">■ asleep  <T v="small" color={p.copper}>■ awake</T></T>
-        <T v="small">{fmtClock(n.end)}</T>
+      ) : <View style={{ height: height + 14 }} />}
+      <Row gap={14}>
+        <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#6F8CF0' }} /><T v="small">Asleep</T></Row>
+        <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#E0894F' }} /><T v="small">Awake</T></Row>
       </Row>
     </View>
   );
@@ -163,39 +111,60 @@ export function NightHrChart({ n, height = 120, kind = 'hr' }: { n: Night; heigh
   );
 }
 
-export function MiniMetric({ icon, label, value, sub, color }: { icon: any; label: string; value: string; sub?: string; color?: string }) {
+/** Vital tile with the change vs your normal (mean of previous nights) once 3 nights exist. */
+export function MiniMetric({ icon, label, value, sub, color, delta, goodUp }: {
+  icon: any; label: string; value: string; sub?: string; color?: string; delta?: number | null; goodUp?: boolean;
+}) {
   const p = usePalette();
+  const show = delta != null && Math.abs(delta) >= 0.5;
+  const good = show && (goodUp ? delta! > 0 : delta! < 0);
   return (
-    <View style={{ flex: 1, minWidth: '45%', gap: 2, padding: space[3], backgroundColor: p.surfaceAlt, borderRadius: radius.md }}>
-      <Row gap={6}><Icon name={icon} size={14} color={color ?? p.teal} /><T v="small">{label}</T></Row>
-      <T v="num" style={{ fontSize: 20 }}>{value}</T>
-      {sub ? <T v="small" numberOfLines={2}>{sub}</T> : null}
+    <View style={{ flex: 1, minWidth: '45%', gap: 2, padding: space[3], backgroundColor: p.surfaceAlt, borderRadius: radius.lg }}>
+      <Row gap={6}><Icon name={icon} size={13} color={color ?? p.teal} /><T v="small" style={{ fontSize: 12 }}>{label}</T></Row>
+      <T v="num" style={{ fontSize: 22 }}>{value}</T>
+      {show ? <T v="small" color={good ? p.success : p.danger} style={{ fontSize: 12 }}>{delta! > 0 ? '▲' : '▼'} {Math.abs(delta!).toFixed(Math.abs(delta!) < 10 ? 1 : 0)} vs your normal</T>
+        : sub ? <T v="small" style={{ fontSize: 12 }} numberOfLines={1}>{sub}</T> : null}
     </View>
   );
 }
 
-/** Last-night summary card for Home. */
-export function LastNightCard({ n, sleep }: { n: Night; sleep: Score | null }) {
+const avgOf = (h: Night[], k: keyof Night) => { const v = h.map((x) => x[k]).filter((x) => typeof x === 'number') as number[]; return v.length >= 3 ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+
+/** Last-night card: duration, score chip, timeline, four vitals with change vs your normal. */
+export function LastNightCard({ n, sleep, history = [], embedded }: { n: Night; sleep: Score | null; history?: Night[]; embedded?: boolean }) {
   const p = usePalette();
+  const prev = history.filter((h) => h.end < n.end).slice(-30);
+  const d = (k: keyof Night) => { const m = avgOf(prev, k); const v = n[k]; return m != null && typeof v === 'number' ? v - m : null; };
   return (
-    <Card onPress={() => router.push('/wellness/sleep')} accessibilityLabel="Last night">
+    <Card onPress={embedded ? undefined : () => router.push('/wellness/sleep')} accessibilityLabel="Last night" style={{ borderRadius: radius.xl, padding: space[4], gap: space[3] }}>
+      {embedded ? <T v="label">Night timeline</T> : <>
       <Row>
-        <Icon name="moon.stars" color="#5B7FD6" />
+        <Icon name="moon.fill" size={14} color="#6F8CF0" />
         <T v="label" style={{ flex: 1 }}>Last night</T>
-        {sleep?.score != null ? <T v="small" color={p.teal} style={{ fontWeight: '600' }}>Sleep {sleep.score} · {sleep.label}</T> : null}
+        <T v="small">{fmtClock(n.start)} – {fmtClock(n.end)}</T>
+        <Icon name="chevron.right" size={11} color={p.faint} />
       </Row>
-      <Row style={{ alignItems: 'baseline' }}>
-        <T v="numLg">{fmtDur(n.tstMin)}</T>
-        <T v="small">asleep · {Math.round(n.efficiency * 100)}% efficient</T>
+      <Row style={{ alignItems: 'flex-end' }}>
+        <View style={{ flex: 1 }}>
+          <T v="numLg" style={{ fontSize: 40, lineHeight: 46 }}>{fmtDur(n.tstMin)}</T>
+          <T v="small">asleep · {Math.round(n.efficiency * 100)}% of time in bed</T>
+        </View>
+        {sleep?.score != null ? (
+          <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: '#6F8CF022' }}>
+            <T v="small" color="#4D67C9" style={{ fontWeight: '600' }}>Sleep {sleep.score} · {sleep.label}</T>
+          </View>
+        ) : null}
       </Row>
+      </>}
       <Hypnogram n={n} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space[2] }}>
-        <MiniMetric icon="heart" color={p.danger} label="Lowest HR" value={n.lowestHr ? `${Math.round(n.lowestHr)} bpm` : '—'}
-          sub={n.lowestHrAt ? `at ${fmtClock(n.lowestHrAt)}${n.lowestHrPos != null && n.lowestHrPos > 0.66 ? ' (late)' : ''}` : undefined} />
-        <MiniMetric icon="waveform.path.ecg" label="Overnight HRV" value={n.sleepRmssd ? `${Math.round(n.sleepRmssd)} ms` : '—'}
+        <MiniMetric icon="heart.fill" color={p.danger} label="Lowest HR" value={n.lowestHr ? `${Math.round(n.lowestHr)} bpm` : '—'} delta={d('lowestHr')} goodUp={false}
+          sub={n.lowestHrAt ? `at ${fmtClock(n.lowestHrAt)}${n.lowestHrPos != null && n.lowestHrPos > 0.66 ? ' · late' : ''}` : undefined} />
+        <MiniMetric icon="waveform.path.ecg" label="Overnight HRV" value={n.sleepRmssd ? `${Math.round(n.sleepRmssd)} ms` : '—'} delta={d('sleepRmssd')} goodUp
           sub={n.lateRmssd ? `${Math.round(n.lateRmssd)} ms by morning` : undefined} />
-        <MiniMetric icon="lungs" color="#5B7FD6" label="Breathing" value={n.respRate ? `${n.respRate.toFixed(1)}/min` : '—'} sub="estimated from ECG" />
-        <MiniMetric icon="arrow.down.heart" color={p.copper} label="HR drop" value={n.hrDropPct != null ? `${Math.round(n.hrDropPct)}%` : '—'} sub="bedtime → asleep" />
+        <MiniMetric icon="lungs.fill" color="#6F8CF0" label="Breathing" value={n.respRate ? `${n.respRate.toFixed(1)} /min` : '—'} delta={d('respRate')} goodUp={false} sub="from your ECG" />
+        <MiniMetric icon="arrow.down.heart.fill" color={p.copper} label="HR drop" value={n.hrDropPct != null ? `${Math.round(n.hrDropPct)}%` : '—'} delta={d('hrDropPct')} goodUp
+          sub={n.hrDropPct != null ? 'bedtime → asleep' : 'too little time in bed'} />
       </View>
     </Card>
   );

@@ -7,6 +7,7 @@ import { useApi } from '@/lib/api';
 import { space, usePalette } from '@/lib/theme';
 import { fmtClock, fmtDur, hrMax, useWellness } from '@/lib/wellness';
 import { Button, Card, Empty, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
+import { C, DetailHero } from '@/ui/today';
 import { ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
 
 const METHODS: Record<string, { title: string; how: string; sources: string[] }> = {
@@ -41,22 +42,12 @@ export default function WellnessDetail() {
   const [hrKind, setHrKind] = React.useState<'hr' | 'hrv'>('hr');
   if (w.loading) return <Screen edges={[]}><Stack.Screen options={{ title: m.title }} /><Loading what="Analysing your night on the phone… (about half a minute)" /></Screen>;
 
-  const header = (score: number | null, unit: string, label: string, color: string) => (
-    <Card>
-      <Row style={{ alignItems: 'baseline' }}>
-        <T v="numLg" color={color}>{score == null ? '—' : score}</T>
-        <T v="body" color={p.muted}>{unit}</T>
-      </Row>
-      <T v="h3">{label}</T>
-    </Card>
-  );
-
   return (
     <Screen edges={[]}>
       <Stack.Screen options={{ title: m.title }} />
       {metric === 'recovery' ? (
         <>
-          {header(w.recovery.score, '%', w.recovery.calibrating ? `${w.recovery.label} · ${w.recovery.calibrating}` : w.recovery.label, recoveryColor(p, w.recovery.score))}
+          <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} sub={w.recovery.calibrating} />
           {w.recovery.contributors.length ? <Section title="What moved it"><ContributorList items={w.recovery.contributors} /></Section>
             : <Empty title="No night yet" body="Wear the band to bed and start Overnight sleep. Recovery appears the next morning." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />}
           {w.restingHr ? (
@@ -73,8 +64,8 @@ export default function WellnessDetail() {
       {metric === 'sleep' ? (
         w.last ? (
           <>
-            {header(w.sleep?.score ?? null, '/100', `${w.sleep?.label ?? ''} · ${fmtDur(w.last.tstMin)} asleep`, p.teal)}
-            <LastNightCard n={w.last} sleep={w.sleep} />
+            <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
+            <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} embedded />
             <Card>
               <Segmented options={[{ key: 'hr', label: 'Heart rate' }, { key: 'hrv', label: 'HRV' }]} value={hrKind} onChange={setHrKind} />
               <NightHrChart n={w.last} kind={hrKind} />
@@ -91,7 +82,7 @@ export default function WellnessDetail() {
 
       {metric === 'strain' ? (
         <>
-          {header(w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null, 'of 21', `${w.today.worn} min worn today · ${w.today.activeMin} min active`, p.copper)}
+          <DetailHero value={w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null} max={21} unit="OF 21" label="Today’s strain" sub={`${w.today.worn} min worn · ${w.today.activeMin} min active`} color={C.strain} />
           <Section title="Heart-rate zones today">
             <Card><ZoneBar zones={w.today.zones} /><T v="small">Zones are % of your estimated max heart rate ({Math.round(hrMax(w.age))} bpm at age {Math.round(w.age)}).</T></Card>
           </Section>
@@ -101,7 +92,7 @@ export default function WellnessDetail() {
 
       {metric === 'stress' ? (
         <>
-          {header(w.today.stress.score, '/100', `${w.today.stress.stressMin} stress · ${w.today.stress.calmMin} calm minutes`, p.warn)}
+          <DetailHero value={w.today.stress.score} unit="STRESS" label={w.today.stress.score == null ? 'Not enough daytime data' : w.today.stress.score >= 50 ? 'High' : w.today.stress.score >= 25 ? 'Moderate' : 'Low'} sub={`${w.today.stress.stressMin} stressed · ${w.today.stress.calmMin} calm minutes`} color={C.stress} />
           <Section title="Stress rhythm today"><Card><StressStrip timeline={w.today.stress.timeline} /></Card></Section>
           <Button kind="secondary" title="Breathe for 2 minutes" icon="wind" onPress={() => router.push('/breathe')} />
         </>
