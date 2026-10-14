@@ -7,7 +7,6 @@ import { api, useApi } from '@/lib/api';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
-import { VitalsGrid } from '@/ui/vitals';
 import type { OrganId } from '@/twin3d/scene';
 
 function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'], xLabel = (x: number) => `${Math.round(x / 365 * 10) / 10}y` }:
@@ -100,6 +99,7 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
   const [dayT, setDayT] = useState<any>(null);
   const [tab, setTab] = useState<'future' | 'today' | 'mirror'>('future');
   const [organSel, setOrganSel] = useState<OrganId | null>(null);
+  const [touching3d, setTouching3d] = useState(false);
 
   useEffect(() => {
     setSim(null);
@@ -114,12 +114,11 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
     .sort((x: any, y: any) => Math.abs(y.difference) / (Math.abs(y.baseline_end) + 1e-6) - Math.abs(x.difference) / (Math.abs(x.baseline_end) + 1e-6));
 
   return (
-    <Screen edges={inTab ? ['top'] : []}>
+    <Screen edges={inTab ? ['top'] : []} scrollEnabled={!touching3d}>
       {inTab ? null : <Stack.Screen options={{ title: 'Digital twin' }} />}
       <T v="h1">{inTab ? 'Your twin' : 'Your digital twin'}</T>
-      <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} />
+      <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} onInteract={setTouching3d} />
       <OrganPanel systems={d.systems} organ={organSel} onClear={() => setOrganSel(null)} />
-      <VitalsGrid title="Live vitals" />
       <T v="small">{d.about}</T>
       <Row style={{ flexWrap: 'wrap' }}>
         <Chip label={`PhenoAge ${d.risk_now.phenoage} at ${d.risk_now.age}`} fg={p.teal} bg={p.tealSoft} />

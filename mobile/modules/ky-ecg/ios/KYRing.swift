@@ -469,7 +469,8 @@ final class KYSleepAuto {
     static let enabledKey = "telomy.autoSleep"
     var enabled: Bool { UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true }
     private(set) var active = false            // we started tonight's session
-    private var bandAsleepSince: Double?, bandAwakeSince: Double?, startedAt = 0.0
+    private var bandAsleepSince: Double?, bandAwakeSince: Double?, startedAt = 0.0, cooldownUntil = 0.0
+    private var ours = false                   // true only for a night auto-detection started (false-start cancel applies)
 
     // Phone motion coprocessor: Apple's on-device activity classifier, with ~7 days of history readable even for
     // periods the app wasn't running. Third signal for sleep (phone still = in bed/away) and the wake signal (walking).
@@ -539,25 +540,34 @@ final class KYSleepAuto {
         }
         // A manually started overnight session is adopted: it gets the same morning stop as an automatic one.
         if !active, isOvernightTherapy(KYBand.shared.captureMeta?["therapyId"]) {
-            active = true; startedAt = KYBand.shared.captureMeta?["startedAt"] as? Double ?? now
+            active = true; ours = false; startedAt = KYBand.shared.captureMeta?["startedAt"] as? Double ?? now
             ring.log("auto-sleep: adopted a running overnight session")
         }
         if !active {
-            guard hour >= 21 || hour < 4 else { return }
-            let bandSays = bandAsleepSince.map { now - $0 >= 15 * 60 } ?? false
-            let hrOK = ring.lastHR.map { resting < 30 || Double($0) <= resting + 8 } ?? true
-            let ringSays = ring.state == "connected" && ring.stillSeconds >= 20 * 60 && hrOK
-            // phone still for 30 min corroborates a borderline ring reading (still 15 min instead of 20)
-            let ringPlusPhone = ring.state == "connected" && ring.stillSeconds >= 15 * 60 && hrOK && phoneStill >= 30 * 60
-            guard bandSays || ringSays || ringPlusPhone else { return }
-            active = true; startedAt = now
+            // Stricter onset (2026-10-15: a still ring at a desk late at night was mistaken for sleep).
+            guard hour >= 22 || hour < 4, now >= cooldownUntil else { return }
+            let bandSays = bandAsleepSince.map { now - $0 >= 20 * 60 } ?? false          // ECG-based: the strongest signal
+            let hrLow = ring.lastHR.map { resting >= 30 && Double($0) <= resting } ?? false   // must be MEASURED, at/below resting
+            let ringSays = ring.state == "connected" && ring.stillSeconds >= 30 * 60 && hrLow && phoneStill >= 30 * 60
+            guard bandSays || ringSays else { return }
+            active = true; ours = true; startedAt = now
             ring.log("auto-sleep: onset detected (band=\(bandSays) ring=\(ringSays)) — starting the night")
             KYRing.shared.startOvernight()
             if KYBand.shared.captureId == nil, KYBand.shared.status()["state"] as? String != "idle" {
                 _ = KYBand.shared.startCapture(meta: ["therapy": "Overnight sleep", "therapyId": "sleep", "settings": [:],
                     "pre": [:], "firstPhase": "baseline", "tz": TimeZone.current.identifier, "autoStarted": true])
             }
-        } else {
+            return
+        }
+        // False start: clearly up and about within the first 2 h → cancel, and don't re-arm for 45 min.
+        if ours, now - startedAt < 2 * 3600, (bandAwakeSince.map { now - $0 >= 10 * 60 } ?? false) || phoneWalking || ring.movingSeconds >= 3 * 60 {
+            active = false; cooldownUntil = now + 45 * 60
+            ring.log("auto-sleep: false start — you're up; cancelled")
+            ring.stopOvernight()
+            if (KYBand.shared.captureMeta?["autoStarted"] as? Bool) == true { _ = KYBand.shared.stopCapture(extra: ["autoStopped": true, "falseStart": true]) }
+            return
+        }
+        do {
             let bandUp = bandAwakeSince.map { now - $0 >= 10 * 60 } ?? true      // no patch → don't block on it
             let ringUp = ring.state != "connected" || ring.movingSeconds >= 10 * 60 || phoneWalking   // walking with the phone = up
             let morning = hour >= 5 && hour < 12 && now - startedAt > 3 * 3600

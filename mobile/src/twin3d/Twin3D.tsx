@@ -8,28 +8,16 @@ import { depth, usePalette } from '@/lib/theme';
 import { T } from '@/ui/core';
 import { sceneHtml, type OrganId, type OrganStatus } from './scene';
 
-/** Twin organ-map system name → the 3D organs that represent it. */
-export const SYSTEM_ORGANS: Record<string, OrganId[]> = {
-  'Heart & vessels': ['heart', 'vessels'],
-  'Blood sugar & metabolism': ['pancreas', 'stomach'],
-  Liver: ['liver'],
-  'Lungs & cardio fitness': ['lungs'],
-  'Muscle & bone': ['skeleton'],
-  'Recovery & sleep': ['brain'],
-  Nutrients: ['intestines'],
-};
-export const ORGAN_LABEL: Record<OrganId, string> = {
-  brain: 'Brain & nervous system', lungs: 'Lungs', heart: 'Heart', vessels: 'Blood vessels', liver: 'Liver',
-  stomach: 'Stomach', pancreas: 'Pancreas', kidneys: 'Kidneys', intestines: 'Gut', bladder: 'Bladder',
-  skeleton: 'Skeleton & muscle',
-};
-export const systemOfOrgan = (o: OrganId) => Object.entries(SYSTEM_ORGANS).find(([, os]) => os.includes(o))?.[0] ?? null;
+import { ORGAN_LABEL, SYSTEM_ORGANS, systemOfOrgan } from './organs';
+export { ORGAN_LABEL, SYSTEM_ORGANS, systemOfOrgan };
 
-export function Twin3D({ systems, selected, onSelect, height = 460 }: {
+export function Twin3D({ systems, selected, onSelect, height = 460, onInteract }: {
   systems: { name: string; status: string }[];
   selected: OrganId | null;
   onSelect: (o: OrganId | null) => void;
   height?: number;
+  /** true while a finger is on the model — the parent stops scrolling so drag/pinch go to the 3D view */
+  onInteract?: (active: boolean) => void;
 }) {
   const p = usePalette();
   const ref = useRef<WebView>(null);
@@ -47,7 +35,8 @@ export function Twin3D({ systems, selected, onSelect, height = 460 }: {
   useEffect(() => { if (ready) ref.current?.injectJavaScript(`window.select(${JSON.stringify(selected)});true;`); }, [ready, selected]);
 
   return (
-    <View style={{ height, borderRadius: 28, overflow: 'hidden', backgroundColor: depth.stage }}>
+    <View style={{ height, borderRadius: 28, overflow: 'hidden', backgroundColor: depth.stage }}
+      onTouchStart={() => onInteract?.(true)} onTouchEnd={() => onInteract?.(false)} onTouchCancel={() => onInteract?.(false)}>
       <WebView
         ref={ref}
         originWhitelist={['*']}

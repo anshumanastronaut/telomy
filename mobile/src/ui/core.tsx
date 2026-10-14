@@ -58,11 +58,14 @@ export function Screen({
   scroll = true,
   edges = ['top'],
   padded = true,
+  scrollEnabled = true,
 }: {
   children: React.ReactNode;
   onRefresh?: () => void;
   refreshing?: boolean;
   scroll?: boolean;
+  /** false while a child (e.g. the 3D twin) owns the gesture, so the page doesn't scroll under it */
+  scrollEnabled?: boolean;
   edges?: ('top' | 'bottom')[];
   padded?: boolean;
 }) {
@@ -76,6 +79,7 @@ export function Screen({
   return (
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: p.bg }}>
       <ScrollView
+        scrollEnabled={scrollEnabled}
         contentContainerStyle={{ paddingHorizontal: padded ? space[5] : 0, paddingTop: padded ? space[3] : 0, paddingBottom: 132, gap: space[4] }}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={p.teal} /> : undefined}
         keyboardShouldPersistTaps="handled">
