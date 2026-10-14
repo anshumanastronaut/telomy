@@ -18,6 +18,7 @@ import { useDevices } from '@/lib/devices';
 import { BeatHeart } from '@/ui/ecg';
 import { Icon, Row, T } from '@/ui/core';
 import { LastNightCard, ScoreRing } from '@/ui/wellness';
+import { VitalsGrid } from '@/ui/vitals';
 import { DayTimeline } from '@/ui/trends';
 
 const EASE_OUT = ReEasing.bezier(0.23, 1, 0.32, 1);
@@ -240,45 +241,6 @@ function ActivityCard() {
   );
 }
 
-/** "Telomy is watching" — the assurance card: every stream being looked after, its live state, one tap to the detail.
- *  Green = actively monitoring, amber = paused (device off), so the user always knows nothing is slipping. */
-function Guardian() {
-  const p = usePalette();
-  const d = useDevices();
-  const b = useBand();
-  const patch = d.devices.find((x) => x.id === 'patch'), ring = d.devices.find((x) => x.id === 'ring'), health = d.devices.find((x) => x.id === 'health');
-  const live = b.status?.state === 'streaming';
-  const rows: { icon: SFSymbol; label: string; state: string; on: boolean; to: string }[] = [
-    { icon: 'waveform.path.ecg', label: 'Heart rhythm', state: live ? 'Live ECG' : patch?.connected ? 'Patch connected' : 'Wear the patch', on: !!patch?.connected, to: '/monitor' },
-    { icon: 'moon.zzz', label: 'Sleep', state: 'Detected automatically', on: !!(patch?.connected || ring?.connected), to: '/wellness/sleep' },
-    { icon: 'circle.circle', label: 'Vitals · SpO₂ · temperature', state: ring?.connected ? 'Ring, every 5 min' : 'Ring not connected', on: !!ring?.connected, to: '/ring' },
-    { icon: 'figure.walk', label: 'Activity', state: health?.connected ? 'Apple Health' : 'Connect Apple Health', on: !!health?.connected, to: '/devices' },
-    { icon: 'shield.lefthalf.filled', label: 'Disease risk', state: 'Heart, diabetes, liver, kidney', on: true, to: '/predict' },
-  ];
-  const watching = rows.filter((r) => r.on).length;
-  return (
-    <View style={{ gap: space[3], padding: space[5], borderRadius: radius.xl, backgroundColor: p.surface }}>
-      <Row>
-        <View style={{ flex: 1 }}>
-          <T v="h3">Telomy is watching</T>
-          <T v="small">{watching} of {rows.length} streams active</T>
-        </View>
-        <Pressable onPress={() => router.push('/devices')} hitSlop={8} accessibilityRole="button"><T v="small" color={p.teal} style={{ fontWeight: '600' }}>Devices</T></Pressable>
-      </Row>
-      {rows.map((r) => (
-        <Pressable key={r.label} onPress={() => router.push(r.to as any)} accessibilityRole="button" style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-          <Row gap={space[3]}>
-            <Icon name={r.icon} size={15} color={r.on ? p.text : p.faint} />
-            <T v="body" style={{ flex: 1 }} numberOfLines={1}>{r.label}</T>
-            <T v="small" color={r.on ? p.muted : p.warn} numberOfLines={1}>{r.state}</T>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: r.on ? p.success : p.warn }} />
-          </Row>
-        </Pressable>
-      ))}
-    </View>
-  );
-}
-
 /** No wearable night? The phone's motion coprocessor keeps 7 days of activity history even when Telomy wasn't
  *  running — the longest overnight still stretch is a fair in-bed estimate. Shown only as an estimate, never scored. */
 function PhoneNight() {
@@ -349,7 +311,7 @@ export function WellnessToday({ age }: { age?: number | null }) {
     <View style={{ gap: space[3] }}>
       <ReAnimated.View entering={FadeInDown.duration(320).easing(EASE_OUT)}><TodayHero w={w} /></ReAnimated.View>
       {w.last ? <ReAnimated.View entering={FadeInDown.duration(320).delay(60).easing(EASE_OUT)}><LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /></ReAnimated.View> : <PhoneNight />}
-      <ReAnimated.View entering={FadeInDown.duration(320).delay(90).easing(EASE_OUT)}><Guardian /></ReAnimated.View>
+      <ReAnimated.View entering={FadeInDown.duration(320).delay(90).easing(EASE_OUT)}><VitalsGrid /></ReAnimated.View>
       <ReAnimated.View entering={FadeInDown.duration(320).delay(120).easing(EASE_OUT)}><DayTimeline w={w} /></ReAnimated.View>
       <ReAnimated.View entering={FadeInDown.duration(320).delay(180).easing(EASE_OUT)} style={{ gap: space[3] }}>
       <Row gap={space[3]} style={{ alignItems: 'stretch' }}>

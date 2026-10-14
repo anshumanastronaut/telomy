@@ -7,6 +7,7 @@ import { api, useApi } from '@/lib/api';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
+import { VitalsGrid } from '@/ui/vitals';
 import type { OrganId } from '@/twin3d/scene';
 
 function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'], xLabel = (x: number) => `${Math.round(x / 365 * 10) / 10}y` }:
@@ -88,7 +89,7 @@ function OrganPanel({ systems, organ, onClear }: { systems: any[]; organ: OrganI
   );
 }
 
-export default function Twin() {
+export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
   const p = usePalette();
   const o = useApi<any>('/twin');
   const mir = useApi<any>('/twin/mirror');
@@ -106,18 +107,19 @@ export default function Twin() {
   }, [preset, years]);
   useEffect(() => { api(`/twin/day?drinking=${drinking}`).then(setDayT).catch(() => setDayT(null)); }, [drinking]);
 
-  if (!o.data) return <Screen edges={[]}><Loading what="Waking your twin…" /></Screen>;
+  if (!o.data) return <Screen edges={inTab ? ['top'] : []}><Loading what="Waking your twin…" /></Screen>;
   const d = o.data;
   const rb = sim?.risk_baseline?.at(-1)?.[1], rs = sim?.risk_scenario?.at(-1)?.[1];
   const moved = (sim?.variables ?? []).filter((v: any) => Math.abs(v.difference) / (Math.abs(v.baseline_end) + 1e-6) > 0.015)
     .sort((x: any, y: any) => Math.abs(y.difference) / (Math.abs(y.baseline_end) + 1e-6) - Math.abs(x.difference) / (Math.abs(x.baseline_end) + 1e-6));
 
   return (
-    <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'Digital twin' }} />
-      <T v="h1">Your digital twin</T>
+    <Screen edges={inTab ? ['top'] : []}>
+      {inTab ? null : <Stack.Screen options={{ title: 'Digital twin' }} />}
+      <T v="h1">{inTab ? 'Your twin' : 'Your digital twin'}</T>
       <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} />
       <OrganPanel systems={d.systems} organ={organSel} onClear={() => setOrganSel(null)} />
+      <VitalsGrid title="Live vitals" />
       <T v="small">{d.about}</T>
       <Row style={{ flexWrap: 'wrap' }}>
         <Chip label={`PhenoAge ${d.risk_now.phenoage} at ${d.risk_now.age}`} fg={p.teal} bg={p.tealSoft} />
