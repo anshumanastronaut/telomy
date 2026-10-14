@@ -196,7 +196,7 @@ final class KYBand: NSObject {
         if let v = m.rmssd300 { summary["rmssd300End"] = v }
         let t0 = c.meta["startedAt"] as? Double ?? Date().timeIntervalSince1970
         let wall = Date().timeIntervalSince1970 - t0
-        let overnight = (c.meta["therapyId"] as? String) == "overnight_sleep" || nightOverlapSec(from: t0, to: t0 + wall) >= 2 * 3600
+        let overnight = isOvernightTherapy(c.meta["therapyId"]) || nightOverlapSec(from: t0, to: t0 + wall) >= 2 * 3600
         if wall > 2 * 3600, overnight, let n = KYSleepNight.analyze(beats: c.beatTimes.map { $0 - t0 }, durationSec: wall) {
             var sl: [String: Any] = ["totalSleepMin": n.totalSleepMin, "efficiency": n.efficiency, "wasoMin": n.wakeAfterOnsetMin,
                                      "awakenings": n.awakenings, "hypnogram": n.asleep.map { $0 ? 1 : 0 }, "epochSec": 30]

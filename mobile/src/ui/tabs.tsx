@@ -8,8 +8,9 @@ import { StyleSheet, View } from 'react-native';
 import { ROLE_HOME, Role, useRole } from '@/lib/role';
 import { fonts, usePalette, useScheme } from '@/lib/theme';
 
-export const tabIcon = (name: SFSymbol) => ({ color, focused }: { color: any; focused: boolean }) => (
-  <SymbolView name={focused ? (`${name}.fill` as SFSymbol) : name} size={22} tintColor={color} />
+/** Selected tabs use the ".fill" symbol; pass `selected` for symbols that have no fill variant (it would render blank). */
+export const tabIcon = (name: SFSymbol, selected?: SFSymbol) => ({ color, focused }: { color: any; focused: boolean }) => (
+  <SymbolView name={focused ? (selected ?? (`${name}.fill` as SFSymbol)) : name} size={22} tintColor={color} />
 );
 
 /** Tabs for one role; redirects to welcome or the right role home when the stored role differs. */

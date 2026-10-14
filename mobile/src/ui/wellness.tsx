@@ -7,8 +7,8 @@ import { Animated, Easing, Pressable, View, type LayoutChangeEvent } from 'react
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { useReducedMotion } from 'react-native-reanimated';
 
-import { radius, space, usePalette, type Palette, data, onInk } from '@/lib/theme';
-import { coachLine, fmtClock, fmtDur, useWellness, type Contributor, type Night, type Score, type Wellness } from '@/lib/wellness';
+import { radius, space, type, usePalette, type Palette, data, onInk } from '@/lib/theme';
+import { coachLine, fmtClock, fmtDur, hrMax, useWellness, type Contributor, type MinuteRec, type Night, type Score, type Wellness } from '@/lib/wellness';
 import { useBand } from '@/lib/band';
 import { BeatHeart } from '@/ui/ecg';
 import { Card, Icon, Row, T } from '@/ui/core';
@@ -263,6 +263,36 @@ export function ContributorList({ items }: { items: Contributor[] }) {
 }
 
 const ZONE_COLORS = ['#9FC5B8', '#5FB08F', '#E2B04A', '#E58A4E', '#D3523F'];
+/** Strain's equivalent of the sleep hypnogram: one column per hour of the day, stacked by heart-rate zone minutes
+ *  (Z1 at the bottom → Z5 on top), in the zone colours. Column height = that hour's training load (zone-weighted
+ *  minutes), so a hard 40-minute session towers over a gentle walk of the same length. */
+export function StrainColumns({ mins, age }: { mins: MinuteRec[]; age: number }) {
+  const p = usePalette();
+  const max = hrMax(age);
+  const hours = Array.from({ length: 24 }, () => [0, 0, 0, 0, 0]);
+  for (const m of mins) {
+    if (!m.hr || m.quality === 'poor' || m.quality === 'no_contact') continue;
+    const f = m.hr / max; if (f < 0.5) continue;
+    const h = new Date(m.ts).getHours(); hours[h][Math.min(4, Math.floor((f - 0.5) * 10))] += 1;
+  }
+  const load = hours.map((z) => z.reduce((s, v, i) => s + v * (i + 1), 0));
+  const peak = Math.max(1, ...load), H = 120, now = new Date().getHours();
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: H, gap: 2 }}>
+        {hours.map((z, h) => (
+          <View key={h} style={{ flex: 1, height: Math.max(2, (load[h] / peak) * H), borderRadius: 3, overflow: 'hidden', backgroundColor: p.surfaceAlt, flexDirection: 'column-reverse', opacity: h > now ? 0.35 : 1 }}>
+            {load[h] ? z.map((v, i) => (v ? <View key={i} style={{ flex: v * (i + 1), backgroundColor: ZONE_COLORS[i] }} /> : null)) : null}
+          </View>
+        ))}
+      </View>
+      <Row>
+        {['00', '06', '12', '18', '24'].map((l, i) => <T key={l} v="small" style={{ flex: i === 4 ? 0 : 1, fontSize: type.micro }} color={p.faint}>{l}</T>)}
+      </Row>
+    </View>
+  );
+}
+
 export function ZoneBar({ zones }: { zones: number[] }) {
   const p = usePalette();
   const total = zones.reduce((a, b) => a + b, 0);

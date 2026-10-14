@@ -10,7 +10,7 @@ import { Button, Card, Empty, Loading, Row, Screen, Section, Segmented, T } from
 import { C, DetailHero } from '@/ui/today';
 import { TrendChart } from '@/ui/trends';
 import { nightSeries, normalBand, type Wellness } from '@/lib/wellness';
-import { StageBreakdown, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
+import { StageBreakdown, StrainColumns, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
 
 const METHODS: Record<string, { title: string; how: string; sources: string[] }> = {
   recovery: {
@@ -87,6 +87,9 @@ export default function WellnessDetail() {
       {metric === 'strain' ? (
         <>
           <DetailHero value={w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null} max={21} unit="OF 21" label="Today’s strain" sub={`${w.today.worn} min worn · ${w.today.activeMin} min active`} color={C.strain} />
+          <Section title="Your day, hour by hour">
+            <Card><StrainColumns mins={w.today.minutes} age={w.age} /><T v="small">Each column is one hour; height is that hour's load, colours are minutes in each heart-rate zone.</T></Card>
+          </Section>
           <Section title="Heart-rate zones today">
             <Card><ZoneBar zones={w.today.zones} /><T v="small">Zones are % of your estimated max heart rate ({Math.round(hrMax(w.age))} bpm at age {Math.round(w.age)}).</T></Card>
           </Section>

@@ -44,7 +44,7 @@ public class KyEcgModule: Module {
         Function("log") { (line: String) in KYBand.shared.log("js " + line) }
         Function("startCapture") { (meta: [String: Any]) -> [String: Any] in
             // one tap captures both devices: an overnight patch session also puts the ring in overnight mode
-            if (meta["therapyId"] as? String) == "overnight_sleep" { KYRing.shared.startOvernight() }
+            if isOvernightTherapy(meta["therapyId"]) { KYRing.shared.startOvernight() }
             return KYBand.shared.startCapture(meta: meta)
         }
         Function("ringStartOvernight") { KYRing.shared.startOvernight() }
@@ -64,7 +64,7 @@ public class KyEcgModule: Module {
         Function("markPhase") { (phase: String, note: String?) in KYBand.shared.markPhase(phase, note: note) }
         Function("updateCapture") { (meta: [String: Any]) in KYBand.shared.updateCapture(meta) }
         Function("stopCapture") { (extra: [String: Any]) -> [String: Any] in
-            if (KYBand.shared.captureMeta?["therapyId"] as? String) == "overnight_sleep" { KYRing.shared.stopOvernight() }
+            if isOvernightTherapy(KYBand.shared.captureMeta?["therapyId"]) { KYRing.shared.stopOvernight() }
             return KYBand.shared.stopCapture(extra: extra)
         }
         Function("captureId") { KYBand.shared.captureId }

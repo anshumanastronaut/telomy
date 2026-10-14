@@ -537,6 +537,11 @@ final class KYSleepAuto {
             }
             return
         }
+        // A manually started overnight session is adopted: it gets the same morning stop as an automatic one.
+        if !active, isOvernightTherapy(KYBand.shared.captureMeta?["therapyId"]) {
+            active = true; startedAt = KYBand.shared.captureMeta?["startedAt"] as? Double ?? now
+            ring.log("auto-sleep: adopted a running overnight session")
+        }
         if !active {
             guard hour >= 21 || hour < 4 else { return }
             let bandSays = bandAsleepSince.map { now - $0 >= 15 * 60 } ?? false
@@ -549,7 +554,7 @@ final class KYSleepAuto {
             ring.log("auto-sleep: onset detected (band=\(bandSays) ring=\(ringSays)) — starting the night")
             KYRing.shared.startOvernight()
             if KYBand.shared.captureId == nil, KYBand.shared.status()["state"] as? String != "idle" {
-                _ = KYBand.shared.startCapture(meta: ["therapy": "Overnight sleep", "therapyId": "overnight_sleep", "settings": [:],
+                _ = KYBand.shared.startCapture(meta: ["therapy": "Overnight sleep", "therapyId": "sleep", "settings": [:],
                     "pre": [:], "firstPhase": "baseline", "tz": TimeZone.current.identifier, "autoStarted": true])
             }
         } else {
@@ -560,7 +565,7 @@ final class KYSleepAuto {
             active = false
             ring.log("auto-sleep: wake detected — ending the night")
             ring.stopOvernight()
-            if (KYBand.shared.captureMeta?["autoStarted"] as? Bool) == true { _ = KYBand.shared.stopCapture(extra: ["autoStopped": true]) }
+            if isOvernightTherapy(KYBand.shared.captureMeta?["therapyId"]) { _ = KYBand.shared.stopCapture(extra: ["autoStopped": true]) }
         }
     }
 }

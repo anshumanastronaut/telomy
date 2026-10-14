@@ -43,18 +43,23 @@ const localDate = (t: number) => { const d = new Date(t * 1000); return `${d.get
 
 // ------------------------------------------------------------------ nights from captures
 
+/** The overnight therapy id is 'sleep'; early auto-sleep builds wrote 'overnight_sleep'. */
+export const isNight = (c: any) => c?.therapyId === 'sleep' || c?.therapyId === 'overnight_sleep';
+
 export function nightsFrom(captures: CaptureMeta[]): Night[] {
   const out: Night[] = [];
   for (const c of captures as any[]) {
     const s = c.summary ?? {}, sl = s.sleep, nm = s.night ?? {};
-    if (c.therapyId !== 'sleep' || !sl || !c.endedAt) continue;
+    // a session left open (never stopped) still counts once it has been analysed — its end is the last epoch
+    if (!isNight(c) || !sl || !(c.endedAt || sl.t0)) continue;
     const epoch = sl.epochSec ?? 30;
     const hyp: number[] = sl.hypnogram ?? [];
     const first = hyp.indexOf(1), last = hyp.lastIndexOf(1);
     const t0 = sl.t0 ?? c.startedAt;  // sleep epochs start with the ECG
-    const mid = first >= 0 ? t0 + ((first + last + 1) / 2) * epoch : (c.startedAt + c.endedAt) / 2;
+    const end = c.endedAt ?? t0 + hyp.length * epoch;   // open session: ends at its last analysed epoch
+    const mid = first >= 0 ? t0 + ((first + last + 1) / 2) * epoch : (c.startedAt + end) / 2;
     out.push({
-      id: c.id, date: localDate(c.endedAt), start: t0, end: c.endedAt,
+      id: c.id, date: localDate(end), start: t0, end,
       tstMin: sl.totalSleepMin, efficiency: sl.efficiency, onsetMin: sl.onsetMin, wasoMin: sl.wasoMin, awakenings: sl.awakenings,
       sleepHr: nm.avgSleepHr ?? sl.sleepHr, sleepRmssd: nm.sleepRmssd ?? sl.sleepRmssd, lateRmssd: nm.lateRmssd,
       lowestHr: nm.lowestHr, lowestHrAt: nm.lowestHrAt, lowestHrPos: nm.lowestHrPos, hrDropPct: nm.hrDropPct, respRate: nm.respRate,
@@ -277,7 +282,12 @@ export function useWellness(ageHint?: number | null): Wellness {
     const caps = bandAvailable ? Band.listCaptures() : [];
     // nights recorded before the night metrics existed: re-analyse once (in the background) so they get them.
     // One shared job: every mounted instance waits for it, then all reload.
-    const stale = (caps as any[]).filter((c) => c.therapyId === 'sleep' && c.endedAt && c.analysis?.version !== ANALYSIS_VERSION && !reanalysed.has(c.id));
+    // re-analyse: nights from older analysis versions, and nights left open (never stopped — e.g. the app was closed
+    // or the band died) more than 6 h after they began. Never the session that is recording right now.
+    const live = bandAvailable ? Band.captureId() : null;
+    const now = Date.now() / 1000;
+    const stale = (caps as any[]).filter((c) => isNight(c) && c.id !== live && !reanalysed.has(c.id) &&
+      ((c.endedAt && c.analysis?.version !== ANALYSIS_VERSION) || (!c.endedAt && !c.summary?.sleep && now - c.startedAt > 6 * 3600)));
     if (stale.length && !pending) {
       pending = (async () => { for (const c of stale) { reanalysed.add(c.id); await Band.reanalyseCapture(c.id); } })()
         .finally(() => { pending = null; reloaders.forEach((r) => r()); });
@@ -288,7 +298,7 @@ export function useWellness(ageHint?: number | null): Wellness {
     if (age) Band.wellnessAppend('profile', { age });
     else age = ((await Band.wellnessRead('profile', 60)).filter((p) => p.age).pop()?.age as number) ?? 35;
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-    const sessions: DayEvent[] = (caps as any[]).filter((c) => c.therapyId !== 'sleep' && c.startedAt >= dayStart.getTime() / 1000)
+    const sessions: DayEvent[] = (caps as any[]).filter((c) => !isNight(c) && c.startedAt >= dayStart.getTime() / 1000)
       .map((c) => ({ t: c.startedAt, end: c.endedAt ?? c.startedAt, label: c.therapy }));
     const userEvents = ((bandAvailable ? await Band.wellnessRead('events', 2) : []) as UserEventRec[]).filter((e) => e.t >= dayStart.getTime() / 1000 - 6 * 3600);
     setState({ nights: nightsFrom(caps), minutes, age: age!, sessions, userEvents });
