@@ -58,7 +58,7 @@ export default function Menu() {
           <StackBar parts={[{ value: m.protein * 4, color: p.teal }, { value: m.carbs * 4, color: p.copper }, { value: m.fat * 9, color: p.graphite }]} />
           {swapFor === i ? (
             <View style={{ gap: 8 }}>
-              <TextInput value={pref} onChangeText={setPref} placeholder="Any preference? e.g. high protein, no eggs, lighter" placeholderTextColor={p.faint} style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, color: p.text, fontFamily: 'Inter_400Regular' }} />
+              <TextInput value={pref} onChangeText={setPref} placeholder="Any preference? e.g. high protein, no eggs, lighter" placeholderTextColor={p.faint} style={{ borderRadius: radius.md, backgroundColor: p.surfaceAlt, padding: 10, color: p.text, fontFamily: 'Inter_400Regular' }} />
               <Button title="Find a swap" loading={busy} onPress={() => swap(i)} />
             </View>
           ) : null}

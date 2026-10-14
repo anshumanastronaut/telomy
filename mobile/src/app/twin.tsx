@@ -5,7 +5,9 @@ import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { api, useApi } from '@/lib/api';
 import { radius, space, usePalette } from '@/lib/theme';
-import { Button, Card, Chip, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
+import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
+import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
+import type { OrganId } from '@/twin3d/scene';
 
 function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'], xLabel = (x: number) => `${Math.round(x / 365 * 10) / 10}y` }:
   { a: [number, number][]; b?: [number, number][]; unit: string; height?: number; labels?: string[]; xLabel?: (x: number) => string }) {
@@ -41,6 +43,51 @@ function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'],
   );
 }
 
+/** Under the 3D body: what the tapped organ's system shows — status, each problem in plain language, its markers. */
+function OrganPanel({ systems, organ, onClear }: { systems: any[]; organ: OrganId | null; onClear: () => void }) {
+  const p = usePalette();
+  if (!organ) {
+    const flagged = systems.filter((s) => s.status !== 'ok');
+    return (
+      <Row style={{ flexWrap: 'wrap' }} gap={6}>
+        <T v="small" color={p.muted}>Tap an organ.</T>
+        {flagged.map((s) => <Chip key={s.name} label={s.name} fg={s.status === 'high' ? p.danger : p.warn} bg={s.status === 'high' ? p.dangerSoft : p.warnSoft} />)}
+      </Row>
+    );
+  }
+  const sysName = systemOfOrgan(organ);
+  const sys = systems.find((s) => s.name === sysName);
+  const sc = !sys ? p.muted : sys.status === 'high' ? p.danger : sys.status === 'watch' ? p.warn : p.success;
+  return (
+    <Card style={{ gap: space[2] }}>
+      <Row>
+        <View style={{ flex: 1 }}>
+          <T v="h2">{ORGAN_LABEL[organ]}</T>
+          <T v="small">{sys ? `${sys.name} · ${sys.status === 'high' ? 'out of range' : sys.status === 'watch' ? 'worth watching' : 'in range'}` : 'No markers for this organ in your Vault yet'}</T>
+        </View>
+        <Button kind="ghost" title="Whole body" onPress={onClear} />
+      </Row>
+      {sys?.problems?.map((pr: any) => (
+        <Row key={pr.key} style={{ alignItems: 'flex-start' }} gap={8}>
+          <Icon name={pr.severity === 'high' ? 'exclamationmark.triangle.fill' : 'eye.fill'} size={13} color={pr.severity === 'high' ? p.danger : p.warn} />
+          <View style={{ flex: 1 }}>
+            <T v="body" style={{ fontWeight: '600' }}>{pr.label} {pr.direction} · {Math.round(pr.value * 10) / 10} {pr.unit}</T>
+            <T v="small">{pr.detail}</T>
+          </View>
+        </Row>
+      ))}
+      {sys && !sys.problems?.length ? <T v="small" color={sc}>All markers for this system are in range.</T> : null}
+      {sys ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
+          {sys.variables.map((v: any) => (
+            <View key={v.key} style={{ width: '50%' }}><T v="small">{v.label}</T><T v="body" style={{ fontWeight: '600' }}>{Math.round(v.value * 10) / 10} <T v="small">{v.unit}</T></T></View>
+          ))}
+        </View>
+      ) : <T v="small" color={p.muted}>Add a kidney panel (creatinine, eGFR, urine ACR) to your Vault and the twin will map it here.</T>}
+    </Card>
+  );
+}
+
 export default function Twin() {
   const p = usePalette();
   const o = useApi<any>('/twin');
@@ -51,6 +98,7 @@ export default function Twin() {
   const [drinking, setDrinking] = useState(false);
   const [dayT, setDayT] = useState<any>(null);
   const [tab, setTab] = useState<'future' | 'today' | 'mirror'>('future');
+  const [organSel, setOrganSel] = useState<OrganId | null>(null);
 
   useEffect(() => {
     setSim(null);
@@ -68,6 +116,8 @@ export default function Twin() {
     <Screen edges={[]}>
       <Stack.Screen options={{ title: 'Digital twin' }} />
       <T v="h1">Your digital twin</T>
+      <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} />
+      <OrganPanel systems={d.systems} organ={organSel} onClear={() => setOrganSel(null)} />
       <T v="small">{d.about}</T>
       <Row style={{ flexWrap: 'wrap' }}>
         <Chip label={`PhenoAge ${d.risk_now.phenoage} at ${d.risk_now.age}`} fg={p.teal} bg={p.tealSoft} />
@@ -95,7 +145,7 @@ export default function Twin() {
           <Row>
             {[1, 5, 10].map((y) => (
               <Pressable key={y} onPress={() => setYears(y)} accessibilityRole="button"
-                style={{ flex: 1, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: years === y ? p.teal : p.surface, borderWidth: 1, borderColor: p.border }}>
+                style={{ flex: 1, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: years === y ? p.teal : p.surface }}>
                 <T v="body" color={years === y ? p.onAccent : p.text}>{y} year{y > 1 ? 's' : ''}</T>
               </Pressable>
             ))}
@@ -175,20 +225,39 @@ export default function Twin() {
         </>
       ) : null}
 
-      <Section title="Your body, as the twin holds it">
-        {d.systems.map((s: any) => (
-          <Card key={s.name}>
-            <T v="label">{s.name}</T>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
-              {s.variables.map((v: any) => (
-                <View key={v.key} style={{ width: '50%' }}>
-                  <T v="small">{v.label}</T>
-                  <T v="body" style={{ fontWeight: '600' }}>{Math.round(v.value * 10) / 10} <T v="small">{v.unit}</T></T>
-                </View>
+      <Section title={d.problem_count ? `Your body, system by system — ${d.problem_count} thing${d.problem_count === 1 ? '' : 's'} to watch` : 'Your body, system by system'}>
+        <T v="small" color={p.muted}>Each system below is flagged against healthy reference ranges — green is in range, amber worth watching, red out of range. Wellness screening, not a diagnosis.</T>
+        {d.systems.map((s: any) => {
+          const sc = s.status === 'high' ? p.danger : s.status === 'watch' ? p.warn : p.success;
+          const sbg = s.status === 'high' ? p.dangerSoft : s.status === 'watch' ? p.warnSoft : p.successSoft;
+          const slabel = s.status === 'high' ? 'Out of range' : s.status === 'watch' ? 'Watch' : 'In range';
+          return (
+            <Card key={s.name} tone={s.status === 'high' ? 'copper' : undefined} style={{ gap: space[2] }}>
+              <Row>
+                <Icon name={s.icon ?? 'circle'} color={sc} />
+                <T v="h3" style={{ flex: 1 }}>{s.name}</T>
+                <Chip label={slabel} fg={sc} bg={sbg} />
+              </Row>
+              {s.problems.map((pr: any) => (
+                <Row key={pr.key} style={{ alignItems: 'flex-start' }} gap={6}>
+                  <Icon name={pr.severity === 'high' ? 'exclamationmark.triangle.fill' : 'eye.fill'} size={13} color={pr.severity === 'high' ? p.danger : p.warn} />
+                  <View style={{ flex: 1 }}>
+                    <T v="body" style={{ fontWeight: '600' }}>{pr.label} {pr.direction === 'low' ? 'low' : 'high'} · {Math.round(pr.value * 10) / 10} {pr.unit}</T>
+                    <T v="small" color={p.muted}>{pr.detail}</T>
+                  </View>
+                </Row>
               ))}
-            </View>
-          </Card>
-        ))}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
+                {s.variables.map((v: any) => (
+                  <View key={v.key} style={{ width: '50%' }}>
+                    <T v="small">{v.label}</T>
+                    <T v="body" style={{ fontWeight: '600' }}>{Math.round(v.value * 10) / 10} <T v="small">{v.unit}</T></T>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          );
+        })}
       </Section>
       <View style={{ height: space[2] }} />
     </Screen>

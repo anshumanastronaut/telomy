@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+src/twin3d/threeSource.generated.ts
+src/twin3d/anatomy.generated.ts
+src/sinc/orbSource.generated.ts

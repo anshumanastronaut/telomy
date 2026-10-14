@@ -42,7 +42,7 @@ export default function Work() {
             <T v="small">{c.scheduled_at.replace('T', ' ')} · {c.reason || 'No reason given'}</T>
             <Button kind="ghost" title="Open pre-clinic brief" onPress={() => router.push('/brief')} />
             <TextInput value={note[c.id] ?? ''} onChangeText={(v) => setNote({ ...note, [c.id]: v })} placeholder="Consult notes (required)" placeholderTextColor={p.faint} multiline
-              style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, minHeight: 60, color: p.text, fontFamily: 'Inter_400Regular' }} />
+              style={{ borderRadius: radius.md, padding: 10, minHeight: 60, color: p.text, fontFamily: 'Inter_400Regular' }} />
             <Button title="Complete consult" disabled={!note[c.id]?.trim()} onPress={async () => { await api(`/consults/${c.id}/complete`, { body: { notes: note[c.id] } }); show('Completed. Notes shared with the patient.', 'success'); w.reload(); }} />
           </Card>
         )) : <Empty title="No consults scheduled" body="On-demand consults booked by patients appear here." />)}
@@ -59,7 +59,7 @@ export default function Work() {
             <T v="small">₹{pl.plan.monthly_price.toLocaleString('en-IN')} / month · {pl.plan.formula_pairing ?? ''}</T>
             <Button kind="ghost" title="Open patient" onPress={() => router.push(`/patient/${pl.patient_id}`)} />
             <TextInput value={note[`t${pl.id}`] ?? ''} onChangeText={(v) => setNote({ ...note, [`t${pl.id}`]: v })} placeholder="Note to patient (required)" placeholderTextColor={p.faint} multiline
-              style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, minHeight: 60, color: p.text, fontFamily: 'Inter_400Regular' }} />
+              style={{ borderRadius: radius.md, padding: 10, minHeight: 60, color: p.text, fontFamily: 'Inter_400Regular' }} />
             <Row>
               <Button kind="danger" title="Decline" style={{ flex: 1 }} disabled={!note[`t${pl.id}`]?.trim()} onPress={async () => { await api(`/therapy/plans/${pl.id}/decide`, { body: { approve: false, note: note[`t${pl.id}`] } }); show('Declined; the patient sees your note.', 'success'); w.reload(); }} />
               <Button title="Sign & book" style={{ flex: 1 }} disabled={!note[`t${pl.id}`]?.trim()} testID={`sign-plan-${pl.id}`} onPress={async () => { const r = await api(`/therapy/plans/${pl.id}/decide`, { body: { approve: true, note: note[`t${pl.id}`] } }); show(`Signed — ${r.booked} sessions booked over 4 weeks.`, 'success'); w.reload(); }} />
@@ -82,12 +82,12 @@ export default function Work() {
                   <T v="small">{i.why}</T>
                   {i.interactions.map((x: any) => <T key={x.with} v="small" color={x.severity === 'major' ? p.danger : p.warn}>⚠︎ {x.with}: {x.note}</T>)}
                   <TextInput value={dose[k] ?? i.dose} onChangeText={(v) => setDose({ ...dose, [k]: v })} accessibilityLabel={`Dose for ${i.name}`}
-                    style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 6, color: p.text, fontFamily: 'Inter_400Regular' }} />
+                    style={{ borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 6, color: p.text, fontFamily: 'Inter_400Regular' }} />
                 </View>
               );
             })}
             <TextInput value={note[`r${pl.id}`] ?? ''} onChangeText={(v) => setNote({ ...note, [`r${pl.id}`]: v })} placeholder="Clinical note (required to sign)" placeholderTextColor={p.faint} multiline
-              style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, minHeight: 60, color: p.text, fontFamily: 'Inter_400Regular' }} />
+              style={{ borderRadius: radius.md, padding: 10, minHeight: 60, color: p.text, fontFamily: 'Inter_400Regular' }} />
             <Row>
               <Button kind="danger" title="Reject" style={{ flex: 1 }} disabled={!note[`r${pl.id}`]?.trim()} onPress={async () => { await api(`/rx/plans/${pl.id}/decide`, { body: { approve: false, note: note[`r${pl.id}`] } }); show('Rejected.', 'success'); w.reload(); }} />
               <Button title="Sign e-prescription" style={{ flex: 1 }} disabled={!note[`r${pl.id}`]?.trim()} testID={`sign-rx-${pl.id}`} onPress={async () => {

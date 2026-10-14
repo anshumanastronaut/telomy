@@ -4,9 +4,10 @@ import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, useApi } from '@/lib/api';
-import { radius, space, usePalette } from '@/lib/theme';
+import { radius, space, type, usePalette } from '@/lib/theme';
 import { Button, Chip, ConfBar, Icon, Row, Spacer, StatusChip, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
+import { ThinkingOrb, type OrbState } from '@/sinc/ThinkingOrb';
 
 type Msg = { role: 'user' | 'assistant'; content: string; meta?: any; id?: number; pending?: boolean };
 
@@ -72,8 +73,9 @@ export default function Sinc() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: p.bg }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={60}>
         <Row style={{ paddingHorizontal: space[4], paddingVertical: space[2] }}>
-          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
-            <Logo kind="mark" width={28} tone="dark" />
+          {/* Sinc's face: the orb is always alive here — calm "shaping" at rest, "solving" while it works */}
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: p.surface, alignItems: 'center', justifyContent: 'center' }}>
+            <ThinkingOrb state={busy ? 'solving' : 'shaping'} size={20} />
           </View>
           <View style={{ flex: 1 }}>
             <T v="h3">Sinc</T>
@@ -97,7 +99,7 @@ export default function Sinc() {
             <View style={{ gap: 8 }}>
               <T v="label">History</T>
               {(chats.data ?? []).map((c) => (
-                <Pressable key={c.id} onPress={() => openChat(c.id)} style={{ backgroundColor: p.surface, borderRadius: radius.lg, padding: space[3], borderWidth: 1, borderColor: p.border }}>
+                <Pressable key={c.id} onPress={() => openChat(c.id)} style={{ backgroundColor: p.surface, borderRadius: radius.lg, padding: space[3] }}>
                   <T v="body" style={{ fontWeight: '600' }}>{c.title}</T>
                   <T v="small" numberOfLines={2}>{c.preview}</T>
                 </Pressable>
@@ -105,16 +107,23 @@ export default function Sinc() {
               {chats.data && !chats.data.length ? <T v="small">No conversations yet.</T> : null}
             </View>
           ) : msgs.length === 0 ? (
-            <View style={{ gap: space[3] }}>
-              <T v="h1">I read your whole Vault before I answer.</T>
-              <T v="body" color={p.muted}>
-                Labs, imaging, wearables and what you log. I'll show you the evidence behind every answer, and tell you when I don't have enough to say.
-              </T>
-              {STARTERS.map((s) => (
-                <Pressable key={s} onPress={() => send(s)} style={{ backgroundColor: p.surface, borderRadius: radius.lg, padding: space[3], borderWidth: 1, borderColor: p.border }} accessibilityRole="button">
-                  <T v="body">{s}</T>
-                </Pressable>
-              ))}
+            // First impression: Sinc's presence, two words, nothing else competing. Everything Sinc can do stays one
+            // tap away — the starters become quiet chips, the "how it works" line sits small under the orb.
+            <View style={{ alignItems: 'center', gap: space[5], paddingTop: space[8] }}>
+              <ThinkingOrb state="listening" size={64} scale={2.6} />
+              <View style={{ alignItems: 'center', gap: space[2] }}>
+                <T v="display" style={{ textAlign: 'center' }}>Always watching.</T>
+                <T v="small" color={p.muted} style={{ textAlign: 'center' }}>Sinc knows your whole Vault — and shows its evidence.</T>
+              </View>
+              {/* all starters kept, as one quiet scrollable row of small pills */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space[2], paddingHorizontal: space[1] }}>
+                {STARTERS.map((s) => (
+                  <Pressable key={s} onPress={() => send(s)} accessibilityRole="button"
+                    style={({ pressed }) => ({ backgroundColor: p.surface, borderRadius: radius.pill, paddingHorizontal: space[3], paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}>
+                    <T v="small" color={p.muted} style={{ fontSize: type.caption - 1 }} numberOfLines={1}>{s}</T>
+                  </Pressable>
+                ))}
+              </ScrollView>
             </View>
           ) : (
             msgs.map((m, i) => <Bubble key={i} m={m} onDraft={draft} />)
@@ -133,7 +142,7 @@ export default function Sinc() {
           </View>
         ) : null}
         {/* composer floats above the glass tab bar; drops to the keyboard when typing */}
-        <Row style={{ marginHorizontal: space[3], marginBottom: kbd ? 8 : 98, padding: 6, paddingLeft: 4, borderRadius: 28, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border }}>
+        <Row style={{ marginHorizontal: space[3], marginBottom: kbd ? 8 : 98, padding: 6, paddingLeft: 4, borderRadius: 28, backgroundColor: p.surface }}>
           <TextInput
             value={text}
             onChangeText={setText}
@@ -164,13 +173,7 @@ function Bubble({ m, onDraft }: { m: Msg; onDraft: (id: number) => void }) {
         <T v="body" color={p.onAccent}>{m.content}</T>
       </View>
     );
-  if (m.pending)
-    return (
-      <Row>
-        <ActivityIndicator color={p.teal} />
-        <T v="small">Reading your Vault and checking the evidence…</T>
-      </Row>
-    );
+  if (m.pending) return <SincThinking />;
   const meta = m.meta ?? {};
   return (
     <View style={{ gap: 8, maxWidth: '96%' }}>
@@ -229,5 +232,27 @@ function Md({ text }: { text: string }) {
         );
       })}
     </View>
+  );
+}
+
+/** While Sinc works: the thinking orb morphs through timed stages (the answer arrives in one response, so these are
+ *  paced stages of a typical answer, not live progress). */
+function SincThinking() {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const a = setTimeout(() => setPhase(1), 2200), b = setTimeout(() => setPhase(2), 5500);
+    return () => { clearTimeout(a); clearTimeout(b); };
+  }, []);
+  const stages: { state: OrbState; text: string }[] = [
+    { state: 'searching', text: 'Reading your Vault…' },
+    { state: 'solving', text: 'Checking the evidence…' },
+    { state: 'composing', text: 'Writing your answer…' },
+  ];
+  const s = stages[phase];
+  return (
+    <Row gap={space[3]}>
+      <ThinkingOrb state={s.state} size={64} />
+      <T v="small">{s.text}</T>
+    </Row>
   );
 }

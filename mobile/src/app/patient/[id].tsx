@@ -105,7 +105,7 @@ export default function Patient() {
             )) : <T v="small" style={{ paddingVertical: 8 }}>No notes yet.</T>}
           </Card>
           <TextInput value={note} onChangeText={setNote} placeholder="Add a clinical note" placeholderTextColor={p.faint} multiline testID="note-input"
-            style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
+            style={{ borderRadius: radius.md, padding: 12, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
           <Button title="Save note" disabled={!note.trim()} onPress={async () => { await api(`/doctor/patients/${id}/notes`, { body: { text: note } }); setNote(''); show('Note saved.', 'success'); reload(); }} />
         </Section>
         {d.bookings?.length ? (

@@ -28,7 +28,7 @@ export function RoleTabs({ role, children }: { role: Role; children: React.React
       tabBarItemStyle: { paddingTop: 2 },
       tabBarBackground: () => (
         <View style={[StyleSheet.absoluteFill, { borderRadius: 32, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }]}>
-          <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" tintColor={scheme === 'dark' ? 'rgba(18,25,22,0.55)' : 'rgba(255,255,255,0.55)'} />
+          <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" tintColor={scheme === 'dark' ? 'rgba(18,25,22,0.84)' : 'rgba(255,255,255,0.86)'} />{/* glass, but text underneath must not compete with labels */}
         </View>
       ),
       tabBarLabelStyle: { fontSize: 11, fontFamily: fonts.bold, letterSpacing: 0.2 } }}>

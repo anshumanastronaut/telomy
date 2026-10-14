@@ -4,7 +4,7 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { useApi } from '@/lib/api';
-import { space, usePalette } from '@/lib/theme';
+import { space, usePalette, data } from '@/lib/theme';
 import { fmtClock, fmtDur, hrMax, useWellness } from '@/lib/wellness';
 import { Button, Card, Empty, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { C, DetailHero } from '@/ui/today';
@@ -140,12 +140,12 @@ function Trends({ w, kind }: { w: Wellness; kind: 'recovery' | 'sleep' }) {
     ? [
         { title: 'Recovery', f: (x: any) => x.recovery, color: C.green, unit: '%', up: true, dec: 0 },
         { title: 'Overnight HRV', f: (x: any) => x.n.sleepRmssd, color: '#5CC9A7', unit: 'ms', up: true, dec: 0 },
-        { title: 'Lowest heart rate', f: (x: any) => x.n.lowestHr, color: '#FF6B57', unit: 'bpm', up: false, dec: 0 },
+        { title: 'Lowest heart rate', f: (x: any) => x.n.lowestHr, color: data.heart, unit: 'bpm', up: false, dec: 0 },
       ]
     : [
         { title: 'Time asleep', f: (x: any) => x.n.tstMin / 60, color: C.sleep, unit: 'h', up: true, dec: 1 },
         { title: 'Sleep score', f: (x: any) => x.sleep, color: C.sleep, unit: '', up: true, dec: 0 },
-        { title: 'Breathing rate', f: (x: any) => x.n.respRate, color: '#8EA8FF', unit: '/min', up: false, dec: 1 },
+        { title: 'Breathing rate', f: (x: any) => x.n.respRate, color: data.sleep, unit: '/min', up: false, dec: 1 },
       ];
   return (
     <Section title="Trends">

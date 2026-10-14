@@ -66,7 +66,7 @@ export default function Signal() {
               keyboardType="decimal-pad"
               placeholder={`Value in ${s.unit || 'units'}`}
               placeholderTextColor={p.faint}
-              style={{ flex: 1, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface }}
+              style={{ flex: 1, borderRadius: radius.md, padding: 12, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface }}
             />
             <Button
               title="Save"

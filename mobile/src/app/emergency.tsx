@@ -22,7 +22,7 @@ export default function Emergency() {
           {FIELDS.map(([k, l]) => (
             <View key={k} style={{ gap: 4 }}>
               <T v="label">{l}</T>
-              <TextInput value={e[k] ?? ''} onChangeText={(v) => setE({ ...e, [k]: v })} style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, color: p.text, fontFamily: 'Inter_400Regular' }} />
+              <TextInput value={e[k] ?? ''} onChangeText={(v) => setE({ ...e, [k]: v })} style={{ borderRadius: radius.md, backgroundColor: p.surfaceAlt, padding: 10, color: p.text, fontFamily: 'Inter_400Regular' }} />
             </View>
           ))}
         </Card>

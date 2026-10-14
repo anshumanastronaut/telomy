@@ -38,12 +38,15 @@
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
+    "react-native-webview": "13.16.1",
     "react-native-worklets": "0.10.1",
+    "three": "^0.169.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@bacons/apple-targets": "^5.0.0",
     "@types/react": "~19.2.2",
+    "esbuild": "^0.24.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -52,7 +55,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "postinstall": "node tools/gen-three-inline.mjs"
   },
   "private": true
 }

@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { ago, fmtDate, useApi } from '@/lib/api';
-import { radius, space, statusColor, usePalette } from '@/lib/theme';
+import { radius, space, statusColor, usePalette, data, onInk } from '@/lib/theme';
 import { Sparkline, StackBar } from '@/ui/charts';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
@@ -149,7 +149,7 @@ function Markers() {
         onChange={setMode}
       />
       <Row>
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: p.surface, borderRadius: radius.md, borderWidth: 1, borderColor: p.border, paddingHorizontal: 12 }}>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: p.surface, borderRadius: radius.md, paddingHorizontal: 12 }}>
           <Icon name="magnifyingglass" size={14} color={p.muted} />
           <TextInput value={q} onChangeText={setQ} placeholder="Search biomarkers" placeholderTextColor={p.faint} style={{ flex: 1, paddingVertical: 10, color: p.text, fontSize: 15 }} accessibilityLabel="Search biomarkers" />
         </View>
@@ -423,36 +423,36 @@ function Reports() {
 function BiomarkerHero({ n, o, r, x, panels, onOut }: { n: number; o: number; r: number; x: number; panels: number; onOut: () => void }) {
   const p = usePalette();
   const size = 132, sw = 12, R = (size - sw) / 2, C = 2 * Math.PI * R, gap = 6;
-  const parts = [{ v: o, c: '#4FD08F' }, { v: r, c: '#F2B94B' }, { v: x, c: '#FF6B57' }].filter((q) => q.v > 0);
+  const parts = [{ v: o, c: '#4FD08F' }, { v: r, c: '#F2B94B' }, { v: x, c: data.heart }].filter((q) => q.v > 0);
   let acc = 0;
   const arcs = parts.map((q) => { const len = (q.v / Math.max(1, n)) * C; const a = { off: acc, len: Math.max(0, len - gap), c: q.c }; acc += len; return a; });
-  const rows = [{ k: 'Optimal', v: o, c: '#4FD08F' }, { k: 'In range', v: r, c: '#F2B94B' }, { k: 'Out of range', v: x, c: '#FF6B57' }];
+  const rows = [{ k: 'Optimal', v: o, c: '#4FD08F' }, { k: 'In range', v: r, c: '#F2B94B' }, { k: 'Out of range', v: x, c: data.heart }];
   return (
-    <LinearGradient colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
-      <T v="label" color="rgba(255,255,255,0.6)">Biomarkers · {panels} panels</T>
+    <LinearGradient colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: onInk.hairline }}>
+      <T v="label" color={onInk.muted}>Biomarkers · {panels} panels</T>
       <Row gap={space[5]}>
         <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
           <Svg width={size} height={size} style={{ position: 'absolute' }}>
-            <Circle cx={size / 2} cy={size / 2} r={R} stroke="rgba(255,255,255,0.08)" strokeWidth={sw} fill="none" />
+            <Circle cx={size / 2} cy={size / 2} r={R} stroke={onInk.hairline} strokeWidth={sw} fill="none" />
             {arcs.map((a, i) => (
               <Circle key={i} cx={size / 2} cy={size / 2} r={R} stroke={a.c} strokeWidth={sw} fill="none" strokeLinecap="round"
                 strokeDasharray={`${a.len} ${C}`} strokeDashoffset={-a.off} rotation={-90} origin={`${size / 2}, ${size / 2}`} />
             ))}
           </Svg>
           <T v="display" color="#fff" style={{ fontSize: 36, lineHeight: 42 }}>{n ? Math.round((100 * o) / n) : 0}%</T>
-          <T v="small" color="rgba(255,255,255,0.6)" style={{ fontSize: 11 }}>optimal</T>
+          <T v="small" color={onInk.muted} style={{ fontSize: 11 }}>optimal</T>
         </View>
         <View style={{ flex: 1, gap: 10 }}>
           {rows.map((q) => (
             <Pressable key={q.k} disabled={q.k !== 'Out of range'} onPress={onOut} accessibilityRole={q.k === 'Out of range' ? 'button' : undefined}>
               <Row gap={8}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: q.c }} />
-                <T v="small" color="rgba(255,255,255,0.75)" style={{ flex: 1 }}>{q.k}</T>
+                <T v="small" color={onInk.secondary} style={{ flex: 1 }}>{q.k}</T>
                 <T v="num" color="#fff" style={{ fontSize: 20 }}>{q.v}</T>
               </Row>
             </Pressable>
           ))}
-          <T v="small" color="rgba(255,255,255,0.45)" style={{ fontSize: 11 }}>{n} markers in total</T>
+          <T v="small" color={onInk.faint} style={{ fontSize: 11 }}>{n} markers in total</T>
         </View>
       </Row>
     </LinearGradient>

@@ -7,7 +7,7 @@ import { Animated, Easing, Pressable, View, type LayoutChangeEvent } from 'react
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { useReducedMotion } from 'react-native-reanimated';
 
-import { radius, space, usePalette, type Palette } from '@/lib/theme';
+import { radius, space, usePalette, type Palette, data, onInk } from '@/lib/theme';
 import { coachLine, fmtClock, fmtDur, useWellness, type Contributor, type Night, type Score, type Wellness } from '@/lib/wellness';
 import { useBand } from '@/lib/band';
 import { BeatHeart } from '@/ui/ecg';
@@ -41,16 +41,16 @@ export function ScoreRing({ value, max = 100, size = 96, stroke = 9, color, trac
             strokeDasharray={`${circ} ${circ}`} strokeDashoffset={offset as any} rotation={-90} origin={`${size / 2}, ${size / 2}`} />
         </Svg>
         <T v="num" color="#fff" style={{ fontSize: size > 140 ? 52 : size > 90 ? 28 : 22, lineHeight: size > 140 ? 60 : undefined }}>{center}</T>
-        {sub ? <T v="small" color="rgba(255,255,255,0.65)" style={{ fontSize: 11, marginTop: -2 }}>{sub}</T> : null}
+        {sub ? <T v="small" color={onInk.secondary} style={{ fontSize: 11, marginTop: -2 }}>{sub}</T> : null}
       </View>
-      {label ? <T v="small" color="rgba(255,255,255,0.85)" style={{ fontWeight: '600', letterSpacing: 0.5 }}>{label.toUpperCase()}</T> : null}
+      {label ? <T v="small" color={onInk.primary} style={{ fontWeight: '600', letterSpacing: 0.5 }}>{label.toUpperCase()}</T> : null}
     </Pressable>
   );
 }
 
 /** Stage colours (one colour = one meaning, same on every screen). */
 export const STAGE = [
-  { k: 'Awake', c: '#E0894F' }, { k: 'Light', c: '#8EA8FF' }, { k: 'Deep', c: '#4B5FD1' }, { k: 'REM', c: '#4FC8E3' },
+  { k: 'Awake', c: data.temp }, { k: 'Light', c: data.sleep }, { k: 'Deep', c: '#4B5FD1' }, { k: 'REM', c: '#4FC8E3' },
 ];
 const LANE = [0, 3, 1, 2]; // top → bottom: Awake, REM, Light, Deep (Oura/Apple order)
 
@@ -68,7 +68,7 @@ export function Hypnogram({ n, height }: { n: Night; height?: number }) {
   const plotW = Math.max(0, w - labelW);
   const X = (i: number) => labelW + (i / N) * plotW;
   const laneOf = (v: number) => (staged ? LANE.indexOf(v) : v ? 1 : 0);
-  const col = (v: number) => (staged ? STAGE[v].c : v ? '#6F8CF0' : '#E0894F');
+  const col = (v: number) => (staged ? STAGE[v].c : v ? '#6F8CF0' : data.temp);
   const Y = (v: number) => laneOf(v) * laneH + laneH * 0.18;
   const hours: number[] = [];
   for (let t = Math.ceil(n.start / 3600) * 3600; t < n.start + N * n.epochSec; t += 3600) hours.push(t);
@@ -97,7 +97,7 @@ export function Hypnogram({ n, height }: { n: Night; height?: number }) {
       {!staged ? (
         <Row gap={14}>
           <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#6F8CF0' }} /><T v="small">Asleep</T></Row>
-          <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#E0894F' }} /><T v="small">Awake</T></Row>
+          <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: data.temp }} /><T v="small">Awake</T></Row>
         </Row>
       ) : null}
     </View>
