@@ -28,7 +28,10 @@
         "NSHealthUpdateUsageDescription": "Telomy does not write to Apple Health."
       },
       "appleTeamId": "M483297A5P",
-      "buildNumber": "5"
+      "buildNumber": "5",
+      "entitlements": {
+        "com.apple.developer.healthkit": true
+      }
     },
     "android": {
       "adaptiveIcon": {

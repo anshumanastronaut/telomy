@@ -59,7 +59,7 @@ export function Hypnogram({ n, height }: { n: Night; height?: number }) {
   const p = usePalette();
   const [w, setW] = useState(0);
   const staged = !!n.stages?.length;
-  const seq = staged ? n.stages!.map((v) => (v < 0 ? 0 : v)) : n.hypnogram.map((v) => (v ? 1 : 0));
+  const seq = staged ? n.stages! : n.hypnogram.map((v) => (v ? 1 : 0));   // -1 = no ECG (band disconnected): drawn as a gap
   const lanes = staged ? 4 : 2;
   const H = height ?? (staged ? 96 : 46), laneH = H / lanes, labelW = staged ? 44 : 0;
   const N = seq.length || 1;
@@ -84,10 +84,12 @@ export function Hypnogram({ n, height }: { n: Night; height?: number }) {
           {/* thin connectors between stages, like a step plot */}
           {runs.slice(1).map((r, k) => {
             const prev = runs[k];
+            if (r.v < 0 || prev.v < 0) return null;
             return <Line key={'c' + k} x1={X(r.a)} x2={X(r.a)} y1={Y(prev.v) + laneH * 0.32} y2={Y(r.v) + laneH * 0.32} stroke={p.borderStrong} strokeWidth={1} />;
           })}
-          {runs.map((r, k) => (
-            <Rect key={k} x={X(r.a)} width={Math.max(2, X(r.b) - X(r.a) - 0.5)} rx={3} y={Y(r.v)} height={laneH * 0.64} fill={col(r.v)} />
+          {runs.map((r, k) => (r.v < 0
+            ? <Rect key={k} x={X(r.a)} width={Math.max(2, X(r.b) - X(r.a))} y={0} height={H} fill={p.surfaceAlt} opacity={0.5} />
+            : <Rect key={k} x={X(r.a)} width={Math.max(2, X(r.b) - X(r.a) - 0.5)} rx={3} y={Y(r.v)} height={laneH * 0.64} fill={col(r.v)} />
           ))}
           {hours.map((t) => { const x = X((t - n.start) / n.epochSec); return x > labelW + 10 && x < w - 10 ? <SvgText key={'l' + t} x={x} y={H + 13} fontSize={11} fill={p.muted} textAnchor="middle">{new Date(t * 1000).getHours()}</SvgText> : null; })}
         </Svg>

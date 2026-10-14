@@ -211,7 +211,7 @@ final class KYCapture {
         return nil
     }
 
-    static let analysisVersion = "2026-10-14b (4-stage sleep, HMC 151 nights)"
+    static let analysisVersion = "2026-10-14c (4-stage sleep, gaps = no data)"
 
     /// Re-run the current analysis over a saved session's raw ECG (each gap-free segment separately, as live) and rewrite
     /// beats.csv, the summary (beats, HR/HRV, rhythm events, whole-night sleep) and the export bundle. The original live

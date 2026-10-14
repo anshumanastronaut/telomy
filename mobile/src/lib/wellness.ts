@@ -266,7 +266,7 @@ export type Wellness = {
 };
 
 /** Must equal KYCapture.analysisVersion: nights analysed by an older version are re-analysed once on the phone. */
-export const ANALYSIS_VERSION = '2026-10-14b (4-stage sleep, HMC 151 nights)';
+export const ANALYSIS_VERSION = '2026-10-14c (4-stage sleep, gaps = no data)';
 const reanalysed = new Set<string>();
 let pending: Promise<void> | null = null;
 const reloaders = new Set<() => void>();

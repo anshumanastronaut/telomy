@@ -59,7 +59,8 @@ public final class KYSleepStager {
 
     /// Night summary from the stage sequence (30-s epochs; -1 = no data, treated as wake for continuity).
     public static func summarize(_ stages: [Int]) -> [String: Any] {
-        let s = stages.map { $0 < 0 ? 0 : $0 }
+        // -1 = no ECG (band disconnected): unknown, never counted as wake or sleep
+        let s = stages
         let asleep = s.map { $0 > 0 }
         var out: [String: Any] = [:]
         // onset: first epoch that starts 10 min (20 epochs) of mostly sleep (≥ 16)
@@ -67,18 +68,20 @@ public final class KYSleepStager {
         if s.count >= 20 { for i in 0...(s.count - 20) where asleep[i] && asleep[i..<(i + 20)].filter({ $0 }).count >= 16 { onset = i; break } }
         guard let on = onset, let last = asleep.lastIndex(of: true) else { return ["totalSleepMin": 0.0] }
         let span = Array(s[on...last])
-        let tst = Double(span.filter { $0 > 0 }.count) / 2
+        let known = span.filter { $0 >= 0 }
+        let tst = Double(known.filter { $0 > 0 }.count) / 2
         var awak = 0, run = 0
-        for v in span { if v == 0 { run += 1 } else { if run >= 2 { awak += 1 }; run = 0 } }
-        let mins = (0..<4).map { c in Double(span.filter { $0 == c }.count) / 2 }
+        for v in span where v >= 0 { if v == 0 { run += 1 } else { if run >= 2 { awak += 1 }; run = 0 } }
+        let mins = (0..<4).map { c in Double(known.filter { $0 == c }.count) / 2 }
         out["totalSleepMin"] = tst
-        out["onsetMin"] = Double(on) / 2
+        out["onsetMin"] = Double(s[0..<on].filter { $0 >= 0 }.count) / 2
         out["wasoMin"] = mins[0]
         out["awakenings"] = awak
-        out["efficiency"] = Double(span.count) > 0 ? tst / (Double(span.count) / 2) : 0
+        out["efficiency"] = known.isEmpty ? 0 : tst / (Double(known.count) / 2)
+        out["noDataMin"] = Double(s.filter { $0 < 0 }.count) / 2
         out["lightMin"] = mins[1]; out["deepMin"] = mins[2]; out["remMin"] = mins[3]
         if tst > 0 { out["deepPct"] = mins[2] / tst; out["remPct"] = mins[3] / tst; out["lightPct"] = mins[1] / tst }
-        if let r = span.firstIndex(of: 3) { out["remLatencyMin"] = Double(r) / 2 }
+        if let r = span.firstIndex(of: 3) { out["remLatencyMin"] = Double(span[0..<r].filter { $0 >= 0 }.count) / 2 }
         // REM periods: ≥ 3 epochs of REM, separated by ≥ 15 min without REM → sleep cycles
         var cycles = 0, lastRem = -1000, i = 0
         while i < span.count {

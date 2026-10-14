@@ -12,6 +12,7 @@ import Svg, { Circle, Defs, Line, LinearGradient as SvgGrad, Path, RadialGradien
 import { useBand } from '@/lib/band';
 import { radius, space, usePalette } from '@/lib/theme';
 import { coachLine, fmtDur, useWellness, type Wellness } from '@/lib/wellness';
+import { useHealth } from '@/lib/health';
 import { BeatHeart } from '@/ui/ecg';
 import { Icon, Row, T } from '@/ui/core';
 import { LastNightCard, ScoreRing } from '@/ui/wellness';
@@ -190,6 +191,43 @@ function BodyTile({ icon, color, title, value, unit, sub, onPress }: { icon: SFS
   );
 }
 
+/** Steps and activity from Apple Health (read-only). Asks to connect once. */
+function ActivityCard() {
+  const p = usePalette();
+  const h = useHealth(14);
+  const [busy, setBusy] = useState(false);
+  if (h.connected === null) return null;
+  if (!h.connected) {
+    return (
+      <View style={{ gap: space[2], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border }}>
+        <Row gap={8}><Icon name="heart.text.square" size={16} color="#FF6B57" /><T v="label" style={{ flex: 1 }}>Apple Health</T></Row>
+        <T v="body">Add your steps, workouts and activity to Strain and Recovery. Telomy only reads, never writes.</T>
+        <Pressable disabled={busy} onPress={async () => { setBusy(true); await h.connect(); setBusy(false); }} accessibilityRole="button"
+          style={({ pressed }) => ({ alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: p.teal, opacity: busy ? 0.5 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+          <T v="small" color={p.onAccent} style={{ fontWeight: '600' }}>{busy ? 'Connecting…' : 'Connect Apple Health'}</T>
+        </Pressable>
+      </View>
+    );
+  }
+  const t = h.today, week = h.data.slice(-7), max = Math.max(1, ...week.map((d) => d.steps ?? 0));
+  return (
+    <View style={{ gap: space[3], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border }}>
+      <Row gap={8}><Icon name="figure.walk" size={15} color="#2F8F6B" /><T v="label" style={{ flex: 1 }}>Activity</T><T v="small">Apple Health</T></Row>
+      <Row style={{ alignItems: 'flex-end' }}>
+        <View style={{ flex: 1 }}>
+          <Row gap={4} style={{ alignItems: 'baseline' }}><T v="num" style={{ fontSize: 30 }}>{t?.steps != null ? Math.round(t.steps).toLocaleString('en-IN') : '—'}</T><T v="small">steps</T></Row>
+          <T v="small">{[t?.distanceKm != null ? `${t.distanceKm.toFixed(1)} km` : null, t?.activeKcal != null ? `${Math.round(t.activeKcal)} kcal` : null,
+            t?.exerciseMin != null ? `${Math.round(t.exerciseMin)} exercise min` : null].filter(Boolean).join(' · ') || 'No activity yet today'}</T>
+          {h.stepsAvg7 != null ? <T v="small">7-day average {Math.round(h.stepsAvg7).toLocaleString('en-IN')}</T> : null}
+        </View>
+        <Row gap={4} style={{ alignItems: 'flex-end', height: 44 }}>
+          {week.map((d) => <View key={d.date} style={{ width: 8, height: Math.max(3, ((d.steps ?? 0) / max) * 44), borderRadius: 3, backgroundColor: d === t ? '#2F8F6B' : p.surfaceAlt }} />)}
+        </Row>
+      </Row>
+    </View>
+  );
+}
+
 /** Home block from the band alone (works when the Telomy server is unreachable). */
 export function WellnessToday({ age }: { age?: number | null }) {
   const w = useWellness(age ?? null);
@@ -211,6 +249,7 @@ export function WellnessToday({ age }: { age?: number | null }) {
           sub={w.restingHr ? `Resting HR ${Math.round(w.restingHr)} bpm` : 'Needs calm minutes with the band'} onPress={() => router.push('/wellness/recovery')} />
       </Row>
       </ReAnimated.View>
+      <ReAnimated.View entering={FadeInDown.duration(320).delay(240).easing(EASE_OUT)}><ActivityCard /></ReAnimated.View>
     </View>
   );
 }
