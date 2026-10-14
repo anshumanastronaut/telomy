@@ -72,6 +72,8 @@ export default function RootLayout() {
         <Stack.Screen name="nutrition" options={{ title: 'Nutrition' }} />
         <Stack.Screen name="pins" options={{ title: 'Pinned to Home' }} />
         <Stack.Screen name="monitor" options={{ title: 'Live ECG' }} />
+        <Stack.Screen name="ring" options={{ title: 'Smart ring' }} />
+        <Stack.Screen name="devices" options={{ title: 'Devices' }} />
         <Stack.Screen name="wellness/[metric]" options={{ title: '' }} />
         <Stack.Screen name="event" options={{ presentation: 'formSheet', title: 'Log an event', sheetGrabberVisible: true, sheetAllowedDetents: [0.75, 1], sheetCornerRadius: 28 }} />
         <Stack.Screen name="capture" options={{ title: 'Therapy capture' }} />

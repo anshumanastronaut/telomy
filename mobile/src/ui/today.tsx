@@ -13,6 +13,7 @@ import { useBand } from '@/lib/band';
 import { radius, space, usePalette } from '@/lib/theme';
 import { coachLine, fmtDur, useWellness, type Wellness } from '@/lib/wellness';
 import { useHealth } from '@/lib/health';
+import { useDevices } from '@/lib/devices';
 import { BeatHeart } from '@/ui/ecg';
 import { Icon, Row, T } from '@/ui/core';
 import { LastNightCard, ScoreRing } from '@/ui/wellness';
@@ -228,6 +229,34 @@ function ActivityCard() {
   );
 }
 
+/** Live ring readings on Home when the smart ring is connected. */
+function RingStrip() {
+  const p = usePalette();
+  const d = useDevices();
+  const ring = d.devices.find((x) => x.id === 'ring');
+  if (!ring?.connected) return null;
+  const items = [
+    { k: 'hr', label: 'Heart rate', unit: 'bpm', color: '#FF6B57', icon: 'heart.fill' as const, v: d.live.hr?.value },
+    { k: 'spo2', label: 'SpO₂', unit: '%', color: '#5B8DEF', icon: 'drop.fill' as const, v: d.live.spo2?.value },
+    { k: 'skinTemp', label: 'Skin temp', unit: '°C', color: '#E0894F', icon: 'thermometer.medium' as const, v: d.live.skinTemp?.value },
+  ];
+  return (
+    <Pressable onPress={() => router.push('/ring')} accessibilityRole="button"
+      style={({ pressed }) => ({ padding: space[4], gap: space[3], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border, opacity: pressed ? 0.9 : 1 })}>
+      <Row gap={6}><Icon name="circle.circle" size={15} color="#E0894F" /><T v="label" style={{ flex: 1 }}>Smart ring{ring.detail.includes('%') ? ` · ${ring.detail.split('· ')[1]}` : ''}</T><Icon name="chevron.right" size={11} color={p.faint} /></Row>
+      <Row gap={space[3]}>
+        {items.map((it) => (
+          <View key={it.k} style={{ flex: 1, gap: 2 }}>
+            <Row gap={5}><Icon name={it.icon} size={12} color={it.color} /><T v="small" style={{ fontSize: 11 }}>{it.label}</T></Row>
+            <Row gap={3} style={{ alignItems: 'baseline' }}><T v="num" style={{ fontSize: 20 }}>{it.v != null ? (it.k === 'skinTemp' ? it.v.toFixed(1) : Math.round(it.v)) : '—'}</T><T v="small" style={{ fontSize: 11 }}>{it.unit}</T></Row>
+          </View>
+        ))}
+      </Row>
+      <T v="small" style={{ fontSize: 11 }}>Tap to take a fresh reading.</T>
+    </Pressable>
+  );
+}
+
 /** Home block from the band alone (works when the Telomy server is unreachable). */
 export function WellnessToday({ age }: { age?: number | null }) {
   const w = useWellness(age ?? null);
@@ -248,6 +277,8 @@ export function WellnessToday({ age }: { age?: number | null }) {
         <BodyTile icon="figure.run" color="#2F8F6B" title="Fitness" value={w.vo2 ? `${Math.round(w.vo2)}` : '—'} unit={w.vo2 ? 'VO₂max' : undefined}
           sub={w.restingHr ? `Resting HR ${Math.round(w.restingHr)} bpm` : 'Needs calm minutes with the band'} onPress={() => router.push('/wellness/recovery')} />
       </Row>
+      <RingStrip />
+      <BodyTile icon="sensor.tag.radiowaves.forward" color="#E0894F" title="Devices" value="Manage" sub="Patch · ring · Apple Health" onPress={() => router.push('/devices')} />
       </ReAnimated.View>
       <ReAnimated.View entering={FadeInDown.duration(320).delay(240).easing(EASE_OUT)}><ActivityCard /></ReAnimated.View>
     </View>

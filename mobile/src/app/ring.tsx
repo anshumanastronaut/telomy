@@ -1,0 +1,73 @@
+// Smart ring (TK3040B9 / Yucheng YCBT) — clean-room local connection. Reads HR, SpO2, temperature and motion on the
+// phone; uploads nothing. Blood pressure / glucose from this ring are not real measurements and are not shown.
+import { Stack } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
+import { Ring, type RingStatus } from '../../modules/ky-ecg';
+import { space, usePalette } from '@/lib/theme';
+import { Button, Card, Icon, Row, Screen, Section, T, useToast } from '@/ui/core';
+
+export default function RingScreen() {
+  const p = usePalette();
+  const { toast, show } = useToast();
+  const [s, setS] = useState<RingStatus | null>(Ring.status());
+  useEffect(() => {
+    const a = Ring.onStatus(setS), b = Ring.onData(setS);
+    setS(Ring.status());
+    return () => { a.remove(); b.remove(); };
+  }, []);
+  const connected = s?.state === 'connected';
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Screen edges={[]}>
+        <Stack.Screen options={{ title: 'Smart ring' }} />
+        <Card tone={connected ? 'teal' : 'copper'}>
+          <Row>
+            <Icon name="circle.circle" color={connected ? p.teal : p.copper} />
+            <View style={{ flex: 1 }}>
+              <T v="h3">{connected ? `Connected${s?.battery >= 0 ? ` · ${s.battery}%` : ''}` : s?.state === 'scanning' ? 'Searching…' : 'Not connected'}</T>
+              <T v="small">{connected ? 'Reading on this phone only. Nothing is uploaded.' : 'Take the ring off the other app first, then connect.'}</T>
+            </View>
+          </Row>
+          <Row style={{ flexWrap: 'wrap' }}>
+            {!connected ? <Button title={s?.state === 'scanning' ? 'Scanning…' : 'Connect ring'} icon="magnifyingglass" onPress={() => { Ring.scan(); show('Searching for your ring…'); }} /> : null}
+            {connected ? <Button kind="secondary" title="Battery" icon="battery.50" onPress={() => Ring.readBattery()} /> : null}
+            {s?.rememberedId ? <Button kind="ghost" title="Forget" onPress={() => Ring.forget()} /> : null}
+          </Row>
+        </Card>
+
+        {connected ? (
+          <Section title="Live readings">
+            <Row gap={space[3]}>
+              <Metric icon="heart.fill" color={p.danger} label="Heart rate" value={s?.hr ? `${s.hr}` : '—'} unit="bpm" onPress={() => { Ring.startMeasure(1); show('Measuring heart rate…'); }} />
+              <Metric icon="drop.fill" color="#5B8DEF" label="SpO₂" value={s?.spo2 ? `${s.spo2}` : '—'} unit="%" onPress={() => { Ring.startMeasure(2); show('Measuring SpO₂…'); }} />
+            </Row>
+            <Row gap={space[3]}>
+              <Metric icon="thermometer.medium" color={p.copper} label="Skin temp" value={s?.temp ? s.temp.toFixed(1) : '—'} unit="°C" onPress={() => { Ring.startMeasure(4); show('Measuring temperature…'); }} />
+              <View style={{ flex: 1 }} />
+            </Row>
+            <T v="small">Tap a card to take a fresh reading (hold still ~30 s). These add extra signals to your Telomy scores; the ring's motion sensor will also sharpen sleep staging.</T>
+          </Section>
+        ) : null}
+
+        <Card>
+          <T v="label">About this ring</T>
+          <T v="small">Blood pressure and “blood glucose” shown by the ring’s own app are not real sensor measurements and are never stored or shown here. Telomy uses only heart rate, HRV, SpO₂, temperature and motion.</T>
+        </Card>
+      </Screen>
+      {toast}
+    </View>
+  );
+}
+
+function Metric({ icon, color, label, value, unit, onPress }: { icon: any; color: string; label: string; value: string; unit: string; onPress: () => void }) {
+  const p = usePalette();
+  return (
+    <Card style={{ flex: 1 }} onPress={onPress}>
+      <Row gap={6}><Icon name={icon} size={14} color={color} /><T v="label" style={{ flex: 1 }}>{label}</T></Row>
+      <Row gap={4} style={{ alignItems: 'baseline' }}><T v="num" style={{ fontSize: 26 }}>{value}</T><T v="small">{unit}</T></Row>
+      <T v="small" color={p.teal}>Measure</T>
+    </Card>
+  );
+}

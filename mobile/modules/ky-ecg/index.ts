@@ -90,9 +90,14 @@ type Events = {
   onMetrics: (m: BandMetrics) => void;
   onRecording: (r: RecordingEvent) => void;
   onRhythm: (e: RhythmEvent) => void;
+  onRingStatus: (s: RingStatus) => void;
+  onRingData: (s: RingStatus) => void;
+  onRingDevice: (d: FoundDevice) => void;
 };
 
 type Native = {
+  ringStatus(): RingStatus; ringScan(): void; ringConnect(id: string): void; ringDisconnect(): void;
+  ringForget(): void; ringStartMeasure(type: number): void; ringStopMeasure(type: number): void; ringReadBattery(): void;
   getStatus(): BandStatus;
   startScan(): void;
   stopScan(): void;
@@ -121,6 +126,22 @@ type Native = {
   wellnessRead(kind: string, days: number): Promise<Record<string, any>[]>;
   reanalyseCapture(id: string): Promise<{ id?: string; summary?: Record<string, any>; error?: string }>;
   addListener<K extends keyof Events>(event: K, listener: Events[K]): EventSubscription;
+};
+
+export type RingStatus = { state: string; battery: number; name: string; hr?: number; spo2?: number; temp?: number; rememberedId?: string };
+
+export const Ring = {
+  status: (): RingStatus | null => native?.ringStatus() ?? null,
+  scan: () => native?.ringScan(),
+  connect: (id: string) => native?.ringConnect(id),
+  disconnect: () => native?.ringDisconnect(),
+  forget: () => native?.ringForget(),
+  /** 1 = heart rate, 2 = SpO2, 4 = temperature. */
+  startMeasure: (type: number) => native?.ringStartMeasure(type),
+  stopMeasure: (type: number) => native?.ringStopMeasure(type),
+  readBattery: () => native?.ringReadBattery(),
+  onStatus(cb: (s: RingStatus) => void) { return native ? native.addListener('onRingStatus', cb) : { remove() {} }; },
+  onData(cb: (s: RingStatus) => void) { return native ? native.addListener('onRingData', cb) : { remove() {} }; },
 };
 
 const native = requireOptionalNativeModule<Native>('KyEcg');

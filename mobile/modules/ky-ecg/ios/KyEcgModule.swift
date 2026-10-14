@@ -5,16 +5,26 @@ public class KyEcgModule: Module {
     public func definition() -> ModuleDefinition {
         Name("KyEcg")
 
-        Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm")
+        Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm", "onRingStatus", "onRingData", "onRingDevice")
 
         OnStartObserving {
             KYBand.shared.emit = { [weak self] name, body in self?.sendEvent(name, body) }
+            KYRing.shared.emit = { [weak self] name, body in self?.sendEvent(name, body) }
         }
 
         OnStopObserving {
             KYBand.shared.emit = nil
+            KYRing.shared.emit = nil
         }
 
+        Function("ringStatus") { KYRing.shared.status() }
+        Function("ringScan") { KYRing.shared.scan() }
+        Function("ringConnect") { (id: String) in KYRing.shared.connect(id: id) }
+        Function("ringDisconnect") { KYRing.shared.disconnect() }
+        Function("ringForget") { KYRing.shared.forget() }
+        Function("ringStartMeasure") { (type: Int) in KYRing.shared.startMeasure(type) }
+        Function("ringStopMeasure") { (type: Int) in KYRing.shared.stopMeasure(type) }
+        Function("ringReadBattery") { KYRing.shared.readBattery() }
         Function("getStatus") { KYBand.shared.status() }
         Function("startScan") { KYBand.shared.startScan() }
         Function("stopScan") { KYBand.shared.stopScan() }
