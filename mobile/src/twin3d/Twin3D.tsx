@@ -40,7 +40,7 @@ export function Twin3D({ systems, selected, onSelect, height = 460, onInteract }
       <WebView
         ref={ref}
         originWhitelist={['*']}
-        source={{ html }}
+        source={{ html, baseUrl: API }}
         style={{ backgroundColor: 'transparent' }}
         scrollEnabled={false}
         bounces={false}

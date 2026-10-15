@@ -51,7 +51,7 @@ from fastapi import Request as _Req
 from fastapi.responses import JSONResponse as _JR
 _PW = _os.environ.get("TELOMY_ACCESS_PASSWORD", "")
 _SECRET = _os.environ.get("TELOMY_SECRET", "") or _hl.sha256(("telomy:" + _PW).encode()).hexdigest()
-_OPEN = {"/auth/password", "/auth/status", "/docs", "/openapi.json"}
+_OPEN = {"/auth/password", "/auth/status", "/docs", "/openapi.json", "/static/telomy_anatomy.glb"}  # model: public CC-BY anatomy, nothing personal
 
 
 def _token() -> str:
