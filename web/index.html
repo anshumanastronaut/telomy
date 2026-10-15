@@ -1,0 +1,363 @@
+<title>Telomy</title>
+<meta name="description" content="Telomy keeps a continuous, clinical-grade record of your heart, sleep, blood and body, and tells you what is changing before it matters.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: a sheet of ECG paper. 1 mm / 5 mm grid, a live trace across the top at 25 mm/s,
+   then a single reading column with wide "plates" for the twin, the clocks and the plans. */
+:root {
+  --paper: #FBF8F6;        /* ECG paper */
+  --grid-minor: #F1DCD7;   /* 1 mm lines */
+  --grid-major: #E5B9B0;   /* 5 mm lines */
+  --ink: #241A1C;          /* trace & text */
+  --muted: #6E5F61;
+  --rule: #E8DCD8;
+  --accent: #A3262A;       /* cardiac red: the trace ink, used sparingly */
+  --data: #1F6B66;         /* lab teal for in-range */
+  --watch: #A86A12;
+  --plate: #FFFFFF;
+  --display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --body: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --mm: 6px;               /* one millimetre of ECG paper on screen */
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #15100F; --grid-minor: #26191A; --grid-major: #3A2426; --ink: #F3E9E6; --muted: #B4A3A2;
+  --rule: #33262A; --accent: #F07A73; --data: #6CC9BE; --watch: #E7B04F; --plate: #1C1516; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #15100F; --grid-minor: #26191A; --grid-major: #3A2426; --ink: #F3E9E6; --muted: #B4A3A2;
+  --rule: #33262A; --accent: #F07A73; --data: #6CC9BE; --watch: #E7B04F; --plate: #1C1516; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--paper); color: var(--ink); font: 400 17px/1.6 var(--body); margin: 0; padding-inline: 20px; -webkit-font-smoothing: antialiased }
+.wrap { max-width: 1080px; margin-inline: auto }
+.read { max-width: 64ch }
+a { color: inherit }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0 }
+h1 { font-size: clamp(56px, 9vw, 112px); line-height: .95; letter-spacing: -.01em }
+h2 { font-size: clamp(36px, 5vw, 56px); line-height: 1.02 }
+h3 { font-size: 26px; line-height: 1.15 }
+p { margin: 0 }
+.mono { font-family: var(--mono); font-size: 13px; letter-spacing: .02em; font-variant-numeric: tabular-nums }
+.eyebrow { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: var(--accent) }
+.muted { color: var(--muted) }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px }
+
+/* paper grid: used behind the hero and the twin plate */
+.paper {
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid-major) 1px, transparent 1px), linear-gradient(90deg, var(--grid-major) 1px, transparent 1px),
+    linear-gradient(var(--grid-minor) 1px, transparent 1px), linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
+  background-size: calc(var(--mm) * 5) calc(var(--mm) * 5), calc(var(--mm) * 5) calc(var(--mm) * 5), var(--mm) var(--mm), var(--mm) var(--mm);
+}
+
+header.top { display: flex; align-items: center; gap: 24px; padding-block: 22px; border-bottom: 1px solid var(--rule) }
+.brand { font-family: var(--display); font-size: 30px; letter-spacing: .01em; text-decoration: none }
+nav { display: flex; gap: 22px; flex: 1; flex-wrap: wrap }
+nav a { text-decoration: none; font-size: 15px; color: var(--muted) }
+nav a:hover { color: var(--ink) }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 15px; border: 1.5px solid var(--ink) }
+.btn.solid { background: var(--ink); color: var(--paper) }
+.btn:hover { transform: translateY(-1px) }
+
+/* hero */
+.hero { position: relative; margin-top: 28px; border: 1px solid var(--grid-major); border-radius: 4px; overflow: hidden }
+.hero canvas { display: block; width: 100%; height: 300px }
+.hero .readout { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; gap: 18px; flex-wrap: wrap; justify-content: space-between; color: var(--muted) }
+.hero .readout b { color: var(--accent); font-weight: 500 }
+.lede { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 48px; align-items: end; padding-block: 44px 24px }
+.lede p { font-size: 20px; color: var(--muted) }
+.lede .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px }
+
+section { padding-block: 72px; border-top: 1px solid var(--rule) }
+.sec-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: end; margin-bottom: 36px }
+.sec-head p { color: var(--muted) }
+
+/* signal register: a spec table, not cards */
+.register { overflow-x: auto }
+table { width: 100%; border-collapse: collapse; font-size: 15px }
+th { text-align: left; font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 10px 12px 10px 0; border-bottom: 1.5px solid var(--ink) }
+td { padding: 16px 12px 16px 0; border-bottom: 1px solid var(--rule); vertical-align: top }
+td:first-child { font-family: var(--display); font-size: 22px; white-space: nowrap }
+td.mono { white-space: nowrap; color: var(--accent) }
+
+/* three sources */
+.sources { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--rule) }
+.source { padding: 28px; display: flex; flex-direction: column; gap: 12px; min-width: 0 }
+.source + .source { border-left: 1px solid var(--rule) }
+.source ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 15px }
+.rulebox { margin-top: 20px; padding: 18px 20px; border-left: 3px solid var(--accent); background: var(--plate); font-size: 15px }
+
+/* twin atlas plate */
+.plate { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); border: 1px solid var(--grid-major); border-radius: 4px; overflow: hidden }
+.plate .fig { min-height: 420px; display: grid; place-items: center; padding: 24px }
+.plate .fig svg { width: min(100%, 300px); height: auto }
+.plate .index { background: var(--plate); padding: 28px; display: flex; flex-direction: column; gap: 4px; min-width: 0 }
+.organ { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding-block: 12px; border-bottom: 1px solid var(--rule) }
+.organ .n { font: 12px var(--mono); color: var(--muted) }
+.organ .why { font-size: 14px; color: var(--muted) }
+.pill { font: 500 12px var(--mono); padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap }
+.ok { color: var(--data) } .watch { color: var(--watch) } .high { color: var(--accent) }
+.example { font: 12px var(--mono); color: var(--muted); margin-top: 12px }
+
+/* clocks */
+.clocks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 1.5px solid var(--ink) }
+.clock { padding: 22px 18px 22px 0; display: flex; flex-direction: column; gap: 8px; min-width: 0 }
+.clock + .clock { padding-left: 18px; border-left: 1px solid var(--rule) }
+.clock .age { font-family: var(--display); font-size: 64px; line-height: 1 }
+.clock .delta { font: 13px var(--mono) }
+.clock p { font-size: 14px; color: var(--muted) }
+
+/* honesty */
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px }
+.two h3 { margin-bottom: 12px }
+.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px }
+.list li { padding-left: 22px; position: relative; color: var(--muted) }
+.list li::before { content: ""; position: absolute; left: 0; top: .72em; width: 10px; height: 1.5px; background: var(--accent) }
+.list strong { color: var(--ink); font-weight: 600 }
+
+/* plans */
+.plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px }
+.plan { background: var(--plate); border: 1px solid var(--rule); border-radius: 4px; padding: 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0 }
+.plan.pick { border: 1.5px solid var(--ink) }
+.plan .price { font-family: var(--display); font-size: 44px; line-height: 1 }
+.plan .price small { font: 13px var(--body); color: var(--muted) }
+.plan ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); display: grid; gap: 6px }
+
+footer { padding-block: 40px 56px; border-top: 1px solid var(--rule); display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; color: var(--muted); font-size: 14px }
+
+@media (max-width: 860px) {
+  .lede, .sec-head, .two, .plate { grid-template-columns: minmax(0, 1fr) }
+  .sources { grid-template-columns: minmax(0, 1fr) } .source + .source { border-left: 0; border-top: 1px solid var(--rule) }
+  .clocks { grid-template-columns: repeat(2, minmax(0, 1fr)) } .clock:nth-child(3) { padding-left: 0; border-left: 0 }
+  .plans { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  nav { display: none }
+}
+@media (max-width: 520px) {
+  .plans, .clocks { grid-template-columns: minmax(0, 1fr) } .clock + .clock { padding-left: 0; border-left: 0; border-top: 1px solid var(--rule) }
+  .hero canvas { height: 220px }
+}
+@media (prefers-reduced-motion: reduce) { .btn:hover { transform: none } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#top">Telomy</a>
+    <nav aria-label="Sections">
+      <a href="#watch">What it watches</a><a href="#twin">Your twin</a><a href="#age">Biological age</a><a href="#honest">Science</a><a href="#plans">Plans</a>
+    </nav>
+    <a class="btn solid" href="https://app.129-225-98-159.sslip.io">Open Telomy</a>
+  </header>
+
+  <div class="hero paper" id="top">
+    <canvas id="ecg" aria-label="A live single-lead ECG trace" role="img"></canvas>
+    <div class="readout mono" aria-hidden="true">
+      <span>LEAD I · 25 mm/s · 10 mm/mV</span>
+      <span>HR <b id="hr">64</b> bpm &nbsp; HRV <b id="hrv">42</b> ms &nbsp; Rhythm <b>sinus</b></span>
+    </div>
+  </div>
+
+  <div class="lede">
+    <div>
+      <p class="eyebrow">Preventive health · continuous</p>
+      <h1>Always watching.</h1>
+    </div>
+    <div>
+      <p>Telomy keeps a continuous record of your heart, sleep, blood and body. It reads every signal against your own baseline and tells you what is changing before it matters.</p>
+      <div class="ctas">
+        <a class="btn solid" href="https://app.129-225-98-159.sslip.io">Open Telomy</a>
+        <a class="btn" href="#watch">How it works</a>
+      </div>
+    </div>
+  </div>
+
+  <section id="watch">
+    <div class="sec-head">
+      <h2>Every signal, in its real units.</h2>
+      <p>Each reading keeps its source, its time and its signal quality. When a device is off, Telomy shows your latest reading and says when it was taken.</p>
+    </div>
+    <div class="register">
+      <table>
+        <thead><tr><th>Signal</th><th>How Telomy measures it</th><th>Unit</th><th>Cadence</th></tr></thead>
+        <tbody>
+          <tr><td>ECG</td><td>Single-lead chest patch, beat-by-beat, with rhythm screening for irregular patterns, pauses and early beats.</td><td class="mono">100 Hz · mV</td><td class="mono">Live / 24 h</td></tr>
+          <tr><td>Heart-rate variability</td><td>RMSSD from true R–R intervals on the patch; pulse intervals from the ring at rest and in sleep.</td><td class="mono">ms</td><td class="mono">Continuous</td></tr>
+          <tr><td>Sleep</td><td>Wake, light, deep and REM from heart rhythm and breathing, trained on 151 sleep-lab nights.</td><td class="mono">30-s epochs</td><td class="mono">Nightly</td></tr>
+          <tr><td>SpO₂ &amp; skin temperature</td><td>Taken by the ring when you are still, when optical readings are cleanest.</td><td class="mono">% · °C</td><td class="mono">Every 15–30 min</td></tr>
+          <tr><td>Breathing rate</td><td>Derived from the rhythm of your ECG overnight.</td><td class="mono">breaths/min</td><td class="mono">Nightly</td></tr>
+          <tr><td>VO₂max</td><td>Measured on your watch, or estimated from resting heart rate.</td><td class="mono">mL/kg/min</td><td class="mono">Weekly</td></tr>
+          <tr><td>Blood biomarkers</td><td>Every lab report in your Vault, read and verified. PhenoAge from nine markers.</td><td class="mono">mg/dL · %</td><td class="mono">Per panel</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>One record from three devices.</h2>
+      <p>Wear any of them, or all three. With one device Telomy works; with none, your lab history and scores still stand.</p>
+    </div>
+    <div class="sources">
+      <div class="source"><p class="eyebrow">Chest patch</p><h3>The clinical layer</h3><ul><li>ECG and rhythm</li><li>Gold-standard HRV</li><li>Sleep stages, breathing</li><li>Records 24 h on its own</li></ul></div>
+      <div class="source"><p class="eyebrow">Smart ring</p><h3>The always-on layer</h3><ul><li>Heart rate every few seconds at night</li><li>SpO₂ and skin temperature</li><li>Movement, for sleep detection</li><li>Logs to its own memory</li></ul></div>
+      <div class="source"><p class="eyebrow">Apple Health</p><h3>The everyday layer</h3><ul><li>Steps and workouts</li><li>VO₂max and resting heart rate</li><li>Read only, never written</li></ul></div>
+    </div>
+    <p class="rulebox">When two devices measure the same thing, the more accurate one is used and the other is kept for comparison. Heart rhythm and HRV come from the patch first, oxygen and temperature from the ring.</p>
+  </section>
+
+  <section id="twin">
+    <div class="sec-head">
+      <h2>A twin of your body, organ by organ.</h2>
+      <p>A 3D anatomy built from CT-scan data. Every organ carries what your Vault shows about it, flagged against healthy reference ranges. Tap one to see why.</p>
+    </div>
+    <div class="plate">
+      <div class="fig paper">
+        <svg viewBox="0 0 200 420" role="img" aria-label="Outline of a human body with the heart, liver and gut marked">
+          <g fill="none" stroke="var(--ink)" stroke-width="1.2" opacity=".55">
+            <ellipse cx="100" cy="42" rx="24" ry="30"/>
+            <path d="M88 72 L86 88 Q60 92 52 108 L40 200 Q38 214 44 216 L58 128 L60 214 Q58 260 66 300 L70 404 L90 404 L96 300 L100 236 L104 300 L110 404 L130 404 L134 300 Q142 260 140 214 L142 128 L156 216 Q162 214 160 200 L148 108 Q140 92 114 88 L112 72"/>
+          </g>
+          <g stroke="none">
+            <ellipse cx="86" cy="128" rx="17" ry="24" fill="var(--data)" opacity=".28"/>
+            <ellipse cx="116" cy="128" rx="15" ry="22" fill="var(--data)" opacity=".28"/>
+            <path d="M101 120 q10 -6 14 4 q2 10 -12 24 q-14 -12 -12 -22 q3 -10 10 -6 z" fill="var(--accent)"/>
+            <path d="M74 158 q26 -10 50 2 q-4 18 -30 18 q-20 0 -20 -20 z" fill="var(--watch)" opacity=".75"/>
+            <rect x="80" y="182" width="42" height="34" rx="12" fill="var(--watch)" opacity=".45"/>
+          </g>
+        </svg>
+      </div>
+      <div class="index">
+        <p class="eyebrow">Atlas index</p>
+        <div class="organ"><span class="n">01</span><div><strong>Heart &amp; vessels</strong><p class="why">ApoB 118 mg/dL, hs-CRP 3.4 mg/L</p></div><span class="pill high">Out of range</span></div>
+        <div class="organ"><span class="n">02</span><div><strong>Liver</strong><p class="why">Liver fat 6.8 % on MRI-PDFF</p></div><span class="pill watch">Watch</span></div>
+        <div class="organ"><span class="n">03</span><div><strong>Blood sugar &amp; metabolism</strong><p class="why">HbA1c 5.8 %, visceral fat 112 cm²</p></div><span class="pill watch">Watch</span></div>
+        <div class="organ"><span class="n">04</span><div><strong>Lungs &amp; cardio fitness</strong><p class="why">VO₂max 41 mL/kg/min</p></div><span class="pill ok">In range</span></div>
+        <div class="organ"><span class="n">05</span><div><strong>Muscle &amp; bone</strong><p class="why">ALMI 8.1 kg/m², spine T-score −0.4</p></div><span class="pill ok">In range</span></div>
+        <div class="organ"><span class="n">06</span><div><strong>Recovery &amp; sleep</strong><p class="why">Night HRV 32 ms, sleep 6 h 10 m</p></div><span class="pill watch">Watch</span></div>
+        <p class="example">Example member. Values shown are illustrative.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="age">
+    <div class="sec-head">
+      <h2>How old your body behaves.</h2>
+      <p>Four clocks read from physiology, beside PhenoAge from your blood. Each shows what moves it, so a number always comes with a lever.</p>
+    </div>
+    <div class="clocks">
+      <div class="clock"><p class="eyebrow">Fitness</p><span class="age">31</span><span class="delta ok">3 years younger</span><p>From VO₂max against people your age and sex.</p></div>
+      <div class="clock"><p class="eyebrow">Recovery</p><span class="age">38</span><span class="delta high">4 years older</span><p>From heart-rate variability at rest and in sleep.</p></div>
+      <div class="clock"><p class="eyebrow">Cardiac</p><span class="age">33</span><span class="delta ok">1 year younger</span><p>From resting heart rate, coarse by design.</p></div>
+      <div class="clock"><p class="eyebrow">Muscle</p><span class="age">34</span><span class="delta muted">About your age</span><p>From lean mass now; from EMG fatigue when the band ships.</p></div>
+    </div>
+    <p class="example">Example for a 34-year-old member.</p>
+  </section>
+
+  <section id="honest">
+    <div class="sec-head">
+      <h2>Honest about what a sensor can know.</h2>
+      <p>A health product earns trust by saying where its numbers come from and where they stop.</p>
+    </div>
+    <div class="two">
+      <div>
+        <h3>What we validate</h3>
+        <ul class="list">
+          <li><strong>Sleep staging</strong> trained on 151 hospital sleep-lab nights with expert scoring.</li>
+          <li><strong>Rhythm screening</strong> trained on 8,528 single-lead ECGs from the PhysioNet challenge.</li>
+          <li><strong>Biomarker models</strong> tested on held-out people from the US national health survey, never on the data they learned from.</li>
+          <li><strong>Every chart</strong> links to the method and the papers behind it.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>What we will not claim</h3>
+        <ul class="list">
+          <li><strong>Blood pressure and glucose</strong> from a ring are estimates the hardware cannot measure. Telomy never shows them as readings.</li>
+          <li><strong>A single-lead ECG</strong> screens; it does not diagnose. Repeated flags mean a 12-lead ECG with your doctor.</li>
+          <li><strong>Cholesterol and liver enzymes</strong> cannot be predicted from a wearable. Telomy asks for the blood test instead.</li>
+          <li><strong>Your data</strong> is stored in India, locked behind your password, shared only with the consent you give.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="plans">
+    <div class="sec-head">
+      <h2>Plans</h2>
+      <p>Start free with your Vault and predictions. Add a doctor when you want one.</p>
+    </div>
+    <div class="plans">
+      <div class="plan"><p class="eyebrow">Free</p><span class="price">₹0</span><ul><li>Vault: labs, imaging, wearables</li><li>Report reading and verification</li><li>Disease-risk predictions</li><li>Sinc quick answers</li></ul></div>
+      <div class="plan"><p class="eyebrow">Essential</p><span class="price">₹499<small> / month</small></span><ul><li>Everything in Free</li><li>Monthly AI health report</li><li>Sinc deep research with citations</li><li>N-of-1 studies</li><li>Specialist packs (PDF + FHIR)</li></ul></div>
+      <div class="plan pick"><p class="eyebrow">Plus · most chosen</p><span class="price">₹1,499<small> / month</small></span><ul><li>Everything in Essential</li><li>Monthly report signed by a doctor within 72 h</li><li>One doctor consultation a month</li><li>Sinc drafts signed off by your doctor</li></ul></div>
+      <div class="plan"><p class="eyebrow">Longevity Pro</p><span class="price">₹3,999<small> / month</small></span><ul><li>Everything in Plus</li><li>Unlimited GP consultations</li><li>Two specialist consultations a quarter</li><li>Two longevity blood panels a year</li><li>Annual DEXA and VO₂max test</li><li>A named longevity physician</li></ul></div>
+    </div>
+    <p class="example">Yearly billing saves about 17 %.</p>
+  </section>
+
+  <footer>
+    <span>Telomy · Preventive health, continuously.</span>
+    <span>Wellness information, not a diagnosis. If you have chest pain, faintness or a racing heart, seek medical care.</span>
+  </footer>
+</div>
+
+<script>
+// Live ECG on paper at 25 mm/s: a PQRST template (sums of Gaussians) swept left to right like a monitor,
+// with a small erase gap ahead of the pen. Heart rate drifts gently with breathing (respiratory sinus arrhythmia).
+(() => {
+  const cv = document.getElementById('ecg'); if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const MM = parseFloat(css.getPropertyValue('--mm')) || 6;          // px per millimetre
+  const SPEED = 25 * MM;                                               // 25 mm/s in px/s
+  const MV = 10 * MM;                                                  // 10 mm per mV
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W = 0, H = 0, dpr = 1;
+  const resize = () => { dpr = Math.min(2, devicePixelRatio || 1); W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  addEventListener('resize', resize); resize();
+  const g = (x, m, s, a) => a * Math.exp(-((x - m) ** 2) / (2 * s * s));
+  // one beat, x in seconds from the R peak; amplitude in mV
+  const beat = (x) => g(x, -0.2, 0.025, 0.12) + g(x, -0.035, 0.009, -0.12) + g(x, 0, 0.011, 1.25) + g(x, 0.03, 0.01, -0.28) + g(x, 0.26, 0.05, 0.3);
+  let beats = [], nextBeat = 0.4, t0 = performance.now() / 1000;
+  const hrEl = document.getElementById('hr'), hrvEl = document.getElementById('hrv');
+  const sample = (t) => { let v = 0; for (const b of beats) { const dx = t - b; if (dx > -0.35 && dx < 0.45) v += beat(dx); } return v; };
+  const color = () => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#A3262A';
+  let x = 0, lastT = 0, lastY = null;
+  function schedule(t) {
+    while (nextBeat < t + 1) {
+      const rr = 60 / 64 + 0.045 * Math.sin(nextBeat * 2 * Math.PI / 4.2) + (Math.random() - 0.5) * 0.03;  // ~64 bpm, breathing ~14/min
+      beats.push(nextBeat); nextBeat += rr;
+      if (hrEl) hrEl.textContent = Math.round(60 / rr);
+    }
+    beats = beats.filter((b) => b > t - 2);
+  }
+  function drawStatic() {
+    ctx.clearRect(0, 0, W, H); ctx.strokeStyle = color(); ctx.lineWidth = 1.6; ctx.beginPath();
+    const base = H * 0.62; beats = []; nextBeat = 0.2;
+    schedule(W / SPEED);
+    for (let px = 0; px < W; px++) { const y = base - sample(px / SPEED) * MV; px ? ctx.lineTo(px, y) : ctx.moveTo(px, y); }
+    ctx.stroke();
+  }
+  if (reduce) { drawStatic(); addEventListener('resize', drawStatic); return; }
+  ctx.clearRect(0, 0, W, H);
+  function frame() {
+    const t = performance.now() / 1000 - t0;
+    schedule(t);
+    const base = H * 0.62, stroke = color();
+    const steps = Math.max(1, Math.round((t - lastT) * SPEED));
+    for (let i = 1; i <= steps; i++) {
+      const tt = lastT + (i / steps) * (t - lastT);
+      const nx = (tt * SPEED) % W, y = base - sample(tt) * MV;
+      if (nx < x) lastY = null;                                         // wrapped to the left edge
+      ctx.clearRect(nx + 1, 0, 14, H);                                  // erase gap ahead of the pen
+      if (lastY != null) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, lastY); ctx.lineTo(nx, y); ctx.stroke(); }
+      x = nx; lastY = y;
+    }
+    lastT = t;
+    if (hrvEl && Math.random() < 0.01) hrvEl.textContent = 38 + Math.round(Math.random() * 8);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>

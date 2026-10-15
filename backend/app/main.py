@@ -25,10 +25,71 @@ async def lifespan(_app):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
+    # warm the seeded physiology validation off the request path (~8 s on the 1-core server, then cached)
+    import threading
+    from . import physio
+    threading.Thread(target=physio.validate_prior, args=(20,), daemon=True).start()
     yield
 
 
 app = FastAPI(title="Telomy API", version="0.1.0", lifespan=lifespan)
+
+# 3D twin anatomy model (BodyParts3D, © DBCLS, CC BY 4.0). Served instead of embedded in the app bundle; cached hard.
+from pathlib import Path as _P
+_ANATOMY = _P(__file__).resolve().parent.parent / "static" / "telomy_anatomy.glb"
+
+
+@app.get("/static/telomy_anatomy.glb")
+def anatomy_glb():
+    if not _ANATOMY.exists():
+        raise HTTPException(404, "anatomy model not built")
+    return Response(_ANATOMY.read_bytes(), media_type="model/gltf-binary",
+                    headers={"Cache-Control": "public, max-age=604800", "Access-Control-Allow-Origin": "*"})
+# ---------------------------------------------------------------- access password (hosted deployments)
+# Off when TELOMY_ACCESS_PASSWORD is unset (local Mac dev, unchanged). When set, every request needs
+# `Authorization: Bearer <token>`; the token comes from POST /auth/password with the right password. The token is an
+# HMAC of the password with a server secret, so changing either revokes every session. Constant-time compares and a
+# small delay on failure blunt guessing.
+import hashlib as _hl, hmac as _hm, os as _os, time as _t
+from fastapi import Request as _Req
+from fastapi.responses import JSONResponse as _JR
+_PW = _os.environ.get("TELOMY_ACCESS_PASSWORD", "")
+_SECRET = _os.environ.get("TELOMY_SECRET", "") or _hl.sha256(("telomy:" + _PW).encode()).hexdigest()
+_OPEN = {"/auth/password", "/auth/status", "/docs", "/openapi.json", "/static/telomy_anatomy.glb"}  # model: public CC-BY anatomy, nothing personal
+
+
+def _token() -> str:
+    return _hm.new(_SECRET.encode(), ("v1:" + _PW).encode(), _hl.sha256).hexdigest()
+
+
+@app.middleware("http")
+async def _require_password(request: _Req, call_next):
+    if not _PW or request.method == "OPTIONS" or request.url.path in _OPEN:
+        return await call_next(request)
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer ") and _hm.compare_digest(auth[7:], _token()):
+        return await call_next(request)
+    return _JR({"detail": "Telomy is locked. Enter your access password."}, status_code=401)
+
+
+class _PwBody(BaseModel):
+    password: str
+
+
+@app.get("/auth/status")
+def auth_status():
+    return {"password_required": bool(_PW)}
+
+
+@app.post("/auth/password")
+def auth_password(body: _PwBody):
+    if not _PW:
+        return {"token": "", "password_required": False}
+    if not _hm.compare_digest(body.password.encode(), _PW.encode()):
+        _t.sleep(1.0)
+        raise HTTPException(401, "That password isn't right.")
+    return {"token": _token(), "password_required": True}
+
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 

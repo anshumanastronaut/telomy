@@ -6,9 +6,10 @@ import React from 'react';
 import { View } from 'react-native';
 import { connectHealth } from '@/lib/health';
 import { METRIC_SOURCES, SOURCE_LABEL, useDevices, type SourceId } from '@/lib/devices';
+import { hrHrvCorrelation, useRingHistory } from '@/lib/ringhistory';
 import { Ring } from '../../modules/ky-ecg';
 import { space, usePalette } from '@/lib/theme';
-import { Button, Card, Icon, Row, Screen, Section, T, useToast } from '@/ui/core';
+import { Button, Card, Chip, Icon, Row, Screen, Section, T, useToast } from '@/ui/core';
 
 const ICON: Record<SourceId, any> = { patch: 'waveform.path.ecg', ring: 'circle.circle', health: 'heart.text.square' };
 const UNIT: Record<string, string> = { hr: 'bpm', hrv: 'ms', spo2: '%', skinTemp: '°C', steps: '', vo2max: '' };
@@ -18,6 +19,8 @@ export default function Devices() {
   const p = usePalette();
   const { toast, show } = useToast();
   const d = useDevices();
+  const rh = useRingHistory();
+  const coupling = hrHrvCorrelation();
 
   const compareRows = Object.entries(d.live).filter(([, f]) => f.value != null && (METRIC_SOURCES[Object.keys(d.live).find((k) => d.live[k] === f)!] ?? []).length > 1);
 
@@ -50,6 +53,21 @@ export default function Devices() {
           ))}
         </Section>
 
+        <Section title="Coming to Telomy">
+          {[
+            { icon: 'drop.circle', name: 'Continuous glucose monitor (CGM)', body: 'Glucose every few minutes: meal responses, overnight lows, and time-in-range alongside your sleep, stress and recovery. Integration in progress with the manufacturer.' },
+            { icon: 'figure.strengthtraining.traditional', name: 'Telomy Muscle band (EMG)', body: 'Muscle activation and fatigue from surface EMG — powers the Muscle age test and adds muscular load to Strain. In development.' },
+          ].map((x) => (
+            <Card key={x.name}>
+              <Row>
+                <Icon name={x.icon as any} color={p.faint} />
+                <View style={{ flex: 1 }}><T v="h3">{x.name}</T><T v="small">{x.body}</T></View>
+                <Chip label="Soon" />
+              </Row>
+            </Card>
+          ))}
+        </Section>
+
         <Section title="What Telomy is using now">
           <Card style={{ gap: space[3] }}>
             {Object.entries(d.live).filter(([, f]) => f.value != null).map(([k, f]) => (
@@ -58,7 +76,7 @@ export default function Devices() {
                   <T v="body" style={{ flex: 1 }}>{LABEL[k] ?? k}</T>
                   <T v="num" style={{ fontSize: 18 }}>{fmt(k, f.value!)} <T v="small">{UNIT[k]}</T></T>
                 </Row>
-                <Row gap={6}>
+                <Row gap={6} style={{ flexWrap: 'wrap' }}>
                   <T v="small" color={p.teal}>via {SOURCE_LABEL[f.source!]}</T>
                   {f.others.map((o) => <T key={o.source} v="small" color={p.muted}>· {SOURCE_LABEL[o.source]} {fmt(k, o.value)}{agree(k, f.value!, o.value)}</T>)}
                 </Row>
@@ -67,6 +85,29 @@ export default function Devices() {
             {!Object.values(d.live).some((f) => f.value != null) ? <T v="small">No live readings yet. Connect a device above.</T> : null}
           </Card>
         </Section>
+
+        {rh.count > 0 ? (
+          <Section title="Ring longitudinal data">
+            <Card style={{ gap: space[2] }}>
+              <Row>
+                <T v="body" style={{ flex: 1 }}>Samples logged</T>
+                <T v="num" style={{ fontSize: 18 }}>{rh.count.toLocaleString('en-IN')}</T>
+              </Row>
+              <T v="small" color={p.muted}>The ring measures itself every few minutes and Telomy syncs the log while connected — continuous HR, HRV, SpO₂ and temperature kept on this phone only.</T>
+              {coupling.r != null ? (
+                <View style={{ gap: 2 }}>
+                  <Row>
+                    <T v="body" style={{ flex: 1 }}>HR ↔ HRV coupling</T>
+                    <T v="num" style={{ fontSize: 18 }} color={coupling.r < 0 ? p.teal : p.copper}>r = {coupling.r.toFixed(2)}</T>
+                  </Row>
+                  <T v="small" color={p.muted}>Across {coupling.n} paired samples. HR and HRV come from the same beat-to-beat intervals, so a negative r (higher HR ↔ lower HRV) is expected and confirms the ring's optical pulse detection is tracking real physiology — the same relationship the ECG patch shows.</T>
+                </View>
+              ) : (
+                <T v="small" color={p.muted}>Collecting paired HR + HRV samples to measure the HR↔HRV relationship and cross-check it against the patch.</T>
+              )}
+            </Card>
+          </Section>
+        ) : null}
 
         <Card>
           <T v="label">How sources are ranked</T>

@@ -53,7 +53,7 @@ export default function TherapyPlan() {
         <Row>
           {[2, 3, 4, 5, 6].map((n) => (
             <Pressable key={n} onPress={() => setPerWeek(n)} accessibilityRole="button"
-              style={{ flex: 1, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: perWeek === n ? p.teal : p.surface, borderWidth: 1, borderColor: p.border }}>
+              style={{ flex: 1, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: perWeek === n ? p.teal : p.surface }}>
               <T v="body" color={perWeek === n ? p.onAccent : p.text}>{n}</T>
             </Pressable>
           ))}

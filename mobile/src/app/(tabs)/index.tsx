@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { ago, fmtDate, useApi } from '@/lib/api';
-import { radius, space, usePalette } from '@/lib/theme';
+import { radius, signalColor, space, type, usePalette } from '@/lib/theme';
 import { Dial, Ring, Sparkline } from '@/ui/charts';
 import { Card, Chip, ErrorState, Icon, Loading, Prov, Row, Screen, Section, Spacer, StatusChip, T } from '@/ui/core';
 import { BandTools } from '@/ui/ecg';
@@ -49,7 +49,7 @@ export default function Home() {
         <Logo kind="mark" width={34} />
         <View style={{ flex: 1 }}>
           <T v="label">{rewind ? `Rewound to ${today}` : new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</T>
-          <T v="h2" numberOfLines={1}>{greet()}, {String(h.first_name ?? '').split(' ')[0]}</T>
+          <T v="h2" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{greet()}, {String(h.first_name ?? '').split(' ')[0]}</T>
         </View>
         <Pressable onPress={() => router.push('/notifications')} accessibilityLabel="Notifications" hitSlop={8} style={{ marginRight: 14 }}>
           <Icon name="bell" size={22} color={p.teal} />
@@ -186,8 +186,8 @@ export default function Home() {
                 <T v="body">{c.label}</T>
                 <T v="small">{c.value == null ? c.reason : `${c.source ?? ''} · ${ago(c.day, h.as_of)}`}</T>
               </View>
-              <Sparkline data={c.spark ?? []} />
-              <T v="num" style={{ fontSize: 18, minWidth: 64, textAlign: 'right' }}>
+              <Sparkline data={c.spark ?? []} color={signalColor(c.id ?? c.label)} />
+              <T v="num" style={{ fontSize: type.lead, minWidth: 64, textAlign: 'right' }}>
                 {c.value == null ? '—' : c.value.toLocaleString('en-IN')}
                 <T v="small"> {c.unit}</T>
               </T>
@@ -280,7 +280,7 @@ function DataCard({ c, asOf }: { c: any; asOf: string }) {
             <T v="num">{c.value}</T>
             <T v="small">{c.unit}</T>
           </Row>
-          <Sparkline data={c.spark} width={110} />
+          <Sparkline data={c.spark} width={110} color={signalColor(c.id ?? c.label)} />
           {c.delta != null ? (
             <T v="small" color={c.delta >= 0 ? p.success : p.danger}>
               {c.delta >= 0 ? '+' : ''}
@@ -297,7 +297,7 @@ function DataCard({ c, asOf }: { c: any; asOf: string }) {
 function Quick({ icon, label, onPress }: { icon: SFSymbol; label: string; onPress: () => void }) {
   const p = usePalette();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => ({ flex: 1, alignItems: 'center', gap: 6, paddingVertical: space[3], backgroundColor: p.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: p.border, opacity: pressed ? 0.8 : 1 })}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => ({ flex: 1, alignItems: 'center', gap: 6, paddingVertical: space[3], backgroundColor: p.surface, borderRadius: radius.lg, opacity: pressed ? 0.8 : 1 })}>
       <Icon name={icon} size={22} color={p.teal} />
       <T v="small" style={{ fontSize: 12 }}>{label}</T>
     </Pressable>

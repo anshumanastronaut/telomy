@@ -60,11 +60,11 @@ export default function Log() {
     setErr(null);
     try {
       if (kind === 'meal') {
-        await api('/meals/analyze', { body: { text: label, save: true } });
-        setResult({ message: 'Saved. Sinc will look at it tonight.' });
+        const r = await api('/meals/analyze', { body: { text: label, save: true }, queue: true });
+        setResult({ message: r?.queued ? 'Saved on your phone. It will sync when the Telomy server is reachable.' : 'Saved. Sinc will look at it tonight.' });
       } else {
-        const r = await api('/events', { body: { kind, label: label || KINDS.find((x) => x.k === kind)!.l, severity: ['symptom', 'mood'].includes(kind) ? sev : null } });
-        setResult(r);
+        const r = await api('/events', { body: { kind, label: label || KINDS.find((x) => x.k === kind)!.l, severity: ['symptom', 'mood'].includes(kind) ? sev : null }, queue: true });
+        setResult(r?.queued ? { message: 'Saved on your phone. It will sync when the Telomy server is reachable.' } : r);
       }
     } catch (e: any) {
       setErr(e.message);
@@ -111,7 +111,7 @@ export default function Log() {
             placeholderTextColor={p.faint}
             multiline
             testID="log-input"
-            style={{ minHeight: 70, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, fontSize: 16, backgroundColor: p.surface }}
+            style={{ minHeight: 70, borderRadius: radius.md, padding: 12, color: p.text, fontSize: 16, backgroundColor: p.surface }}
           />
           {SUGGEST[kind] ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>

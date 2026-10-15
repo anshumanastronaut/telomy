@@ -58,6 +58,77 @@ PRESETS = {
 }
 STATIN = {"none": 0, "rosuva5": 0.38, "rosuva10": 0.46, "rosuva20": 0.52}
 
+# ----------------------------------------------------------------------------- organ-system problem map
+# Each organ groups the state variables that reflect it; each variable has a "watch" and a "high" threshold in its
+# bad direction (STATE[k][3] True = higher-is-worse, so a flag fires when value crosses upward; False = lower-is-worse,
+# flag fires downward). Thresholds are wellness-screening cut-points from mainstream guidelines (ACC/AHA lipids & BP,
+# ADA glycaemia, AASLD steatosis, ESC hs-CRP, ISCD bone T-score, population VO₂/HRV norms) — for flagging, not diagnosis.
+ORGANS = [
+    ("Heart & vessels", "heart.fill", ["apob", "ldl", "hdl", "tg", "sbp", "hscrp", "rhr"]),
+    ("Blood sugar & metabolism", "drop.fill", ["hba1c", "glucose", "vat"]),
+    ("Liver", "fossil.shell.fill", ["pdff"]),
+    ("Lungs & cardio fitness", "lungs.fill", ["vo2"]),
+    ("Muscle & bone", "figure.strengthtraining.traditional", ["almi", "lean_kg", "fat_kg", "bmd_t"]),
+    ("Recovery & sleep", "bolt.heart", ["hrv", "sleep"]),
+    ("Nutrients", "pills.fill", ["vitd", "omega3"]),
+]
+# (watch, high) in the bad direction. For higher-is-worse keys watch < high; for lower-is-worse keys watch > high.
+THRESH = {
+    "apob": (100, 130), "ldl": (100, 160), "hdl": (40, 30), "tg": (150, 200), "sbp": (130, 140), "hscrp": (2.0, 3.0),
+    "rhr": (75, 90), "hba1c": (5.7, 6.5), "glucose": (100, 126), "vat": (100, 160), "pdff": (5.0, 10.0),
+    "vo2": (32, 25), "almi": (7.0, 6.0), "lean_kg": (0, 0), "fat_kg": (0, 0), "bmd_t": (-1.0, -2.5),
+    "hrv": (30, 20), "sleep": (7.0, 6.0), "vitd": (30, 20), "omega3": (4.0, 3.0),
+}
+PROBLEM_NOTE = {
+    "apob": "ApoB counts the artery-clogging particles; the strongest routine lipid marker for heart risk.",
+    "ldl": "LDL cholesterol drives plaque in the arteries over time.", "hdl": "Low HDL offers less protection against plaque.",
+    "tg": "High triglycerides track with metabolic strain and heart risk.", "sbp": "Raised blood pressure strains the heart, vessels, kidneys and brain.",
+    "hscrp": "hs-CRP is low-grade inflammation linked to cardiovascular risk.", "rhr": "A high resting heart rate tracks with lower fitness and higher risk.",
+    "hba1c": "HbA1c is your 3-month average blood sugar; the prediabetes line is 5.7%.", "glucose": "Fasting glucose above 100 is prediabetic, 126+ diabetic range.",
+    "vat": "Visceral fat around the organs is the metabolically dangerous kind.", "pdff": "Liver fat above 5% is steatosis (MASLD); reversible with weight loss and exercise.",
+    "vo2": "VO₂max is cardiorespiratory fitness — the single strongest predictor of longevity.",
+    "almi": "Low appendicular lean mass is early sarcopenia; protein and strength training reverse it.",
+    "bmd_t": "A spine T-score below −1 is osteopenia, below −2.5 osteoporosis.", "hrv": "Low heart-rate variability reflects strained recovery / autonomic balance.",
+    "sleep": "Short sleep undermines recovery, metabolism and heart health.", "vitd": "Low vitamin D affects bone, muscle and immunity.",
+    "omega3": "A low omega-3 index tracks with higher cardiovascular risk.",
+}
+
+
+def _flag(key: str, value: float, sex: str) -> str | None:
+    """Return 'high', 'watch', or None for one marker against its reference range."""
+    if key not in THRESH or value is None:
+        return None
+    watch, high = THRESH[key]
+    if key == "almi":                                  # sex-specific sarcopenia cut-points (EWGSOP/Baumgartner)
+        watch, high = (7.0, 6.0) if sex == "male" else (5.5, 4.75)
+    if key in ("lean_kg", "fat_kg"):
+        return None                                    # shown for context; no universal cut-point
+    higher_is_worse = STATE[key][3]
+    if higher_is_worse:
+        return "high" if value >= high else "watch" if value >= watch else None
+    return "high" if value <= high else "watch" if value <= watch else None
+
+
+def organ_map(x: dict, sex: str) -> list[dict]:
+    """Group the twin's state into organ systems, each with a status and a plain-language list of problems."""
+    out = []
+    for name, icon, keys in ORGANS:
+        problems, variables = [], []
+        for k in keys:
+            if k not in x:
+                continue
+            v = round(x[k], 2)
+            variables.append({"key": k, "label": STATE[k][0], "unit": STATE[k][1], "value": v})
+            sev = _flag(k, v, sex)
+            if sev:
+                lo_bad = not STATE[k][3]
+                problems.append({"key": k, "severity": sev, "label": STATE[k][0], "value": v, "unit": STATE[k][1],
+                                 "direction": "low" if lo_bad else "high",
+                                 "detail": PROBLEM_NOTE.get(k, f"{STATE[k][0]} is outside the healthy range.")})
+        status = "high" if any(p["severity"] == "high" for p in problems) else "watch" if problems else "ok"
+        out.append({"name": name, "icon": icon, "status": status, "problems": problems, "variables": variables})
+    return out
+
 
 # ----------------------------------------------------------------------------- the person, as the twin sees them
 
@@ -390,13 +461,12 @@ def overview() -> dict:
     L = inputs_now()
     cal = calibration()
     now_risk = _risk({**x, "_ldl0": x["ldl"], "_hdl0": x["hdl"], "_tg0": x["tg"]}, L, 0)
-    systems = [
-        ("Heart & vessels", ["ldl", "apob", "hdl", "tg", "sbp", "hscrp"]), ("Metabolism", ["hba1c", "glucose", "weight", "vat", "pdff"]),
-        ("Muscle & bone", ["lean_kg", "almi", "fat_kg", "bmd_t"]), ("Fitness & recovery", ["vo2", "hrv", "rhr", "sleep"]), ("Nutrients", ["vitd", "omega3"]),
-    ]
+    sex = engine.profile().get("sex", "male")
+    systems = organ_map(x, sex)
+    problem_count = sum(len(s["problems"]) for s in systems)
     return {"inputs": L, "levers": {k: {"label": v[0], "kind": v[1], "options": v[2]} for k, v in LEVERS.items()},
             "presets": [{"id": k, "label": v[0], "changes": v[1]} for k, v in PRESETS.items()],
-            "systems": [{"name": n, "variables": [{"key": k, "label": STATE[k][0], "unit": STATE[k][1], "value": round(x[k], 2)} for k in ks]} for n, ks in systems],
+            "systems": systems, "problem_count": problem_count,
             "risk_now": now_risk, "calibration": cal,
             "about": "Your twin runs your logged routine, meals, alcohol, cigarettes, supplements, medicines, therapies, sleep, training and city through "
                      "published physiology, calibrated to how your own body has responded."}

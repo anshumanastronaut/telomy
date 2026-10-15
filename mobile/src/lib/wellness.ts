@@ -4,7 +4,10 @@
 // docs/devices/WELLNESS_SCORES.md.
 import { useCallback, useEffect, useState } from 'react';
 import { Band, bandAvailable } from './band';
-import type { CaptureMeta } from '../../modules/ky-ecg';
+import { phoneActivity, type CaptureMeta, type HealthSleepSegment } from '../../modules/ky-ecg';
+import { healthConnected } from './health';
+import { ringSamples } from './ringhistory';
+import { fuseNights, healthNights, sleepNeed, sleepRegularity, type SleepNeed, type SleepSource } from './sleepfuse';
 
 // ------------------------------------------------------------------ types
 
@@ -17,6 +20,8 @@ export type Night = {
   midpoint: number;  // unix time of the sleep midpoint
   stages?: number[];  // 4-stage model per 30-s epoch: 0 wake, 1 light, 2 deep, 3 REM, -1 no data
   lightMin?: number; deepMin?: number; remMin?: number; remLatencyMin?: number; remCycles?: number;
+  source?: SleepSource; sourceName?: string;   // which device this night came from (lib/sleepfuse.ts)
+  hrvSrc?: 'ecg' | 'ring';                    // HRV scales differ by device: baselines only compare like with like
 };
 export type MinuteRec = { ts: string; hr: number; rmssd?: number; quality?: string; activity?: string; sleep?: string; motion?: number | null; resting?: number };
 export type Contributor = { key: string; label: string; score: number | null; value: string; note: string };
@@ -43,18 +48,23 @@ const localDate = (t: number) => { const d = new Date(t * 1000); return `${d.get
 
 // ------------------------------------------------------------------ nights from captures
 
+/** The overnight therapy id is 'sleep'; early auto-sleep builds wrote 'overnight_sleep'. */
+export const isNight = (c: any) => c?.therapyId === 'sleep' || c?.therapyId === 'overnight_sleep';
+
 export function nightsFrom(captures: CaptureMeta[]): Night[] {
   const out: Night[] = [];
   for (const c of captures as any[]) {
     const s = c.summary ?? {}, sl = s.sleep, nm = s.night ?? {};
-    if (c.therapyId !== 'sleep' || !sl || !c.endedAt) continue;
+    // a session left open (never stopped) still counts once it has been analysed — its end is the last epoch
+    if (!isNight(c) || !sl || !(c.endedAt || sl.t0)) continue;
     const epoch = sl.epochSec ?? 30;
     const hyp: number[] = sl.hypnogram ?? [];
     const first = hyp.indexOf(1), last = hyp.lastIndexOf(1);
     const t0 = sl.t0 ?? c.startedAt;  // sleep epochs start with the ECG
-    const mid = first >= 0 ? t0 + ((first + last + 1) / 2) * epoch : (c.startedAt + c.endedAt) / 2;
+    const end = c.endedAt ?? t0 + hyp.length * epoch;   // open session: ends at its last analysed epoch
+    const mid = first >= 0 ? t0 + ((first + last + 1) / 2) * epoch : (c.startedAt + end) / 2;
     out.push({
-      id: c.id, date: localDate(c.endedAt), start: t0, end: c.endedAt,
+      id: c.id, date: localDate(end), start: t0, end,
       tstMin: sl.totalSleepMin, efficiency: sl.efficiency, onsetMin: sl.onsetMin, wasoMin: sl.wasoMin, awakenings: sl.awakenings,
       sleepHr: nm.avgSleepHr ?? sl.sleepHr, sleepRmssd: nm.sleepRmssd ?? sl.sleepRmssd, lateRmssd: nm.lateRmssd,
       lowestHr: nm.lowestHr, lowestHrAt: nm.lowestHrAt, lowestHrPos: nm.lowestHrPos, hrDropPct: nm.hrDropPct, respRate: nm.respRate,
@@ -74,10 +84,12 @@ export function nightsFrom(captures: CaptureMeta[]): Night[] {
  * baseline. HR drop: nocturnal HR dipping ≥ 10 % is typical. Regularity: SD of sleep midpoint over the last 7 nights
  * (proxy for the Sleep Regularity Index, Phillips 2017).
  */
-export function sleepScore(n: Night, history: Night[]): Score {
+export function sleepScore(n: Night, history: Night[], needMin?: number, sri?: number | null): Score {
   const prev = history.filter((h) => h.end < n.end).slice(-30);
   const c: (Contributor & { w: number })[] = [];
-  c.push({ key: 'duration', label: 'Total sleep', w: 0.25, value: fmtDur(n.tstMin), note: 'Adults need 7–9 h',
+  if (needMin) c.push({ key: 'duration', label: 'Sleep vs your need', w: 0.25, value: `${fmtDur(n.tstMin)} of ${fmtDur(needMin)}`, note: `${Math.round((100 * n.tstMin) / needMin)} % of what your body asked for`,
+    score: knots(n.tstMin / needMin, [[0.5, 0], [0.7, 40], [0.85, 75], [0.95, 95], [1, 100], [1.35, 100], [1.5, 85]]) });
+  else c.push({ key: 'duration', label: 'Total sleep', w: 0.25, value: fmtDur(n.tstMin), note: 'Adults need 7–9 h',
     score: knots(n.tstMin / 60, [[4, 0], [5, 35], [6, 65], [7, 100], [9, 100], [10, 90], [11, 75]]) });
   c.push({ key: 'efficiency', label: 'Efficiency', w: 0.12, value: `${Math.round(n.efficiency * 100)}%`, note: '85 % or more is good',
     score: knots(n.efficiency * 100, [[65, 0], [74, 25], [85, 75], [90, 100]]) });
@@ -98,7 +110,7 @@ export function sleepScore(n: Night, history: Night[]): Score {
   c.push({ key: 'awakenings', label: 'Wake-ups', w: 0.04, value: `${n.awakenings}`, note: 'Brief wake-ups are normal; fewer is better',
     score: knots(n.awakenings, [[2, 100], [4, 65], [6, 30], [9, 0]]) });
   if (n.sleepRmssd) {
-    const base = prev.map((h) => h.sleepRmssd).filter(Boolean).map((v) => Math.log(v!));
+    const base = prev.filter((h) => (h.hrvSrc ?? 'ecg') === (n.hrvSrc ?? 'ecg')).map((h) => h.sleepRmssd).filter(Boolean).map((v) => Math.log(v!));
     if (base.length >= 3) {
       const z = (Math.log(n.sleepRmssd) - mean(base)) / Math.max(0.05, sd(base));
       c.push({ key: 'restoration', label: 'Restoration (HRV)', w: 0.13, value: `${Math.round(n.sleepRmssd)} ms`, note: 'Overnight HRV vs your normal',
@@ -110,7 +122,10 @@ export function sleepScore(n: Night, history: Night[]): Score {
   if (n.hrDropPct != null) c.push({ key: 'drop', label: 'Heart-rate drop', w: 0.08, value: `${Math.round(n.hrDropPct)}%`, note: 'A 10 % or larger drop in sleep is typical',
     score: knots(n.hrDropPct, [[0, 0], [5, 30], [10, 70], [15, 100]]) });
   const mids = [...prev.slice(-6), n].map((h) => { const d = new Date(h.midpoint * 1000); return ((d.getHours() + 12) % 24) * 60 + d.getMinutes(); });
-  if (mids.length >= 3) {
+  if (sri != null) {
+    c.push({ key: 'regularity', label: 'Sleep regularity', w: 0.06, value: `SRI ${sri}`, note: 'Chance you are in the same state 24 h apart (80+ is regular)',
+      score: knots(sri, [[40, 0], [60, 45], [75, 80], [85, 100]]) });
+  } else if (mids.length >= 3) {
     const s = sd(mids);
     c.push({ key: 'regularity', label: 'Regular timing', w: 0.04, value: `±${Math.round(s)} min`, note: 'Same sleep timing every night helps',
       score: knots(s, [[30, 100], [60, 60], [90, 20], [120, 0]]) });
@@ -135,8 +150,8 @@ export function sleepScore(n: Night, history: Night[]): Score {
  * guidance words follow the same bands (≥ 80 Go for it, 67–79 Ready, 34–66 Pace yourself, ≤ 33 Recover).
  */
 export function recoveryScore(n: Night | undefined, history: Night[], sleep: Score | null, loads: number[]): Score {
-  if (!n || !n.sleepRmssd) return { score: null, label: 'Wear the band tonight', contributors: [], calibrating: 'Needs one night with the band' };
-  const prev = history.filter((h) => h.end < n.end).slice(-30);
+  if (!n || !n.sleepRmssd) return { score: null, label: 'Wear the patch or ring tonight', contributors: [], calibrating: n ? 'Last night had no heart-rate variability (wear the patch or ring to bed)' : 'Needs one night with the patch or ring' };
+  const prev = history.filter((h) => h.end < n.end && (h.hrvSrc ?? 'ecg') === (n.hrvSrc ?? 'ecg')).slice(-30);
   const c: (Contributor & { w: number; z: number | null })[] = [];
   const lnb = prev.map((h) => h.sleepRmssd).filter(Boolean).map((v) => Math.log(v!));
   const calibrating = lnb.length < 3 ? `Learning your normal: night ${lnb.length + 1} of 4` : undefined;
@@ -263,6 +278,7 @@ export type Wellness = {
   loading: boolean; nights: Night[]; last?: Night; sleep: Score | null; recovery: Score; age: number;
   today: { minutes: MinuteRec[]; zones: number[]; trimp: number; strain: number; stress: ReturnType<typeof stressFor>; worn: number; activeMin: number };
   yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void; sessionsToday: DayEvent[]; userEvents: UserEventRec[];
+  need: SleepNeed; sri: number | null;
 };
 
 /** Must equal KYCapture.analysisVersion: nights analysed by an older version are re-analysed once on the phone. */
@@ -277,7 +293,12 @@ export function useWellness(ageHint?: number | null): Wellness {
     const caps = bandAvailable ? Band.listCaptures() : [];
     // nights recorded before the night metrics existed: re-analyse once (in the background) so they get them.
     // One shared job: every mounted instance waits for it, then all reload.
-    const stale = (caps as any[]).filter((c) => c.therapyId === 'sleep' && c.endedAt && c.analysis?.version !== ANALYSIS_VERSION && !reanalysed.has(c.id));
+    // re-analyse: nights from older analysis versions, and nights left open (never stopped — e.g. the app was closed
+    // or the band died) more than 6 h after they began. Never the session that is recording right now.
+    const live = bandAvailable ? Band.captureId() : null;
+    const now = Date.now() / 1000;
+    const stale = (caps as any[]).filter((c) => isNight(c) && c.id !== live && !reanalysed.has(c.id) &&
+      ((c.endedAt && c.analysis?.version !== ANALYSIS_VERSION) || (!c.endedAt && !c.summary?.sleep && now - c.startedAt > 6 * 3600)));
     if (stale.length && !pending) {
       pending = (async () => { for (const c of stale) { reanalysed.add(c.id); await Band.reanalyseCapture(c.id); } })()
         .finally(() => { pending = null; reloaders.forEach((r) => r()); });
@@ -288,10 +309,17 @@ export function useWellness(ageHint?: number | null): Wellness {
     if (age) Band.wellnessAppend('profile', { age });
     else age = ((await Band.wellnessRead('profile', 60)).filter((p) => p.age).pop()?.age as number) ?? 35;
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-    const sessions: DayEvent[] = (caps as any[]).filter((c) => c.therapyId !== 'sleep' && c.startedAt >= dayStart.getTime() / 1000)
+    const sessions: DayEvent[] = (caps as any[]).filter((c) => !isNight(c) && c.startedAt >= dayStart.getTime() / 1000)
       .map((c) => ({ t: c.startedAt, end: c.endedAt ?? c.startedAt, label: c.therapy }));
     const userEvents = ((bandAvailable ? await Band.wellnessRead('events', 2) : []) as UserEventRec[]).filter((e) => e.t >= dayStart.getTime() / 1000 - 6 * 3600);
-    setState({ nights: nightsFrom(caps), minutes, age: age!, sessions, userEvents });
+    // every device's nights, one per sleep period (lib/sleepfuse.ts): patch > Apple Watch > ring > other Health
+    const [segs, ring, phone] = await Promise.all([
+      healthConnected().then((c) => (c && bandAvailable ? Band.healthSleep(21) : ([] as HealthSleepSegment[]))).catch(() => [] as HealthSleepSegment[]),
+      ringSamples(Date.now() - 22 * 86400000, Date.now()).catch(() => []),
+      phoneActivity(24 * 7).catch(() => []),
+    ]);
+    const nights = fuseNights(nightsFrom(caps), healthNights(segs), ring, phone);
+    setState({ nights, minutes, age: age!, sessions, userEvents });
   }, [ageHint]);
   useEffect(() => { reloaders.add(load); load(); return () => { reloaders.delete(load); }; }, [load]);
 
@@ -299,10 +327,15 @@ export function useWellness(ageHint?: number | null): Wellness {
   const age = state?.age ?? 35;
   const last = nights[nights.length - 1];
   const fresh = last && Date.now() / 1000 - last.end < 20 * 3600 ? last : undefined;  // today's night
-  const sleep = fresh ? sleepScore(fresh, nights) : null;
   const mins = state?.minutes ?? [];
   const todayKey = localDate(Date.now() / 1000), yKey = localDate(Date.now() / 1000 - 86400);
   const byDay = (k: string) => mins.filter((m) => m.ts.startsWith(k));
+  const strainByDate: Record<string, number> = {};
+  for (let i = 1; i <= 14; i++) { const k = localDate(Date.now() / 1000 - i * 86400), d = byDay(k); if (d.length >= 60) strainByDate[k] = strainFromTrimp(zonesFor(d, age).trimp); }
+  const before = fresh ? nights.slice(0, -1) : nights;
+  const needLast = sleepNeed(before, fresh ? strainByDate[localDate(fresh.start - 6 * 3600)] ?? 0 : 0, strainByDate);
+  const sri = sleepRegularity(nights);
+  const sleep = fresh ? sleepScore(fresh, nights, needLast.needMin, sri) : null;
   const dayTrimps = Array.from({ length: 8 }, (_, i) => localDate(Date.now() / 1000 - (7 - i) * 86400))
     .map((k) => byDay(k)).filter((d) => d.length >= 60).map((d) => zonesFor(d, age).trimp);
   const recovery = recoveryScore(fresh, nights, sleep, dayTrimps.length && byDay(yKey).length >= 60 ? dayTrimps : []);
@@ -318,5 +351,6 @@ export function useWellness(ageHint?: number | null): Wellness {
       activeMin: tm.filter((m) => m.activity === 'active').length },
     yesterdayTrimp: byDay(yKey).length >= 60 ? zonesFor(byDay(yKey), age).trimp : null,
     restingHr, vo2: restingHr ? vo2max(age, restingHr) : null, reload: load, sessionsToday: state?.sessions ?? [], userEvents: state?.userEvents ?? [],
+    need: sleepNeed(nights, strainFromTrimp(trimp), strainByDate), sri,
   };
 }

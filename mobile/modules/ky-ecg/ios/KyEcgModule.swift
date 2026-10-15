@@ -5,7 +5,7 @@ public class KyEcgModule: Module {
     public func definition() -> ModuleDefinition {
         Name("KyEcg")
 
-        Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm", "onRingStatus", "onRingData", "onRingDevice")
+        Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm", "onRingStatus", "onRingData", "onRingDevice", "onRingHistory")
 
         OnStartObserving {
             KYBand.shared.emit = { [weak self] name, body in self?.sendEvent(name, body) }
@@ -19,6 +19,10 @@ public class KyEcgModule: Module {
 
         Function("ringStatus") { KYRing.shared.status() }
         Function("ringScan") { KYRing.shared.scan() }
+        Function("ringAutoConnect") { KYRing.shared.autoConnect() }
+        Function("ringSyncHistory") { KYRing.shared.syncHistory() }
+        Function("ringStartRaw") { (ecg: Bool, imu: Bool, ppg: Bool) in KYRing.shared.startRawCapture(ecg: ecg, imu: imu, ppg: ppg) }
+        Function("ringStopRaw") { KYRing.shared.stopRawCapture() }
         Function("ringConnect") { (id: String) in KYRing.shared.connect(id: id) }
         Function("ringDisconnect") { KYRing.shared.disconnect() }
         Function("ringForget") { KYRing.shared.forget() }
@@ -38,17 +42,34 @@ public class KyEcgModule: Module {
         Function("stopRecording") { KYBand.shared.stopRecording() }
         Function("syncRecording") { KYBand.shared.syncRecording() }
         Function("log") { (line: String) in KYBand.shared.log("js " + line) }
-        Function("startCapture") { (meta: [String: Any]) in KYBand.shared.startCapture(meta: meta) }
+        Function("startCapture") { (meta: [String: Any]) -> [String: Any] in
+            // one tap captures both devices: an overnight patch session also puts the ring in overnight mode
+            if isOvernightTherapy(meta["therapyId"]) { KYRing.shared.startOvernight() }
+            return KYBand.shared.startCapture(meta: meta)
+        }
+        Function("ringStartOvernight") { KYRing.shared.startOvernight() }
+        Function("autoSleep") { KYSleepAuto.shared.enabled }
+        AsyncFunction("phoneActivity") { (hours: Double, promise: Promise) in
+            KYSleepAuto.phoneActivity(hours: hours) { promise.resolve($0) }
+        }
+        Function("setAutoSleep") { (on: Bool) in UserDefaults.standard.set(on, forKey: KYSleepAuto.enabledKey) }
+        Function("ringStopOvernight") { KYRing.shared.stopOvernight() }
         AsyncFunction("healthAuthorize") { (promise: Promise) in
             KYHealth.shared.authorize { ok, err in promise.resolve(["ok": ok, "error": err as Any]) }
         }
         AsyncFunction("healthDaily") { (days: Int, promise: Promise) in
             KYHealth.shared.daily(days: days) { promise.resolve($0) }
         }
+        AsyncFunction("healthSleep") { (days: Int, promise: Promise) in
+            KYHealth.shared.sleepSegments(days: days) { promise.resolve($0) }
+        }
         Function("addUserEvent") { (e: [String: Any]) in KYBand.shared.addUserEvent(e) }
         Function("markPhase") { (phase: String, note: String?) in KYBand.shared.markPhase(phase, note: note) }
         Function("updateCapture") { (meta: [String: Any]) in KYBand.shared.updateCapture(meta) }
-        Function("stopCapture") { (extra: [String: Any]) in KYBand.shared.stopCapture(extra: extra) }
+        Function("stopCapture") { (extra: [String: Any]) -> [String: Any] in
+            if isOvernightTherapy(KYBand.shared.captureMeta?["therapyId"]) { KYRing.shared.stopOvernight() }
+            return KYBand.shared.stopCapture(extra: extra)
+        }
         Function("captureId") { KYBand.shared.captureId }
         Function("captureMeta") { KYBand.shared.captureMeta }
         Function("listCaptures") { KYCapture.list() }

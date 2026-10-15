@@ -31,3 +31,4 @@ backend/data/ddinter/
 share/
 
 mobile/ios/build-sim/
+web/dist/

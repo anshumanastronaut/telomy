@@ -10,21 +10,23 @@ import ReAnimated, { Easing as ReEasing, FadeInDown, useReducedMotion } from 're
 import Svg, { Circle, Defs, Line, LinearGradient as SvgGrad, Path, RadialGradient, Stop } from 'react-native-svg';
 
 import { useBand } from '@/lib/band';
-import { radius, space, usePalette } from '@/lib/theme';
-import { coachLine, fmtDur, useWellness, type Wellness } from '@/lib/wellness';
+import { radius, space, type, usePalette, data, onInk } from '@/lib/theme';
+import { coachLine, fmtClock, fmtDur, useWellness, type Wellness } from '@/lib/wellness';
+import { phoneActivity } from '../../modules/ky-ecg';
 import { useHealth } from '@/lib/health';
 import { useDevices } from '@/lib/devices';
 import { BeatHeart } from '@/ui/ecg';
 import { Icon, Row, T } from '@/ui/core';
 import { LastNightCard, ScoreRing } from '@/ui/wellness';
+import { VitalsGrid } from '@/ui/vitals';
 import { DayTimeline } from '@/ui/trends';
 
 const EASE_OUT = ReEasing.bezier(0.23, 1, 0.32, 1);
 
 /** Narrow colour vocabulary: recovery state, sleep, strain, stress (same on every screen). */
 export const C = {
-  green: '#4FD08F', amber: '#F2B94B', red: '#FF6B57', none: 'rgba(255,255,255,0.35)',
-  sleep: '#8EA8FF', strain: '#FF9A5A', stress: '#F2B94B',
+  green: '#4FD08F', amber: '#F2B94B', red: data.heart, none: onInk.faint,
+  sleep: data.sleep, strain: '#FF9A5A', stress: '#F2B94B',
   ink: '#0B1210', ink2: '#121D1A',
 };
 export const stateColor = (v: number | null) => (v == null ? C.none : v >= 67 ? C.green : v >= 34 ? C.amber : C.red);
@@ -66,7 +68,7 @@ export function RecoveryDial({ value, size = 212, label }: { value: number | nul
   }, [value]);
   const offset = anim.interpolate({ inputRange: [0, 1], outputRange: [len, 0] });
   const shown = useCountUp(value);
-  const tick = (v: number) => { const d = a0 + (sweep * v) / 100; const [x0, y0] = pt(d, r - 12); const [x1, y1] = pt(d, r + 12); return <Line x1={x0} y1={y0} x2={x1} y2={y1} stroke="rgba(255,255,255,0.35)" strokeWidth={2} />; };
+  const tick = (v: number) => { const d = a0 + (sweep * v) / 100; const [x0, y0] = pt(d, r - 12); const [x1, y1] = pt(d, r + 12); return <Line x1={x0} y1={y0} x2={x1} y2={y1} stroke={onInk.faint} strokeWidth={2} />; };
   return (
     <View style={{ width: size, height: size * 0.86, alignItems: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
@@ -81,18 +83,26 @@ export function RecoveryDial({ value, size = 212, label }: { value: number | nul
           </SvgGrad>
         </Defs>
         <Circle cx={c} cy={c} r={c} fill="url(#glow)" />
-        <Path d={arc(a0, a0 + sweep)} stroke="rgba(255,255,255,0.10)" strokeWidth={stroke} fill="none" strokeLinecap="round" />
+        <Path d={arc(a0, a0 + sweep)} stroke={onInk.track} strokeWidth={stroke} fill="none" strokeLinecap="round" />
         <AnimatedPath d={arc(a0, a0 + sweep)} stroke="url(#arc)" strokeWidth={stroke} fill="none" strokeLinecap="round"
           strokeDasharray={`${len} ${len}`} strokeDashoffset={offset as any} />
-        {tick(33)}{tick(67)}
+        {value != null ? <>{tick(33)}{tick(67)}</> : null}
       </Svg>
-      <View style={{ position: 'absolute', top: size * 0.25, alignItems: 'center' }}>
-        <Row gap={2} style={{ alignItems: 'flex-start' }}>
-          <T v="display" color="#fff" style={{ fontSize: 64, lineHeight: 72, letterSpacing: -1.5 }}>{shown == null ? '—' : shown}</T>
-          {shown != null ? <T v="h2" color="rgba(255,255,255,0.6)" style={{ marginTop: 14 }}>%</T> : null}
-        </Row>
-        <T v="h3" color={col} style={{ letterSpacing: 0.3 }}>{label}</T>
-      </View>
+      {shown == null ? (
+        // Empty state lives inside the ring's opening: an icon and a short label that always fits — never a sentence.
+        <View style={{ position: 'absolute', top: size * 0.3, alignItems: 'center', gap: space[2], maxWidth: size * 0.62 }}>
+          <Icon name="moon.stars" size={30} color={onInk.muted} />
+          <T v="h3" color={onInk.secondary} style={{ textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>{label}</T>
+        </View>
+      ) : (
+        <View style={{ position: 'absolute', top: size * 0.25, alignItems: 'center' }}>
+          <Row gap={2} style={{ alignItems: 'flex-start' }}>
+            <T v="display" color="#fff" style={{ fontSize: type.display + 8, lineHeight: type.display + 16, letterSpacing: -1.5 }}>{shown}</T>
+            <T v="h2" color={onInk.muted} style={{ marginTop: 14 }}>%</T>
+          </Row>
+          <T v="h3" color={col} style={{ letterSpacing: 0.3 }} numberOfLines={1}>{label}</T>
+        </View>
+      )}
     </View>
   );
 }
@@ -103,17 +113,17 @@ function Doorway({ icon, color, title, value, sub, ring, max, onPress }: {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title} ${value}`}
       style={({ pressed }) => ({ flex: 1, padding: 14, gap: 2, borderRadius: radius.xl, transform: [{ scale: pressed ? 0.97 : 1 }],
-        backgroundColor: pressed ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' })}>
+        backgroundColor: pressed ? onInk.track : onInk.hairline, borderWidth: 1, borderColor: onInk.hairline })}>
       <Row gap={5}>
         <Icon name={icon} size={11} color={color} />
-        <T v="label" color="rgba(255,255,255,0.6)" style={{ fontSize: 11, flex: 1 }}>{title}</T>
-        <Icon name="chevron.right" size={10} color="rgba(255,255,255,0.35)" />
+        <T v="label" color={onInk.muted} style={{ fontSize: type.micro, flex: 1 }}>{title}</T>
+        <Icon name="chevron.right" size={10} color={onInk.faint} />
       </Row>
       <Row style={{ alignItems: 'center' }}>
-        <T v="num" color="#fff" style={{ fontSize: 30, lineHeight: 36, flex: 1 }}>{value}</T>
-        <ScoreRing value={ring} max={max} size={30} stroke={4} color={color} track="rgba(255,255,255,0.12)" center="" />
+        <T v="num" color="#fff" style={{ fontSize: type.h1, lineHeight: 36, flex: 1 }}>{value}</T>
+        <ScoreRing value={ring} max={max} size={30} stroke={4} color={color} track={onInk.track} center="" />
       </Row>
-      <T v="small" color="rgba(255,255,255,0.55)" style={{ fontSize: 12 }} numberOfLines={1}>{sub}</T>
+      <T v="small" color={onInk.muted} style={{ fontSize: type.micro + 1 }} numberOfLines={1}>{sub}</T>
     </Pressable>
   );
 }
@@ -125,22 +135,24 @@ export function TodayHero({ w }: { w: Wellness }) {
   const sl = w.sleep?.score ?? null;
   const st = w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null;
   return (
-    <LinearGradient colors={[C.ink, C.ink2]} style={{ borderRadius: 28, paddingHorizontal: space[4], paddingTop: space[4], paddingBottom: space[4], gap: space[3], overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
+    <LinearGradient colors={[C.ink, C.ink2]} style={{ borderRadius: 28, paddingHorizontal: space[4], paddingTop: space[4], paddingBottom: space[4], gap: space[3], overflow: 'hidden', borderWidth: 1, borderColor: onInk.hairline }}>
       <Row>
-        <T v="label" color="rgba(255,255,255,0.6)" style={{ flex: 1 }}>Recovery</T>
+        <T v="label" color={onInk.muted} style={{ flex: 1 }}>Recovery</T>
         <Pressable onPress={() => router.push('/monitor')} accessibilityRole="button" accessibilityLabel="Live heart" hitSlop={8}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.08)' }}>
-          {live ? <BeatHeart lastBeatAt={b.lastBeatAt} size={13} /> : <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: b.status?.state === 'connected' ? C.green : 'rgba(255,255,255,0.35)' }} />}
-          <T v="small" color="#fff" style={{ fontWeight: '600', fontSize: 12 }}>{live ? `${Math.round(b.metrics!.hr!)} bpm` : b.status?.state === 'connected' ? 'Band connected' : 'Band off'}</T>
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: onInk.hairline }}>
+          {live ? <BeatHeart lastBeatAt={b.lastBeatAt} size={13} /> : <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: b.status?.state === 'connected' ? C.green : onInk.faint }} />}
+          <T v="small" color="#fff" style={{ fontWeight: '600', fontSize: type.micro + 1 }}>{live ? `${Math.round(b.metrics!.hr!)} bpm` : b.status?.state === 'connected' ? 'Band connected' : 'Band off'}</T>
         </Pressable>
       </Row>
       <Pressable onPress={() => router.push('/wellness/recovery')} accessibilityRole="button" accessibilityLabel={`Recovery ${rec ?? 'not available'}`} style={{ alignItems: 'center', marginTop: -4 }}>
-        <RecoveryDial value={rec} label={rec == null ? 'Wear the band tonight' : w.recovery.label} />
+        <RecoveryDial value={rec} label={rec == null ? 'No night yet' : w.recovery.label} />
       </Pressable>
-      <T v="body" color="rgba(255,255,255,0.88)" style={{ textAlign: 'center', marginTop: -16, paddingHorizontal: space[2] }}>{coachLine(w.recovery, w.sleep, w.last)}</T>
-      {w.recovery.calibrating ? (
-        <View style={{ alignSelf: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.07)' }}>
-          <T v="small" color="rgba(255,255,255,0.6)" style={{ fontSize: 11 }}>{w.recovery.calibrating}</T>
+      <T v="body" color={onInk.primary} style={{ textAlign: 'center', marginTop: -16, paddingHorizontal: space[2] }}>
+        {rec == null ? 'Wear the ring or patch to bed. Telomy notices when you fall asleep and starts recording on its own.' : coachLine(w.recovery, w.sleep, w.last)}
+      </T>
+      {w.recovery.calibrating && rec != null ? (
+        <View style={{ alignSelf: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: onInk.hairline }}>
+          <T v="small" color={onInk.muted} style={{ fontSize: type.micro }}>{w.recovery.calibrating}</T>
         </View>
       ) : null}
       <Row gap={space[2]} style={{ marginTop: space[1] }}>
@@ -160,15 +172,15 @@ export function DetailHero({ value, max = 100, unit, label, sub, color, dial }: 
   const tenths = useCountUp(value == null ? null : Math.round(max === 100 ? value : value * 10));
   const shown = tenths == null ? '—' : max === 100 ? `${tenths}` : (tenths / 10).toFixed(1);
   return (
-    <LinearGradient colors={[C.ink, C.ink2]} style={{ borderRadius: 28, padding: space[5], alignItems: 'center', gap: space[2], borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
+    <LinearGradient colors={[C.ink, C.ink2]} style={{ borderRadius: 28, padding: space[5], alignItems: 'center', gap: space[2], borderWidth: 1, borderColor: onInk.hairline }}>
       {dial ? <RecoveryDial value={value} label={label} /> : (
         <>
-          <ScoreRing value={value} max={max} size={168} stroke={13} color={color} track="rgba(255,255,255,0.10)"
+          <ScoreRing value={value} max={max} size={168} stroke={13} color={color} track={onInk.track}
             center={shown} sub={unit} />
           <T v="h3" color={color}>{label}</T>
         </>
       )}
-      {sub ? <T v="small" color="rgba(255,255,255,0.65)" style={{ textAlign: 'center', marginTop: dial ? -12 : 0 }}>{sub}</T> : null}
+      {sub ? <T v="small" color={onInk.secondary} style={{ textAlign: 'center', marginTop: dial ? -12 : 0 }}>{sub}</T> : null}
     </LinearGradient>
   );
 }
@@ -177,14 +189,14 @@ function BodyTile({ icon, color, title, value, unit, sub, onPress }: { icon: SFS
   const p = usePalette();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title} ${value}`}
-      style={({ pressed }) => ({ flex: 1, gap: 4, padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
+      style={({ pressed }) => ({ flex: 1, gap: 4, padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
       <Row gap={6}>
         <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: color + '22' }}><Icon name={icon} size={13} color={color} /></View>
         <T v="label" style={{ flex: 1 }}>{title}</T>
         <Icon name="chevron.right" size={11} color={p.faint} />
       </Row>
       <Row gap={4} style={{ alignItems: 'baseline' }}>
-        <T v="num" style={{ fontSize: 28 }}>{value}</T>
+        <T v="num" style={{ fontSize: type.h1 }}>{value}</T>
         {unit ? <T v="small">{unit}</T> : null}
       </Row>
       <T v="small" numberOfLines={2}>{sub}</T>
@@ -200,8 +212,8 @@ function ActivityCard() {
   if (h.connected === null) return null;
   if (!h.connected) {
     return (
-      <View style={{ gap: space[2], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border }}>
-        <Row gap={8}><Icon name="heart.text.square" size={16} color="#FF6B57" /><T v="label" style={{ flex: 1 }}>Apple Health</T></Row>
+      <View style={{ gap: space[2], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface }}>
+        <Row gap={8}><Icon name="heart.text.square" size={16} color={data.heart} /><T v="label" style={{ flex: 1 }}>Apple Health</T></Row>
         <T v="body">Add your steps, workouts and activity to Strain and Recovery. Telomy only reads, never writes.</T>
         <Pressable disabled={busy} onPress={async () => { setBusy(true); await h.connect(); setBusy(false); }} accessibilityRole="button"
           style={({ pressed }) => ({ alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: p.teal, opacity: busy ? 0.5 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] })}>
@@ -212,19 +224,49 @@ function ActivityCard() {
   }
   const t = h.today, week = h.data.slice(-7), max = Math.max(1, ...week.map((d) => d.steps ?? 0));
   return (
-    <View style={{ gap: space[3], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border }}>
-      <Row gap={8}><Icon name="figure.walk" size={15} color="#2F8F6B" /><T v="label" style={{ flex: 1 }}>Activity</T><T v="small">Apple Health</T></Row>
+    <View style={{ gap: space[3], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface }}>
+      <Row gap={8}><Icon name="figure.walk" size={15} color={data.activity} /><T v="label" style={{ flex: 1 }}>Activity</T><T v="small">Apple Health</T></Row>
       <Row style={{ alignItems: 'flex-end' }}>
         <View style={{ flex: 1 }}>
-          <Row gap={4} style={{ alignItems: 'baseline' }}><T v="num" style={{ fontSize: 30 }}>{t?.steps != null ? Math.round(t.steps).toLocaleString('en-IN') : '—'}</T><T v="small">steps</T></Row>
+          <Row gap={4} style={{ alignItems: 'baseline' }}><T v="num" style={{ fontSize: type.h1 }}>{t?.steps != null ? Math.round(t.steps).toLocaleString('en-IN') : '—'}</T><T v="small">steps</T></Row>
           <T v="small">{[t?.distanceKm != null ? `${t.distanceKm.toFixed(1)} km` : null, t?.activeKcal != null ? `${Math.round(t.activeKcal)} kcal` : null,
             t?.exerciseMin != null ? `${Math.round(t.exerciseMin)} exercise min` : null].filter(Boolean).join(' · ') || 'No activity yet today'}</T>
           {h.stepsAvg7 != null ? <T v="small">7-day average {Math.round(h.stepsAvg7).toLocaleString('en-IN')}</T> : null}
         </View>
         <Row gap={4} style={{ alignItems: 'flex-end', height: 44 }}>
-          {week.map((d) => <View key={d.date} style={{ width: 8, height: Math.max(3, ((d.steps ?? 0) / max) * 44), borderRadius: 3, backgroundColor: d === t ? '#2F8F6B' : p.surfaceAlt }} />)}
+          {week.map((d) => <View key={d.date} style={{ width: 8, height: Math.max(3, ((d.steps ?? 0) / max) * 44), borderRadius: 3, backgroundColor: d === t ? data.activity : p.surfaceAlt }} />)}
         </Row>
       </Row>
+    </View>
+  );
+}
+
+/** No wearable night? The phone's motion coprocessor keeps 7 days of activity history even when Telomy wasn't
+ *  running — the longest overnight still stretch is a fair in-bed estimate. Shown only as an estimate, never scored. */
+function PhoneNight() {
+  const p = usePalette();
+  const [win, setWin] = useState<{ start: number; end: number } | null>(null);
+  useEffect(() => {
+    phoneActivity(20).then((segs) => {
+      const night = segs.filter((s) => s.type === 'still').map((s) => {
+        const a = new Date(s.start * 1000).getHours(), b = new Date(s.end * 1000).getHours();
+        const overnight = a >= 20 || a < 6 || b < 12;                       // starts in the evening/night, ends by noon
+        return overnight ? s : null;
+      }).filter(Boolean) as { start: number; end: number }[];
+      const best = night.sort((x, y) => (y.end - y.start) - (x.end - x.start))[0];
+      if (best && best.end - best.start >= 3 * 3600) setWin(best);
+    }).catch(() => {});
+  }, []);
+  if (!win) return null;
+  const h = (win.end - win.start) / 3600;
+  return (
+    <View style={{ gap: space[1], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface }}>
+      <Row gap={8}><Icon name="iphone" size={15} color={data.sleep} /><T v="label" style={{ flex: 1 }}>Last night · phone estimate</T></Row>
+      <Row gap={4} style={{ alignItems: 'baseline' }}>
+        <T v="num" style={{ fontSize: type.h1 }}>{Math.floor(h)}h {String(Math.round((h % 1) * 60)).padStart(2, '0')}m</T>
+        <T v="small">{fmtClock(win.start)} – {fmtClock(win.end)}</T>
+      </Row>
+      <T v="small" color={p.muted}>Your phone was still this long overnight. Wear the ring or patch to bed for real sleep stages, heart rate and recovery.</T>
     </View>
   );
 }
@@ -236,23 +278,23 @@ function RingStrip() {
   const ring = d.devices.find((x) => x.id === 'ring');
   if (!ring?.connected) return null;
   const items = [
-    { k: 'hr', label: 'Heart rate', unit: 'bpm', color: '#FF6B57', icon: 'heart.fill' as const, v: d.live.hr?.value },
-    { k: 'spo2', label: 'SpO₂', unit: '%', color: '#5B8DEF', icon: 'drop.fill' as const, v: d.live.spo2?.value },
-    { k: 'skinTemp', label: 'Skin temp', unit: '°C', color: '#E0894F', icon: 'thermometer.medium' as const, v: d.live.skinTemp?.value },
+    { k: 'hr', label: 'Heart rate', unit: 'bpm', color: data.heart, icon: 'heart.fill' as const, v: d.live.hr?.value },
+    { k: 'spo2', label: 'SpO₂', unit: '%', color: data.spo2, icon: 'drop.fill' as const, v: d.live.spo2?.value },
+    { k: 'skinTemp', label: 'Skin temp', unit: '°C', color: data.temp, icon: 'thermometer.medium' as const, v: d.live.skinTemp?.value },
   ];
   return (
     <Pressable onPress={() => router.push('/ring')} accessibilityRole="button"
-      style={({ pressed }) => ({ padding: space[4], gap: space[3], borderRadius: radius.xl, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border, opacity: pressed ? 0.9 : 1 })}>
-      <Row gap={6}><Icon name="circle.circle" size={15} color="#E0894F" /><T v="label" style={{ flex: 1 }}>Smart ring{ring.detail.includes('%') ? ` · ${ring.detail.split('· ')[1]}` : ''}</T><Icon name="chevron.right" size={11} color={p.faint} /></Row>
+      style={({ pressed }) => ({ padding: space[4], gap: space[3], borderRadius: radius.xl, backgroundColor: p.surface, opacity: pressed ? 0.9 : 1 })}>
+      <Row gap={6}><Icon name="circle.circle" size={15} color={data.temp} /><T v="label" style={{ flex: 1 }}>Smart ring{ring.detail.includes('%') ? ` · ${ring.detail.split('· ')[1]}` : ''}</T><Icon name="chevron.right" size={11} color={p.faint} /></Row>
       <Row gap={space[3]}>
         {items.map((it) => (
           <View key={it.k} style={{ flex: 1, gap: 2 }}>
-            <Row gap={5}><Icon name={it.icon} size={12} color={it.color} /><T v="small" style={{ fontSize: 11 }}>{it.label}</T></Row>
-            <Row gap={3} style={{ alignItems: 'baseline' }}><T v="num" style={{ fontSize: 20 }}>{it.v != null ? (it.k === 'skinTemp' ? it.v.toFixed(1) : Math.round(it.v)) : '—'}</T><T v="small" style={{ fontSize: 11 }}>{it.unit}</T></Row>
+            <Row gap={5}><Icon name={it.icon} size={12} color={it.color} /><T v="small" style={{ fontSize: type.micro }}>{it.label}</T></Row>
+            <Row gap={3} style={{ alignItems: 'baseline' }}><T v="num" style={{ fontSize: type.title }}>{it.v != null ? (it.k === 'skinTemp' ? it.v.toFixed(1) : Math.round(it.v)) : '—'}</T><T v="small" style={{ fontSize: type.micro }}>{it.unit}</T></Row>
           </View>
         ))}
       </Row>
-      <T v="small" style={{ fontSize: 11 }}>Tap to take a fresh reading.</T>
+      <T v="small" style={{ fontSize: type.micro }}>Tap to take a fresh reading.</T>
     </Pressable>
   );
 }
@@ -268,17 +310,21 @@ export function WellnessToday({ age }: { age?: number | null }) {
   return (
     <View style={{ gap: space[3] }}>
       <ReAnimated.View entering={FadeInDown.duration(320).easing(EASE_OUT)}><TodayHero w={w} /></ReAnimated.View>
-      {w.last ? <ReAnimated.View entering={FadeInDown.duration(320).delay(60).easing(EASE_OUT)}><LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /></ReAnimated.View> : null}
+      {w.last ? <ReAnimated.View entering={FadeInDown.duration(320).delay(60).easing(EASE_OUT)}><LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /></ReAnimated.View> : <PhoneNight />}
+      <ReAnimated.View entering={FadeInDown.duration(320).delay(90).easing(EASE_OUT)}><VitalsGrid /></ReAnimated.View>
       <ReAnimated.View entering={FadeInDown.duration(320).delay(120).easing(EASE_OUT)}><DayTimeline w={w} /></ReAnimated.View>
-      <ReAnimated.View entering={FadeInDown.duration(320).delay(180).easing(EASE_OUT)}>
+      <ReAnimated.View entering={FadeInDown.duration(320).delay(180).easing(EASE_OUT)} style={{ gap: space[3] }}>
       <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
-        <BodyTile icon="waveform.path" color="#C98A1B" title="Stress" value={s.score == null ? '—' : `${s.score}`} unit={s.score == null ? undefined : '/100'}
+        <BodyTile icon="waveform.path" color={data.stress} title="Stress" value={s.score == null ? '—' : `${s.score}`} unit={s.score == null ? undefined : '/100'}
           sub={s.minutes ? `${s.stressMin} stressed · ${s.calmMin} calm min` : 'Wear the band during the day'} onPress={() => router.push('/wellness/stress')} />
-        <BodyTile icon="figure.run" color="#2F8F6B" title="Fitness" value={w.vo2 ? `${Math.round(w.vo2)}` : '—'} unit={w.vo2 ? 'VO₂max' : undefined}
+        <BodyTile icon="figure.run" color={data.activity} title="Fitness" value={w.vo2 ? `${Math.round(w.vo2)}` : '—'} unit={w.vo2 ? 'VO₂max' : undefined}
           sub={w.restingHr ? `Resting HR ${Math.round(w.restingHr)} bpm` : 'Needs calm minutes with the band'} onPress={() => router.push('/wellness/recovery')} />
       </Row>
       <RingStrip />
-      <BodyTile icon="sensor.tag.radiowaves.forward" color="#E0894F" title="Devices" value="Manage" sub="Patch · ring · Apple Health" onPress={() => router.push('/devices')} />
+      <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
+        <BodyTile icon="hourglass" color={data.age} title="Biological age" value="Clocks" sub="Fitness · recovery · heart · muscle" onPress={() => router.push('/age')} />
+        <BodyTile icon="sensor.tag.radiowaves.forward" color={data.temp} title="Devices" value="Manage" sub="Patch · ring · Apple Health" onPress={() => router.push('/devices')} />
+      </Row>
       </ReAnimated.View>
       <ReAnimated.View entering={FadeInDown.duration(320).delay(240).easing(EASE_OUT)}><ActivityCard /></ReAnimated.View>
     </View>

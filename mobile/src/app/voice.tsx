@@ -102,7 +102,7 @@ export default function Voice() {
         </View>
         <Row>
           <TextInput value={text} onChangeText={setText} placeholder="…or type it" placeholderTextColor={p.faint} onSubmitEditing={() => send()} returnKeyType="send" testID="voice-text"
-            style={{ flex: 1, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
+            style={{ flex: 1, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
           <Button title="Send" onPress={() => send()} disabled={!text.trim() || busy} />
         </Row>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>

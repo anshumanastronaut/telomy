@@ -196,7 +196,8 @@ final class KYBand: NSObject {
         if let v = m.rmssd300 { summary["rmssd300End"] = v }
         let t0 = c.meta["startedAt"] as? Double ?? Date().timeIntervalSince1970
         let wall = Date().timeIntervalSince1970 - t0
-        if wall > 2 * 3600, let n = KYSleepNight.analyze(beats: c.beatTimes.map { $0 - t0 }, durationSec: wall) {
+        let overnight = isOvernightTherapy(c.meta["therapyId"]) || nightOverlapSec(from: t0, to: t0 + wall) >= 2 * 3600
+        if wall > 2 * 3600, overnight, let n = KYSleepNight.analyze(beats: c.beatTimes.map { $0 - t0 }, durationSec: wall) {
             var sl: [String: Any] = ["totalSleepMin": n.totalSleepMin, "efficiency": n.efficiency, "wasoMin": n.wakeAfterOnsetMin,
                                      "awakenings": n.awakenings, "hypnogram": n.asleep.map { $0 ? 1 : 0 }, "epochSec": 30]
             if let v = n.sleepOnsetMin { sl["onsetMin"] = v }
@@ -369,6 +370,17 @@ final class KYBand: NSObject {
                 liveBlockedByRecording = false
                 if wantsStream && sync == nil { beginStream() }
             }
+            // Auto-sync: a recording the band made on its own (phone away, app closed) is pulled the moment the band
+            // reconnects — once per recording, so nothing waits on someone remembering to tap Sync.
+            let have = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("ky-recordings/\(holterStart ?? 0).holter")
+            let alreadyOnPhone = ((try? FileManager.default.attributesOfItem(atPath: have.path)[.size] as? Int) ?? 0) > 1024
+            if !recording, s != .readingFlash, sync == nil, capture == nil, !alreadyOnPhone, let st = holterStart, st > 0,
+               UserDefaults.standard.integer(forKey: "telomy.band.lastAutoSync") != Int(st) {
+                UserDefaults.standard.set(Int(st), forKey: "telomy.band.lastAutoSync")
+                log("auto-sync on-band recording started \(st)")
+                syncRecording()
+            }
             publish()
         case .holterTime(let t): holterStart = t; publish()
         case .ecgFrame(let f): handleFrame(f)
@@ -424,6 +436,7 @@ final class KYBand: NSObject {
         if let v = st.rmssd { mm["rmssdSmooth"] = v }
         if let v = st.rmssd5 { mm["rmssd5"] = v }
         if now - restingSavedAt > 60 { restingSavedAt = now; UserDefaults.standard.set(st.restingHr, forKey: Self.restingKey) }
+        KYSleepAuto.shared.band(sleep: st.sleep.rawValue, activity: st.activity.rawValue)   // auto sleep onset / wake
         if let v = m.meanNN60 { mm["meanNN60"] = v }
         if let v = m.rmssd60, st.hrvState == "ok" || st.hrvState == "active" { mm["rmssd60"] = v }
         if let v = m.sdnn60 { mm["sdnn60"] = v }

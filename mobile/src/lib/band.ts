@@ -89,7 +89,7 @@ async function flush() {
   const items = outbox;
   outbox = [];
   try {
-    await api('/band/minutes', { body: { items } });
+    await api('/band/minutes', { body: { items }, queue: true });
     Band.log(`uploaded ${items.length} minute(s)`);
   } catch (e: any) {
     Band.log(`upload failed: ${e?.message ?? e}`);
@@ -191,14 +191,14 @@ function start() {
     // update in place when an open episode extends; send each finished/updated episode to the server
     const rhythm = [...snap.rhythm.filter((x) => !(x.type === e.type && Math.abs(x.start - e.start) < 1)), e].slice(-100);
     set({ rhythm });
-    api('/band/events', { body: { items: [{ type: e.type, start: e.start, end: e.end, detail: e.detail }] } }).catch(() => Band.log(`event upload failed: ${e.type}`));
+    api('/band/events', { body: { items: [{ type: e.type, start: e.start, end: e.end, detail: e.detail }] }, queue: true }).catch(() => Band.log(`event upload failed: ${e.type}`));
   });
   Band.on('onRecording', (r) => {
     set({ recording: r });
     if (r.phase === 'completed' && r.durationSec && r.durationSec > 30) {
       const d = new Date(r.start * 1000).toISOString().slice(0, 19);
-      api('/band/recordings', { body: { start_ts: d, duration_s: r.durationSec, beats: r.beats, mean_hr: r.meanHr, rmssd: r.rmssd, sdnn: r.sdnn, artefact_pct: r.artefactPercent, rr: r.rr, sleep: r.sleep } }).catch(() => {});
-      if (r.events?.length) api('/band/events', { body: { items: r.events.map((e) => ({ ...e, source: 'recording' })) } }).catch(() => {});
+      api('/band/recordings', { body: { start_ts: d, duration_s: r.durationSec, beats: r.beats, mean_hr: r.meanHr, rmssd: r.rmssd, sdnn: r.sdnn, artefact_pct: r.artefactPercent, rr: r.rr, sleep: r.sleep }, queue: true }).catch(() => {});
+      if (r.events?.length) api('/band/events', { body: { items: r.events.map((e) => ({ ...e, source: 'recording' })) }, queue: true }).catch(() => {});
     }
   });
   set({ status: Band.getStatus() });
