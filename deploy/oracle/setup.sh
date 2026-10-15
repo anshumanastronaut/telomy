@@ -16,15 +16,22 @@ if ! swapon --show | grep -q /swapfile; then
 fi
 
 echo "== packages + firewall"
-sudo dnf -y -q install tar sqlite rsync >/dev/null
+sudo dnf -y -q install tar sqlite rsync cronie policycoreutils-python-utils >/dev/null
+sudo systemctl enable -q --now crond
 sudo firewall-cmd -q --permanent --add-service=http --add-service=https && sudo firewall-cmd -q --reload
 
 echo "== python 3.13 (uv)"
 if ! command -v uv >/dev/null; then curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null; fi
 export PATH="$HOME/.local/bin:$PATH"
 cd "$APP"
+# Python lives under /opt (not $HOME): SELinux blocks services from executing files in home directories.
+export UV_PYTHON_INSTALL_DIR="$APP/python"
+uv python install -q 3.13
 uv venv -q --python 3.13 .venv
 uv pip install -q --python .venv/bin/python -r requirements.txt
+sudo semanage fcontext -a -t bin_t "$APP/python(/.*)?" 2>/dev/null || true
+sudo semanage fcontext -a -t bin_t "$APP/\.venv/bin(/.*)?" 2>/dev/null || true
+sudo restorecon -R "$APP/python" "$APP/.venv/bin"
 
 echo "== service"
 sudo tee /etc/systemd/system/telomy.service >/dev/null <<EOF
@@ -68,9 +75,10 @@ AmbientCapabilities=CAP_NET_BIND_SERVICE
 WantedBy=multi-user.target
 EOF
 
-echo "== nightly backup"
-mkdir -p "$APP/backups"
-( crontab -l 2>/dev/null | grep -v telomy-backup; echo "15 3 * * * sqlite3 $APP/telomy.db \".backup $APP/backups/telomy-\$(date +\\%F).db\" && find $APP/backups -name 'telomy-*.db' -mtime +14 -delete # telomy-backup" ) | crontab -
+echo "== nightly backup (03:15, 14 days)"
+sudo tee /etc/cron.d/telomy-backup >/dev/null <<'EOF2'
+15 3 * * * opc mkdir -p /opt/telomy/backups && sqlite3 /opt/telomy/telomy.db ".backup /opt/telomy/backups/telomy-$(date +\%F).db" && find /opt/telomy/backups -name 'telomy-*.db' -mtime +14 -delete
+EOF2
 
 sudo systemctl daemon-reload
 sudo systemctl enable -q --now telomy caddy
