@@ -56,6 +56,7 @@ export default function RootLayout() {
         <Stack.Screen name="age" options={{ title: 'Biological age' }} />
         <Stack.Screen name="muscle" options={{ title: 'Muscle age test' }} />
         <Stack.Screen name="insurance" options={{ title: 'Insurance' }} />
+        <Stack.Screen name="training" options={{ title: 'Exercise & training' }} />
         <Stack.Screen name="risks" options={{ title: "Risk map" }} />
         <Stack.Screen name="menu" options={{ title: 'Weekly menu' }} />
         <Stack.Screen name="studies" options={{ title: 'N-of-1 studies' }} />

@@ -175,6 +175,12 @@ export default function Activity() {
         </Section>
       ) : null}
 
+      <Pressable onPress={() => router.push('/training' as any)} accessibilityRole="button"
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[3], padding: space[4], borderRadius: radius.lg, backgroundColor: p.surface, opacity: pressed ? 0.8 : 1 })}>
+        <T v="h3" style={{ flex: 1 }}>Exercise & training</T>
+        <T v="small" color={p.teal}>Sessions and load →</T>
+      </Pressable>
+
       <Card>
         <T v="label">How these are worked out</T>
         <T v="small">Recovery compares last night's HRV and lowest heart rate with your own previous 30 nights, adjusted for sleep, breathing and yesterday's strain (green 67+, amber 34–66, red 33 or less). Strain weights every minute by heart-rate zone (Edwards TRIMP) on a 0–21 scale. Stress compares daytime heart rate and HRV with your calm baseline. Usual ranges are your own mean ± 1.5 standard deviations.</T>

@@ -87,6 +87,7 @@ export default function WellnessDetail() {
       {metric === 'strain' ? (
         <>
           <DetailHero value={w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null} max={21} unit="OF 21" label="Today’s strain" sub={`${w.today.worn} min worn · ${w.today.activeMin} min active`} color={C.strain} />
+          <Button kind="secondary" title="Exercise & training" icon="figure.run" onPress={() => router.push('/training' as any)} />
           <Section title="Your day, hour by hour">
             <Card><StrainColumns mins={w.today.minutes} age={w.age} /><T v="small">Each column is one hour; height is that hour's load, colours are minutes in each heart-rate zone.</T></Card>
           </Section>

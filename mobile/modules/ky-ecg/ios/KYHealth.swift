@@ -88,8 +88,12 @@ final class KYHealth {
                                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]) { _, samples, _ in
             var byDay: [Date: [[String: Any]]] = [:]
             for w in (samples as? [HKWorkout]) ?? [] {
-                byDay[cal.startOfDay(for: w.startDate), default: []].append(["type": w.workoutActivityType.rawValue, "min": (w.duration / 60).rounded(),
-                                                                            "start": w.startDate.timeIntervalSince1970])
+                var rec: [String: Any] = ["type": w.workoutActivityType.rawValue, "min": (w.duration / 60).rounded(),
+                                          "start": w.startDate.timeIntervalSince1970, "end": w.endDate.timeIntervalSince1970,
+                                          "source": w.sourceRevision.source.name]
+                if let e = w.totalEnergyBurned?.doubleValue(for: .kilocalorie()) { rec["kcal"] = e.rounded() }
+                if let d = w.totalDistance?.doubleValue(for: .meterUnit(with: .kilo)) { rec["km"] = (d * 100).rounded() / 100 }
+                byDay[cal.startOfDay(for: w.startDate), default: []].append(rec)
             }
             for (d, ws) in byDay { put(d, "workouts", ws) }
             group.leave()

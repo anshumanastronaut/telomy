@@ -72,7 +72,7 @@ export type RecordingEvent =
 export type HealthDay = {
   date: string; steps?: number; distanceKm?: number; activeKcal?: number; exerciseMin?: number; flights?: number;
   restingHr?: number; walkingHr?: number; hrvSdnn?: number; respRate?: number; spo2?: number; vo2max?: number;
-  weightKg?: number; bodyFatPct?: number; sleepMin?: number; workouts?: { type: number; min: number; start: number }[];
+  weightKg?: number; bodyFatPct?: number; sleepMin?: number; workouts?: { type: number; min: number; start: number; end?: number; kcal?: number; km?: number; source?: string }[];
 };
 export type UserEvent = { kind: string; label: string; note?: string; t?: number; amount?: string };
 export type FoundDevice = { id: string; name: string; rssi: number };

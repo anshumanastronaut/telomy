@@ -55,6 +55,7 @@ export default function Profile() {
       <Group title="Take care of yourself">
         <ListRow icon="pills.fill" title="Curated supplements" subtitle="Only what your labs support — dose, timing, evidence grade" onPress={() => router.push('/rx')} />
         <ListRow icon="figure.stand" title="Whole-body scan & tests" subtitle="Blood panels, imaging, genetics — what to test next" onPress={() => router.push('/tests')} />
+        <ListRow icon="figure.run" title="Exercise & training" subtitle="Every workout, its load and your training status" onPress={() => router.push('/training' as any)} />
         <ListRow icon="bolt.heart" title="Therapy" subtitle="Sessions, plans and recorded therapies" onPress={() => router.push('/therapy' as any)} />
         <ListRow icon="waveform.path.ecg" title="Live ECG & devices" subtitle="Patch, ring, Apple Health — connect and monitor" onPress={() => router.push('/devices')} />
       </Group>
