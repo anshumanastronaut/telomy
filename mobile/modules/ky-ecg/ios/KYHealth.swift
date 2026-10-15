@@ -101,4 +101,35 @@ final class KYHealth {
         store.execute(wq)
         group.notify(queue: .global()) { done(out.values.sorted { ($0["date"] as! String) < ($1["date"] as! String) }) }
     }
+
+    /// Raw sleep segments (oldest first) for the last `days` nights from every source. Stage codes:
+    /// 0 awake, 1 core/light, 2 deep, 3 REM, 4 asleep (unstaged), 5 in bed. Apple Watch writes staged segments
+    /// (iOS 16+); iPhone/other apps usually write in-bed or unstaged asleep.
+    func sleepSegments(days: Int, _ done: @escaping ([[String: Any]]) -> Void) {
+        guard let sl = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return done([]) }
+        let start = Date().addingTimeInterval(-Double(days) * 86400 - 43200)
+        let q = HKSampleQuery(sampleType: sl, predicate: HKQuery.predicateForSamples(withStart: start, end: Date()), limit: HKObjectQueryNoLimit,
+                              sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]) { _, samples, _ in
+            var out: [[String: Any]] = []
+            for s in (samples as? [HKCategorySample]) ?? [] {
+                var st = 4
+                if #available(iOS 16.0, *) {
+                    switch HKCategoryValueSleepAnalysis(rawValue: s.value) {
+                    case .awake: st = 0
+                    case .asleepCore: st = 1
+                    case .asleepDeep: st = 2
+                    case .asleepREM: st = 3
+                    case .inBed: st = 5
+                    default: st = 4
+                    }
+                } else { st = s.value == HKCategoryValueSleepAnalysis.inBed.rawValue ? 5 : s.value == 2 ? 0 : 4 }
+                let src = s.sourceRevision.source
+                out.append(["start": s.startDate.timeIntervalSince1970, "end": s.endDate.timeIntervalSince1970, "stage": st,
+                            "source": src.name, "watch": (s.device?.model ?? "").lowercased().contains("watch")
+                                || src.bundleIdentifier.lowercased().contains("watch")])
+            }
+            done(out)
+        }
+        store.execute(q)
+    }
 }

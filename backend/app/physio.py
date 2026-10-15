@@ -21,6 +21,7 @@ Two halves:
    (exponential fit), thermoregulatory recovery index (TRI, minutes to rewarm 5 °C from the nadir), SpO₂ kinetics,
    cardiac load, perfusion change, PBM dose, signal quality and deterministic safety tiers (outside any model).
 """
+import functools
 import math
 import random
 
@@ -366,8 +367,10 @@ def against_literature(modality: str, f: dict) -> list[dict]:
     return out
 
 
+@functools.lru_cache(maxsize=4)
 def validate_prior(n: int = 40) -> dict:
-    """Run the simulator across healthy-adult θ and check every literature target (the PINN pre-training gate)."""
+    """Run the simulator across healthy-adult θ and check every literature target (the PINN pre-training gate).
+    Seeded and input-free, so the result is cached per n (was ~8 s per request on the 1-core server)."""
     th = theta_from({"age": 38, "rhr": 60, "hrv": 55, "vo2max": 42, "hba1c": 5.3, "bmi": 23.5})
     runs = {"cryo": {"chamber_c": -120, "seconds": 180}, "cold": {"water_c": 8, "minutes": 3},
             "hbot": {"ata": 2.4, "o2_pct": 100, "minutes": 90}, "sauna": {"temp_c": 80, "minutes": 20},

@@ -74,6 +74,8 @@ export type HealthDay = {
   restingHr?: number; walkingHr?: number; hrvSdnn?: number; respRate?: number; spo2?: number; vo2max?: number;
   weightKg?: number; bodyFatPct?: number; sleepMin?: number; workouts?: { type: number; min: number; start: number; end?: number; kcal?: number; km?: number; source?: string }[];
 };
+/** One Apple Health sleep segment. stage: 0 awake, 1 core/light, 2 deep, 3 REM, 4 asleep (unstaged), 5 in bed. */
+export type HealthSleepSegment = { start: number; end: number; stage: 0 | 1 | 2 | 3 | 4 | 5; source: string; watch: boolean };
 export type UserEvent = { kind: string; label: string; note?: string; t?: number; amount?: string };
 export type FoundDevice = { id: string; name: string; rssi: number };
 export type CaptureMeta = {
@@ -128,6 +130,7 @@ type Native = {
   addUserEvent(e: Record<string, unknown>): { captureId?: string; t?: number };
   healthAuthorize(): Promise<{ ok: boolean; error?: string }>;
   healthDaily(days: number): Promise<HealthDay[]>;
+  healthSleep(days: number): Promise<HealthSleepSegment[]>;
   wellnessRead(kind: string, days: number): Promise<Record<string, any>[]>;
   reanalyseCapture(id: string): Promise<{ id?: string; summary?: Record<string, any>; error?: string }>;
   addListener<K extends keyof Events>(event: K, listener: Events[K]): EventSubscription;
@@ -205,6 +208,8 @@ export const Band = {
   healthAuthorize: async () => (native ? native.healthAuthorize() : { ok: false, error: 'Not available' }),
   /** Daily Apple Health summaries for the last `days` days, oldest first. */
   healthDaily: async (days: number): Promise<HealthDay[]> => (native ? native.healthDaily(days) : []),
+  /** Raw Apple Health sleep segments (Watch stages when present), oldest first. */
+  healthSleep: async (days: number): Promise<HealthSleepSegment[]> => (native?.healthSleep ? native.healthSleep(days) : []),
   addUserEvent: (e: UserEvent) => native?.addUserEvent(e as any) ?? { },
   /** Append a record to the on-phone wellness store (Documents/wellness/<kind>/<day>.jsonl). */
   wellnessAppend: (kind: string, record: Record<string, unknown>) => native?.wellnessAppend(kind, record),

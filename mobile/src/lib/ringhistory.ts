@@ -78,3 +78,12 @@ export function hrHrvCorrelation(): { r: number | null; n: number } {
   const den = Math.sqrt(sxx * syy);
   return { r: den ? sxy / den : null, n };
 }
+
+/** Ring samples with t (ms) in [fromMs, toMs) — loads the store on first use so engines can run before the UI mounts. */
+export async function ringSamples(fromMs: number, toMs: number): Promise<RingHistorySample[]> {
+  if (!loaded) {
+    try { const raw = await AsyncStorage.getItem(KEY); if (raw) samples = JSON.parse(raw); } catch {}
+    loaded = true;
+  }
+  return samples.filter((s) => s.t >= fromMs && s.t < toMs);
+}

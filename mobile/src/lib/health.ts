@@ -32,3 +32,6 @@ export function useHealth(days = 30) {
   return { connected, data, today, stepsAvg7: avg('steps'), reload: load,
     connect: async () => { const r = await connectHealth(); await load(); return r; } };
 }
+
+/** Whether the person has connected Apple Health on this phone. */
+export const healthConnected = async () => (await AsyncStorage.getItem(KEY)) === '1';

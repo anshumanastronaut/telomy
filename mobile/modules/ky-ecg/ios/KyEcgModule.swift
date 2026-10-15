@@ -60,6 +60,9 @@ public class KyEcgModule: Module {
         AsyncFunction("healthDaily") { (days: Int, promise: Promise) in
             KYHealth.shared.daily(days: days) { promise.resolve($0) }
         }
+        AsyncFunction("healthSleep") { (days: Int, promise: Promise) in
+            KYHealth.shared.sleepSegments(days: days) { promise.resolve($0) }
+        }
         Function("addUserEvent") { (e: [String: Any]) in KYBand.shared.addUserEvent(e) }
         Function("markPhase") { (phase: String, note: String?) in KYBand.shared.markPhase(phase, note: note) }
         Function("updateCapture") { (meta: [String: Any]) in KYBand.shared.updateCapture(meta) }

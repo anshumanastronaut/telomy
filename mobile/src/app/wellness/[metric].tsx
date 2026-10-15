@@ -4,12 +4,13 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { useApi } from '@/lib/api';
-import { space, usePalette, data } from '@/lib/theme';
+import { space, type, usePalette, data } from '@/lib/theme';
 import { fmtClock, fmtDur, hrMax, useWellness } from '@/lib/wellness';
 import { Button, Card, Empty, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { C, DetailHero } from '@/ui/today';
 import { TrendChart } from '@/ui/trends';
 import { nightSeries, normalBand, type Wellness } from '@/lib/wellness';
+import { SOURCE_LABEL } from '@/lib/sleepfuse';
 import { StageBreakdown, StrainColumns, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
 
 const METHODS: Record<string, { title: string; how: string; sources: string[] }> = {
@@ -20,8 +21,8 @@ const METHODS: Record<string, { title: string; how: string; sources: string[] }>
   },
   sleep: {
     title: 'Sleep',
-    how: 'Wake, light, deep and REM sleep are estimated every 30 s from your heart rhythm and ECG-derived breathing by a small neural network (convolution + bidirectional GRU) trained on 151 hospital sleep-lab nights with expert scoring. ECG-only staging agrees with a full sleep study about 2 in 3 epochs; treat stage minutes as estimates. The score combines duration, efficiency, time to fall asleep, time awake, wake-ups, overnight HRV vs your normal, the heart-rate drop in sleep and timing regularity. Breathing rate comes from the breathing rhythm in your ECG.',
-    sources: ['Hirshkowitz M et al. 2015, Sleep Health: NSF sleep duration', 'Ohayon M et al. 2017, Sleep Health: NSF sleep-quality indicators', 'Phillips AJK et al. 2017, Sci Rep: sleep regularity', 'Sridhar N et al. 2020, npj Digit Med: sleep staging from instantaneous heart rate', 'Radha M et al. 2019, Sci Rep: sleep stages from HRV with LSTM', 'Alvarez-Estevez D, Rijsman R 2021, PLoS One: HMC sleep staging database', 'Ohayon M et al. 2004, Sleep: normative sleep architecture', 'Charlton PH et al. 2016, Physiol Meas: respiratory rate from the ECG', 'Karlen W et al. 2013, IEEE TBME: smart fusion'],
+    how: 'Wake, light, deep and REM sleep are estimated every 30 s from your heart rhythm and ECG-derived breathing by a small neural network (convolution + bidirectional GRU) trained on 151 hospital sleep-lab nights with expert scoring. ECG-only staging agrees with a full sleep study about 2 in 3 epochs; treat stage minutes as estimates. The score combines duration, efficiency, time to fall asleep, time awake, wake-ups, overnight HRV vs your normal, the heart-rate drop in sleep and timing regularity. Breathing rate comes from the breathing rhythm in your ECG. Nights come from the best device you wore: the patch (ECG stages), then Apple Watch stages from Apple Health, then the ring (sleep and wake from its heart-rate log and your iPhone\u2019s motion, no stages), then any other Health sleep. Sleep need = baseline (8 h until 14 nights, then learnt from your longer nights, 7–9 h) + up to 45 min for a hard day + 30 % of your sleep debt; debt is a running balance that decays by 15 % a night and is repaid by extra sleep. Regularity is the Sleep Regularity Index: how likely you are in the same state (asleep or awake) at the same clock time on consecutive days.',
+    sources: ['Hirshkowitz M et al. 2015, Sleep Health: NSF sleep duration', 'Ohayon M et al. 2017, Sleep Health: NSF sleep-quality indicators', 'Phillips AJK et al. 2017, Sci Rep: sleep regularity', 'Sridhar N et al. 2020, npj Digit Med: sleep staging from instantaneous heart rate', 'Radha M et al. 2019, Sci Rep: sleep stages from HRV with LSTM', 'Alvarez-Estevez D, Rijsman R 2021, PLoS One: HMC sleep staging database', 'Ohayon M et al. 2004, Sleep: normative sleep architecture', 'Charlton PH et al. 2016, Physiol Meas: respiratory rate from the ECG', 'Van Dongen HPA et al. 2003, Sleep: cumulative cost of sleep restriction', 'Klerman EB, Dijk DJ 2005, Curr Biol: sleep need under extended sleep', 'Schyvens AM et al. 2025: six wearables vs polysomnography', 'de Zambotti M et al. 2019, Med Sci Sports Exerc: wearable sleep technology', 'Karlen W et al. 2013, IEEE TBME: smart fusion'],
   },
   strain: {
     title: 'Strain',
@@ -68,20 +69,22 @@ export default function WellnessDetail() {
         w.last ? (
           <>
             <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
+            <T v="small" color={p.faint}>From {SOURCE_LABEL[w.last.source ?? 'patch']}{w.last.sourceName && w.last.source === 'health' ? ` (${w.last.sourceName})` : ''}</T>
+            <SleepNeedCard w={w} />
             <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} embedded />
             {w.last.stages?.length ? <Section title="Sleep stages"><Card><StageBreakdown n={w.last} /></Card></Section> : null}
-            <Card>
+            {w.last.hr5.length ? <Card>
               <Segmented options={[{ key: 'hr', label: 'Heart rate' }, { key: 'hrv', label: 'HRV' }]} value={hrKind} onChange={setHrKind} />
               <NightHrChart n={w.last} kind={hrKind} />
               <T v="small">{hrKind === 'hr'
                 ? (w.last.lowestHrPos != null && w.last.lowestHrPos > 0.66 ? 'Your heart rate bottomed out late in the night. Late meals, alcohol, late exercise or a warm room often delay it.' : 'Your heart rate settled early, a sign your body could start recovering soon after you fell asleep.')
                 : 'HRV usually rises through the night as recovery takes over.'}</T>
-            </Card>
+            </Card> : null}
             {w.sleep ? <Section title="Contributors"><ContributorList items={w.sleep.contributors} /></Section> : null}
             <Trends w={w} kind="sleep" />
-            <Button kind="secondary" title="Open the full session" icon="folder" onPress={() => router.push('/captures')} />
+            {w.last.source === 'patch' ? <Button kind="secondary" title="Open the full session" icon="folder" onPress={() => router.push('/captures')} /> : null}
           </>
-        ) : <Empty title="No night yet" body="Wear the band to bed and start Overnight sleep from Therapy → Record therapy." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />
+        ) : <Empty title="No night yet" body="Wear the patch or ring to bed (Telomy detects sleep on its own), or connect Apple Health to use your Apple Watch's sleep." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />
       ) : null}
 
       {metric === 'strain' ? (
@@ -156,5 +159,42 @@ function Trends({ w, kind }: { w: Wellness; kind: 'recovery' | 'sleep' }) {
       <Segmented options={[{ key: '7', label: '7 nights' }, { key: '30', label: '30 nights' }]} value={days} onChange={setDays} />
       {charts.map((c) => <TrendChart key={c.title} title={c.title} points={pts(c.f)} band={band(c.f)} color={c.color} unit={c.unit} decimals={c.dec} higherIsBetter={c.up} />)}
     </Section>
+  );
+}
+
+/** Tonight's sleep need (baseline + strain + debt repayment), the running debt and a suggested bedtime. */
+function SleepNeedCard({ w }: { w: Wellness }) {
+  const p = usePalette();
+  const n = w.need;
+  const parts: [string, number, string][] = [
+    ['Baseline', n.baselineMin, n.personal ? 'learnt from your nights' : 'adult typical until 14 nights'],
+    ['Today\u2019s strain', n.strainMin, 'harder days need more'],
+    ['Paying back debt', n.repayMin, '30 % of your sleep debt'],
+  ];
+  return (
+    <Card style={{ gap: space[2] }}>
+      <Row>
+        <T v="label" style={{ flex: 1 }}>Tonight you need</T>
+        {n.bedtime ? <T v="small">in bed by {fmtClock(n.bedtime)}</T> : null}
+      </Row>
+      <T v="num" style={{ fontSize: type.h1 }} color={C.sleep}>{fmtDur(n.needMin)}</T>
+      {parts.map(([k, v, note]) => (
+        <Row key={k}>
+          <T v="small" style={{ flex: 1 }}>{k} <T v="small" color={p.faint}>· {note}</T></T>
+          <T v="small">{v >= 1 ? (k === 'Baseline' ? fmtDur(v) : `+${Math.round(v)} min`) : '—'}</T>
+        </Row>
+      ))}
+      <Row>
+        <T v="small" style={{ flex: 1 }}>Sleep debt (last 14 nights)</T>
+        <T v="small" color={n.debtMin > 120 ? p.warn : p.text}>{n.debtMin >= 1 ? fmtDur(n.debtMin) : 'none'}</T>
+      </Row>
+      {w.sri != null ? (
+        <Row>
+          <T v="small" style={{ flex: 1 }}>Sleep regularity index</T>
+          <T v="small" color={w.sri >= 80 ? p.success : w.sri >= 65 ? p.text : p.warn}>{w.sri}</T>
+        </Row>
+      ) : null}
+      {n.lastNightPct != null ? <T v="small">Last night you got {Math.round(n.lastNightPct * 100)} % of the sleep you needed.</T> : null}
+    </Card>
   );
 }

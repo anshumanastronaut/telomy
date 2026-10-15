@@ -25,6 +25,10 @@ async def lifespan(_app):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
+    # warm the seeded physiology validation off the request path (~8 s on the 1-core server, then cached)
+    import threading
+    from . import physio
+    threading.Thread(target=physio.validate_prior, args=(20,), daemon=True).start()
     yield
 
 
