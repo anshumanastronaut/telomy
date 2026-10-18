@@ -387,7 +387,7 @@ final class KYRing: NSObject {
     }
 
     /// Parse a streamed history dump into longitudinal samples. Record body starts at offset 0, fixed stride per type,
-    /// timestamps are seconds since 2000-01-01 (`(le32 + 946684800) * 1000` ms). Verified record layout from the
+    /// timestamps are LOCAL wall-clock seconds since 2000-01-01 (we set the ring's clock in local time), converted to UTC ms. Verified record layout from the
     /// decompiled unpacker; emitted as `onRingHistory` for Telomy's longitudinal store. Parses what's complete and
     /// keeps any partial tail for the next frame.
     private func parseHistory(_ chunk: [UInt8]) {
@@ -398,20 +398,25 @@ final class KYRing: NSObject {
         let stride = histType == 30 ? 7 : histType == 9 ? 20 : 6
         func ts(_ i: Int) -> Double {
             let le = Double(Int(histBuf[i]) | (Int(histBuf[i+1]) << 8) | (Int(histBuf[i+2]) << 16) | (Int(histBuf[i+3]) << 24))
-            return (le + 946684800) * 1000
+            // The ring's clock is set to LOCAL wall time (makeTime), so its seconds-since-2000 are wall-clock, not UTC.
+            // Convert back to real time (2026-10-19: every ring sample was 5 h 30 min late in IST until this fix).
+            let wall = le + 946684800
+            return (wall - Double(TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: wall)))) * 1000
         }
         var samples: [[String: Any]] = []
         var i = 0
+        let latest = (Date().timeIntervalSince1970 + 86400) * 1000
         while i + stride <= histBuf.count {
             let t = ts(i)
+            if t < 1_577_836_800_000 || t > latest { i += stride; continue }   // corrupt record (a year-2135 stamp was seen)
             switch histType {
-            case 6:  if histBuf[i+5] > 0 { samples.append(["t": t, "hr": Int(histBuf[i+5])]) }
-            case 26: if histBuf[i+5] > 0 { samples.append(["t": t, "spo2": Int(histBuf[i+5])]) }
+            case 6:  if histBuf[i+5] >= 30, histBuf[i+5] <= 220 { samples.append(["t": t, "hr": Int(histBuf[i+5])]) }
+            case 26: if histBuf[i+5] >= 70, histBuf[i+5] <= 100 { samples.append(["t": t, "spo2": Int(histBuf[i+5])]) }   // 54–146 seen: out-of-range = failed reading
             case 30: let v = Double(histBuf[i+5]) + Double(histBuf[i+6]) / 10
                      if v >= 20, v <= 45 { samples.append(["t": t, "temp": v]) }
             case 9:  // paired HR + HRV at one timestamp — the record Telomy uses to cross-check against the patch
                 var s: [String: Any] = ["t": t]
-                if histBuf[i+6] > 0 { s["hr"] = Int(histBuf[i+6]) }
+                if histBuf[i+6] >= 30, histBuf[i+6] <= 220 { s["hr"] = Int(histBuf[i+6]) }
                 if histBuf[i+11] > 0 { s["hrv"] = Int(histBuf[i+11]) }
                 if histBuf[i+12] > 0 { s["cvrr"] = Int(histBuf[i+12]) }
                 let temp = Double(histBuf[i+13]) + Double(histBuf[i+14]) / 10
@@ -462,7 +467,7 @@ final class KYRing: NSObject {
 /// Automatic sleep detection — starts and stops the night without a tap, from whichever devices are present.
 /// • Patch alone: its own estimate (HR vs resting, HRV, motion) says "asleep" for 15 min.
 /// • Ring alone: still for 20 min (live motion counters, streamed from 20:00 — no PPG, so cheap) with HR near resting.
-/// • Both: either one starts the night; stopping needs you up and moving ≥ 10 min after 05:00 (or 10:00 hard stop).
+/// • Both: either one starts the night; stopping needs positive evidence you are up (phone walking, ring moving ≥ 10 min, or patch awake 15 min with the phone in hand) after 05:00, or a 13:00 hard stop. A dropped link never ends the night.
 /// Runs natively, driven by the ring's 10-s heartbeat and the patch's metric frames, so it works with the phone locked.
 final class KYSleepAuto {
     static let shared = KYSleepAuto()
@@ -568,10 +573,14 @@ final class KYSleepAuto {
             return
         }
         do {
-            let bandUp = bandAwakeSince.map { now - $0 >= 10 * 60 } ?? true      // no patch → don't block on it
-            let ringUp = ring.state != "connected" || ring.movingSeconds >= 10 * 60 || phoneWalking   // walking with the phone = up
+            // Morning stop needs POSITIVE evidence of being up. 2026-10-18: the ring dropped its link at 05:03 and the
+            // patch's own estimate flickered to "awake" — the old rule read "ring not connected" as "up" and ended the
+            // night while the WHOOP showed sleep until 09:14. A lost link, or a heart-rate-only "awake", is not waking.
+            let ringMoving = ring.state == "connected" && ring.movingSeconds >= 10 * 60
+            let bandUpMoving = bandAwakeSince.map { now - $0 >= 15 * 60 } ?? false
+            let up = phoneWalking || ringMoving || (bandUpMoving && phoneStill < 10 * 60)   // patch awake AND phone handled
             let morning = hour >= 5 && hour < 12 && now - startedAt > 3 * 3600
-            guard (morning && bandUp && ringUp) || (hour >= 10 && hour < 20) else { return }
+            guard (morning && up) || (hour >= 13 && hour < 20) else { return }
             active = false
             ring.log("auto-sleep: wake detected — ending the night")
             ring.stopOvernight()

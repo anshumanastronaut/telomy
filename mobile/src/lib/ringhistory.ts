@@ -7,7 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ring, type RingHistorySample } from '../../modules/ky-ecg';
 import { bandAvailable } from './band';
 
-const KEY = 'telomy.ring.history.v1';
+const KEY = 'telomy.ring.history.v2';
+const OLD_KEY = 'telomy.ring.history.v1';   // v1: timestamps 1 tz-offset late (ring clock is local time) + duplicates
 const MAX = 20000;                       // ~70 days at 5-min cadence across metrics; trims oldest beyond this
 let samples: RingHistorySample[] = [];
 let loaded = false;
@@ -19,14 +20,31 @@ async function persist() {
   try { await AsyncStorage.setItem(KEY, JSON.stringify(samples.slice(-MAX))); } catch {}
 }
 
-/** Merge a freshly synced dump into the timeline, deduping by (timestamp, metric). */
+/** Dedup key: timestamp + the SORTED metric names (native dictionaries arrive in random key order — v1 keyed on
+ *  that order and kept up to 24 copies of the same reading). */
+const keyOf = (s: RingHistorySample) => `${s.t}|${Object.keys(s).filter((k) => k !== 't').sort().join(',')}`;
+const plausible = (s: RingHistorySample) => s.t >= 1577836800000 && s.t <= Date.now() + 86400000 && (s.hr == null || (s.hr >= 30 && s.hr <= 220)) && (s.spo2 == null || (s.spo2 >= 70 && s.spo2 <= 100));
+
+/** v1 → v2: shift to real time (the ring logged local wall-clock seconds; we read them as UTC), dedupe, drop junk. */
+function migrate(old: RingHistorySample[]): RingHistorySample[] {
+  const seen = new Set<string>(); const out: RingHistorySample[] = [];
+  for (const s of old) {
+    const t = s.t + new Date(s.t).getTimezoneOffset() * 60000;   // IST: −330 min → t − 5 h 30 min
+    const f = { ...s, t };
+    const k = keyOf(f);
+    if (!seen.has(k) && plausible(f)) { seen.add(k); out.push(f); }
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+
+/** Merge a freshly synced dump into the timeline, deduping by (timestamp, metric set). */
 function merge(incoming: RingHistorySample[]) {
   if (!incoming.length) return;
-  const seen = new Set(samples.map((s) => `${s.t}|${Object.keys(s).filter((k) => k !== 't').join(',')}`));
+  const seen = new Set(samples.map(keyOf));
   let added = 0;
   for (const s of incoming) {
-    const k = `${s.t}|${Object.keys(s).filter((x) => x !== 't').join(',')}`;
-    if (!seen.has(k)) { samples.push(s); seen.add(k); added++; }
+    const k = keyOf(s);
+    if (!seen.has(k) && plausible(s)) { samples.push(s); seen.add(k); added++; }
   }
   if (!added) return;
   samples.sort((a, b) => a.t - b.t);
@@ -35,15 +53,28 @@ function merge(incoming: RingHistorySample[]) {
   emit();
 }
 
+let loading: Promise<void> | null = null;
+/** Load v2, or migrate v1 once (kept until v2 is written, so nothing is lost if the app is killed mid-way). */
+function load() {
+  return (loading ??= (async () => {
+    try {
+      const raw = await AsyncStorage.getItem(KEY);
+      if (raw) samples = JSON.parse(raw);
+      else {
+        const old = await AsyncStorage.getItem(OLD_KEY);
+        if (old) { samples = migrate(JSON.parse(old)); await AsyncStorage.setItem(KEY, JSON.stringify(samples)); await AsyncStorage.removeItem(OLD_KEY); }
+      }
+    } catch {}
+    loaded = true;
+  })());
+}
+
 let started = false;
 /** Called once at app start (from the root layout) to begin collecting. Safe to call when no ring is present. */
 export function startRingHistory() {
   if (started || !bandAvailable) return;
   started = true;
-  AsyncStorage.getItem(KEY).then((raw) => {
-    if (raw) { try { samples = JSON.parse(raw); } catch {} }
-    loaded = true; emit();
-  });
+  load().then(() => emit());
   Ring.onHistory((h) => merge(h.samples));
 }
 
@@ -81,9 +112,6 @@ export function hrHrvCorrelation(): { r: number | null; n: number } {
 
 /** Ring samples with t (ms) in [fromMs, toMs) — loads the store on first use so engines can run before the UI mounts. */
 export async function ringSamples(fromMs: number, toMs: number): Promise<RingHistorySample[]> {
-  if (!loaded) {
-    try { const raw = await AsyncStorage.getItem(KEY); if (raw) samples = JSON.parse(raw); } catch {}
-    loaded = true;
-  }
+  await load();
   return samples.filter((s) => s.t >= fromMs && s.t < toMs);
 }

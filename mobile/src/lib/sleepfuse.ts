@@ -169,6 +169,26 @@ export function ringNights(ring: RingHistorySample[], phone: PhoneActivity[], da
 
 const overlap = (a: Night, b: Night) => Math.max(0, Math.min(a.end, b.end) - Math.max(a.start, b.start)) / Math.max(1, Math.min(a.end - a.start, b.end - b.start));
 
+/** Parts of `n` (≥ 30 min, with ≥ 20 min asleep) not covered by any already-chosen night. */
+function uncovered(n: Night, chosen: Night[]): Night[] {
+  const grid = n.stages?.length ? n.stages : n.hypnogram.map((h) => (h ? 4 : 0));
+  const covered = (t: number) => chosen.some((c) => t >= c.start && t < c.end);
+  const out: Night[] = [];
+  let i = 0;
+  while (i < grid.length) {
+    if (covered(n.start + i * EPOCH)) { i++; continue; }
+    let j = i;
+    while (j < grid.length && !covered(n.start + j * EPOCH)) j++;
+    const g = grid.slice(i, j);
+    if (g.length >= 60 && g.filter((s) => s > 0).length >= 40) {
+      const sm = summarise(g, n.start + i * EPOCH, !!n.stages?.length);
+      if (sm) out.push({ ...n, ...sm, onsetMin: undefined, id: `${n.id}@${i}`, date: localDate(sm.end), hr5: [], hrv5: [], events: [] });
+    }
+    i = j;
+  }
+  return out;
+}
+
 /** One night per sleep period: patch > Watch > ring > other Health; ring HR/HRV filled into nights that lack it. */
 export function fuseNights(patch: Night[], health: Night[], ring: RingHistorySample[], phone: PhoneActivity[]): Night[] {
   const ringOnly = ringNights(ring, phone);
@@ -177,14 +197,50 @@ export function fuseNights(patch: Night[], health: Night[], ring: RingHistorySam
     ...health.filter((n) => n.source === 'watch'), ...ringOnly, ...health.filter((n) => n.source !== 'watch'),
   ];
   const chosen: Night[] = [];
-  for (const n of order) if (!chosen.some((c) => overlap(c, n) > 0.3)) chosen.push(n);
-  return chosen.map((n) => {
+  for (const n of order) {
+    if (!chosen.some((c) => overlap(c, n) > 0.3)) { chosen.push(n); continue; }
+    // a lower-priority device that covered MORE of the night: keep the part the better device missed
+    // (2026-10-18: patch 01:20–05:03, WHOOP/ring asleep to 09:14 → the 05:03–09:14 tail is kept and merged)
+    for (const piece of uncovered(n, chosen)) chosen.push(piece);
+  }
+  const fused = chosen.map((n) => {
     if (n.source === 'patch' && n.sleepRmssd && n.lowestHr) return n;
     const o = ringOverlay(n, ring, dayHrBefore(n.start, ring));
     const fill: Partial<Night> = {};
     for (const k of Object.keys(o) as (keyof Night)[]) if ((n as any)[k] == null || (Array.isArray((n as any)[k]) && !(n as any)[k].length)) (fill as any)[k] = (o as any)[k];
     return { ...n, ...fill };
   }).sort((a, b) => a.end - b.end);
+  return mergeFragments(fused);
+}
+
+/**
+ * Join pieces of one sleep period (gap < 90 min) into a single night, like NOOP's bridged nights. 2026-10-18 showed
+ * a patch night 01:20–05:03 (stopped early) and the rest of the night as a separate piece, so the app displayed
+ * only the last fragment. The gap between pieces is "no data" (-1): never counted as sleep or as wake.
+ */
+export function mergeFragments(nights: Night[]): Night[] {
+  const out: Night[] = [];
+  for (const n of [...nights].sort((a, b) => a.start - b.start)) {
+    const p = out[out.length - 1];
+    if (!p || n.start - p.end >= 90 * 60) { out.push(n); continue; }
+    const grid = (x: Night) => (x.stages?.length ? x.stages.map((s) => s) : x.hypnogram.map((h) => (h ? 4 : 0)));
+    const a = grid(p), b = grid(n);
+    const gap = Math.max(0, Math.round((n.start - (p.start + a.length * EPOCH)) / EPOCH));
+    const staged = !!(p.stages?.length && n.stages?.length);
+    const g = [...a, ...new Array(gap).fill(-1), ...b].map((s) => (!staged && s > 0 ? 4 : s));
+    const sm = summarise(g, p.start, staged);
+    if (!sm) { out.push(n); continue; }
+    const w = (x?: number, y?: number) => (x != null && y != null ? (x * p.tstMin + y * n.tstMin) / Math.max(1, p.tstMin + n.tstMin) : x ?? y);
+    const lo = [p, n].filter((x) => x.lowestHr != null).sort((x, y) => x.lowestHr! - y.lowestHr!)[0];
+    out[out.length - 1] = {
+      ...p, ...sm, id: `${p.id}+${n.id}`, date: localDate(sm.end), end: Math.max(p.end, n.end),
+      onsetMin: p.onsetMin, source: p.tstMin >= n.tstMin ? p.source : n.source,
+      sourceName: p.sourceName === n.sourceName ? p.sourceName : `${p.sourceName ?? p.source} + ${n.sourceName ?? n.source}`,
+      sleepHr: w(p.sleepHr, n.sleepHr), sleepRmssd: p.hrvSrc === n.hrvSrc ? w(p.sleepRmssd, n.sleepRmssd) : p.sleepRmssd ?? n.sleepRmssd,
+      lowestHr: lo?.lowestHr, lowestHrAt: lo?.lowestHrAt, hr5: [...p.hr5, ...n.hr5], hrv5: [...p.hrv5, ...n.hrv5], events: [...p.events, ...n.events],
+    };
+  }
+  return out.sort((a, b) => a.end - b.end);
 }
 
 // ------------------------------------------------------------------ need, debt, regularity
