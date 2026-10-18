@@ -11,6 +11,7 @@ correlation engine ("PM2.5 days → next-night HRV"), and population evidence tr
 City values are approximate annual figures, labelled as such; live values replace them when the API is reachable.
 """
 import json
+import time as _time
 import urllib.request
 from datetime import date, timedelta
 
@@ -91,6 +92,11 @@ def where(day: str) -> str:
     return engine.profile().get("city", "Bengaluru")
 
 
+_LAST_FETCH: dict[tuple, float] = {}
+_LIVE: dict = {"t": 0.0, "end": None, "v": None}
+_TTL = 6 * 3600    # Open-Meteo data changes slowly; one network round per place per 6 h (was every request)
+
+
 def ensure(days: int = 120) -> dict:
     end = date.fromisoformat(engine.last_signal_day() or date.today().isoformat())
     start = end - timedelta(days=days - 1)
@@ -98,7 +104,12 @@ def ensure(days: int = 120) -> dict:
     got = {}
     for pl in places:
         have = db.one("SELECT COUNT(*) AS n FROM exposure WHERE place = ? AND day BETWEEN ? AND ?", (pl, start.isoformat(), end.isoformat()))["n"]
-        got[pl] = have if have >= days * 0.8 else fetch(pl, start.isoformat(), end.isoformat())
+        key = (db.DB_PATH, pl, start.isoformat())
+        if have >= days * 0.8 or _time.time() - _LAST_FETCH.get(key, 0) < _TTL:
+            got[pl] = have
+        else:
+            _LAST_FETCH[key] = _time.time()
+            got[pl] = fetch(pl, start.isoformat(), end.isoformat())
     return got
 
 
@@ -166,8 +177,10 @@ def compare(a: str = "Delhi", b: str = "Bengaluru", live: dict | None = None) ->
 
 
 def live_week() -> dict:
-    out = {}
     end = date.fromisoformat(engine.last_signal_day() or date.today().isoformat())
+    if _LIVE["v"] is not None and _LIVE["end"] == end and _time.time() - _LIVE["t"] < _TTL:
+        return _LIVE["v"]
+    out = {}
     for c in ("Delhi", "Bengaluru"):
         lat, lon = CITIES[c][:2]
         aq = _get(f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&hourly=pm2_5"
@@ -175,4 +188,5 @@ def live_week() -> dict:
         if aq:
             v = [x for x in aq["hourly"]["pm2_5"] if x is not None]
             out[c] = round(sum(v) / len(v), 1) if v else None
+    _LIVE.update(t=_time.time(), end=end, v=out)
     return out

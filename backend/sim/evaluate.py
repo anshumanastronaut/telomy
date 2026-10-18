@@ -19,6 +19,20 @@ KEYS = {"alcohol": ["alcohol", "drink", "wine", "beer"], "late_meal": ["late mea
         "workout_hard": ["hard workout", "hard training", "workout_hard", "intense", "training"]}
 
 
+def total_effects(person: dict) -> dict:
+    """Total next-day effect of each habit on each outcome through the generator's structural equations
+    (sim/cohort.build_one): sleep → deep (+0.08/h), sleep → HRV (+4 ms/h), HRV → RHR (−0.1 bpm/ms),
+    sleep → score (+9/h), deep → score (+14/h). A direct effect of 0 can still have a real indirect effect."""
+    out = {}
+    for habit, e in person["effects"].items():
+        ds = e.get("sleep_hours", 0.0)
+        dd = e.get("deep_sleep", 0.0) + 0.08 * ds
+        dh = e.get("hrv", 0.0) + 4 * ds
+        out[habit] = {"sleep_hours": ds, "deep_sleep": dd, "hrv": dh, "rhr": e.get("rhr", 0.0) - 0.1 * dh,
+                      "sleep_score": e.get("sleep_score", 0.0) + 9 * ds + 14 * dd}
+    return {h: {m: (v if abs(v) > 1e-9 else 0.0) for m, v in d.items()} for h, d in out.items()}
+
+
 def _bad_numbers(o, path="", out=None):
     out = [] if out is None else out
     if isinstance(o, float) and (math.isnan(o) or math.isinf(o)):
@@ -80,12 +94,11 @@ def one(out: str, pid: int):
     res["recovery"] = rec
     # exact effect-level scoring against the planted truth (event × metric)
     eff_rows = []
+    total = total_effects(person)
     for row in table:
-        planted = person["effects"].get(row["event"], {}).get(row["metric"])
-        if planted is None:
-            planted = 0.0          # an outcome we never planted for this habit = true null
+        planted = total.get(row["event"], {}).get(row["metric"], 0.0)   # TOTAL effect incl. knock-on (mediated) paths
         lo, hi = row["ci95"]
-        eff_rows.append({"event": row["event"], "metric": row["metric"], "planted": planted, "est": row["effect"],
+        eff_rows.append({"event": row["event"], "metric": row["metric"], "planted": planted, "est": row["effect"], "lo": lo, "hi": hi,
                          "covered": lo <= planted <= hi, "sig": bool(row["significant"]), "n": row["n"],
                          "sign_ok": (planted == 0) or (row["effect"] * planted > 0)})
     res["effects"] = eff_rows
