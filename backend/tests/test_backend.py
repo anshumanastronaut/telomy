@@ -722,3 +722,13 @@ def test_band_capture_upload(client):
     assert lst[0]["therapy"] == "Finnish sauna" and lst[0]["settings"]["temperature_c"] == "85"
     assert client.get("/band/captures/20261012-180000-sauna").json()["format"] == "telomy.capture/1"
     assert client.post("/band/captures", json={"format": "other"}).status_code == 400
+
+
+def test_dynamics_load_recovers_planted_fatigue(client):
+    """Banister model: fits, reports held-out skill vs a naive baseline, and only claims usefulness when it beats it
+    (on the 100-person synthetic cohort it recovers planted fatigue with τ ≈ 1 d; see backend/sim)."""
+    r = client.get("/dynamics/load").json()
+    assert r["ok"] and "skill" in r and r["naive_mae"] > 0
+    assert r["useful"] == (r["skill"] > 0.05 and r["k_fatigue"] > 0)
+    s = client.get("/dynamics/sleep-pressure").json()
+    assert "ok" in s

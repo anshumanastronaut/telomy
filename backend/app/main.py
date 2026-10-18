@@ -901,6 +901,22 @@ def device_channels():
     return {m: {k: {"label": v[0], "unit": v[1], "limits": [v[2], v[3]]} for k, v in ch.items()} for m, ch in devices.CHANNELS.items()}
 
 
+@app.get("/dynamics/load")
+def dynamics_load(outcome: str = "hrv"):
+    """Personal training-load → next-day HRV model (Banister impulse-response fitted to your data, with skill)."""
+    from . import dynamics
+    return dynamics.banister(outcome)
+
+
+@app.get("/dynamics/sleep-pressure")
+def dynamics_sleep_pressure():
+    """Two-process sleep pressure from your recent WHOOP-detected sleep periods (needs 3 nights)."""
+    import time
+    from . import dynamics
+    ns = [(n["start"], n["end"]) for n in whoop.nights(14) if n.get("end")]
+    return dynamics.sleep_pressure(ns, time.time())
+
+
 @app.get("/physio/validation")
 def physio_validation():
     from . import physio

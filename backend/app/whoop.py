@@ -228,6 +228,7 @@ def series(stream: str, start: int, end: int, limit: int = 200000) -> list[dict]
 
 def nights(days: int = 30) -> list[dict]:
     """NOOP's sleep sessions (its interpretation of the WHOOP strap), newest last."""
+    init()   # idempotent; a database reset (tests, seed) may have dropped the tables
     out = []
     for r in db.rows("SELECT key, data FROM whoop_rows WHERE stream='sleepSession' ORDER BY ts DESC LIMIT ?", (days * 2,)):
         k, d = json.loads(r["key"]), json.loads(r["data"])
