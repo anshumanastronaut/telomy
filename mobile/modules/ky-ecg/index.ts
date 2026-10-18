@@ -99,6 +99,7 @@ type Events = {
   onRingData: (s: RingStatus) => void;
   onRingDevice: (d: FoundDevice) => void;
   onRingHistory: (h: RingHistory) => void;
+  onRingSleep: (s: { nights: RingSleepRecord[] }) => void;
 };
 
 type Native = {
@@ -149,6 +150,8 @@ export type PhoneActivity = { type: 'still' | 'walking' | 'running' | 'cycling' 
 export const phoneActivity = (hours = 24): Promise<PhoneActivity[]> => native?.phoneActivity(hours) ?? Promise.resolve([]);
 export type RingHistorySample = { t: number; hr?: number; hrv?: number; cvrr?: number; spo2?: number; temp?: number };
 export type RingHistory = { type: number; samples: RingHistorySample[] };
+/** Segment types: 241 deep, 242 light, 243 REM, 244 awake. `coverage` = segment seconds / record span (< 0.8 = cut by a BLE drop). */
+export type RingSleepRecord = { start: number; end: number; coverage: number; segments: { type: number; start: number; len: number }[] };
 
 export const Ring = {
   status: (): RingStatus | null => native?.ringStatus() ?? null,
@@ -176,6 +179,8 @@ export const Ring = {
   onStatus(cb: (s: RingStatus) => void) { return native ? native.addListener('onRingStatus', cb) : { remove() {} }; },
   onData(cb: (s: RingStatus) => void) { return native ? native.addListener('onRingData', cb) : { remove() {} }; },
   onHistory(cb: (h: RingHistory) => void) { return native ? native.addListener('onRingHistory', cb) : { remove() {} }; },
+  /** The ring's own sleep records (its accelerometer-based detection), decoded from Health_HistorySleep. */
+  onSleep(cb: (s: { nights: RingSleepRecord[] }) => void) { return native ? native.addListener('onRingSleep', cb) : { remove() {} }; },
 };
 
 const native = requireOptionalNativeModule<Native>('KyEcg');

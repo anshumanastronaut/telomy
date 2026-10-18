@@ -9,6 +9,7 @@ This module implements the receiver contract only (no NOOP code is used): bearer
 (TELOMY_WHOOP_TOKEN, separate from the app password), capability discovery, idempotent append batches, and atomic
 multi-part replace-window delivery. Data stays on the Telomy server; nothing is sent anywhere else.
 """
+import functools
 import gzip
 import hashlib
 import hmac
@@ -235,9 +236,55 @@ def nights(days: int = 30) -> list[dict]:
             st = json.loads(st) if isinstance(st, str) else st
         except json.JSONDecodeError:
             st = None
-        out.append({"start": k["startTs"], "end": d.get("endTs"), "efficiency": d.get("efficiency"), "restingHr": d.get("restingHr"),
-                    "avgHrv": d.get("avgHrv"), "stages": st, "userEdited": d.get("userEdited")})
+        start, end = k["startTs"], d.get("endTs")
+        hr = night_hr(start, end) if end else {}
+        out.append({"start": start, "end": end, "efficiency": d.get("efficiency"), "noopRestingHr": d.get("restingHr"),
+                    "stages": st, "userEdited": d.get("userEdited"), **hr})
+    # NOOP's avgHrv is deliberately NOT passed on: WHOOP 4.0 history R-R is re-delivered (~2.4x), so its HRV is
+    # inflated vs ECG (~1.5x on a shared night, 2026-10-18). Telomy takes HRV from the patch or ring instead.
     return out[::-1]
+
+
+def night_hr(start: int, end: int) -> dict:
+    """1 Hz WHOOP HR over a night → 5-min series, mean sleeping HR, and resting HR as the lowest 5-min bin mean with
+    >= 5 samples and >= 25 bpm (a one-sample bin at a wear gap can't become the floor), plus skin temperature as a
+    deviation-only estimate (see below). Cached per (night, row count) — 30 nights of 1 Hz rows are slow to re-read."""
+    n = db.one("SELECT COUNT(*) AS n FROM whoop_rows WHERE stream IN ('hrSample','skinTempSample') AND ts>=? AND ts<?", (start, end))["n"]
+    return dict(_night_hr(start, end, n))
+
+
+@functools.lru_cache(maxsize=256)
+def _night_hr(start: int, end: int, _rows: int) -> tuple:
+    bins: dict[int, list[int]] = {}
+    for r in db.rows("SELECT key, data FROM whoop_rows WHERE stream='hrSample' AND ts>=? AND ts<?", (start, end)):
+        b = json.loads(r["data"]).get("bpm")
+        if b and 25 <= b <= 220:
+            bins.setdefault((json.loads(r["key"])["ts"] - start) // 300, []).append(b)
+    means = {k: sum(v) / len(v) for k, v in bins.items() if len(v) >= 5}
+    out: dict = {}
+    if means:
+        lo = min(means, key=lambda k: means[k])
+        out.update(restingHr=round(means[lo], 1), restingHrAt=start + lo * 300 + 150,
+                   sleepHr=round(sum(means.values()) / len(means), 1),
+                   hr5=[[start + k * 300, round(means[k], 1), round(means[k], 1)] for k in sorted(means)])
+    # WHOOP 4.0 skin temp is a raw ADC with a per-strap offset (NOOP #938): only the change from your own normal is
+    # meaningful. Anchor = this strap's worn median over the last 14 days → 33.0 °C; provisional 0.05 °C per unit.
+    # Cross-check against the ring failed (ring reports a coarse body-temperature estimate, r 0.15), so absolute °C
+    # is unknown — the app uses it only as deviation from baseline.
+    raws = [json.loads(r["data"]).get("raw") for r in db.rows(
+        "SELECT data FROM whoop_rows WHERE stream='skinTempSample' AND ts>=? AND ts<?", (start, end))]
+    raws = sorted(x for x in raws if x and 550 <= x <= 2040)
+    anchor = _skin_anchor(end)
+    if len(raws) >= 60 and anchor:
+        out["skinTemp"] = round(33.0 + (raws[len(raws) // 2] - anchor) * 0.05, 2)
+    return tuple(out.items())
+
+
+def _skin_anchor(at: int) -> float | None:
+    raws = sorted(x for x in (json.loads(r["data"]).get("raw") for r in db.rows(
+        "SELECT data FROM whoop_rows WHERE stream='skinTempSample' AND ts>=? AND ts<?", (at - 14 * 86400, at)))
+        if x and 550 <= x <= 2040)
+    return float(raws[len(raws) // 2]) if len(raws) >= 100 else None
 
 
 def daily(days: int = 30) -> list[dict]:

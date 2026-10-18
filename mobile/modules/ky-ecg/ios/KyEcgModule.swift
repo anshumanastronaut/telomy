@@ -7,7 +7,7 @@ public class KyEcgModule: Module {
         // On-device speech (Cactus): no usage telemetry, no cloud hand-off — nothing about the user's voice leaves the phone.
         OnCreate { setenv("CACTUS_NO_CLOUD_TELE", "1", 1); unsetenv("CACTUS_CLOUD_API_KEY"); unsetenv("CACTUS_CLOUD_KEY") }
 
-        Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm", "onRingStatus", "onRingData", "onRingDevice", "onRingHistory")
+        Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm", "onRingStatus", "onRingData", "onRingDevice", "onRingHistory", "onRingSleep")
 
         OnStartObserving {
             KYBand.shared.emit = { [weak self] name, body in self?.sendEvent(name, body) }

@@ -21,8 +21,8 @@ const METHODS: Record<string, { title: string; how: string; sources: string[] }>
   },
   sleep: {
     title: 'Sleep',
-    how: 'Wake, light, deep and REM sleep are estimated every 30 s from your heart rhythm and ECG-derived breathing by a small neural network (convolution + bidirectional GRU) trained on 151 hospital sleep-lab nights with expert scoring. ECG-only staging agrees with a full sleep study about 2 in 3 epochs; treat stage minutes as estimates. The score combines duration, efficiency, time to fall asleep, time awake, wake-ups, overnight HRV vs your normal, the heart-rate drop in sleep and timing regularity. Breathing rate comes from the breathing rhythm in your ECG. Nights come from the best device you wore: the patch (ECG stages), then Apple Watch stages from Apple Health, then the ring (sleep and wake from its heart-rate log and your iPhone\u2019s motion, no stages), then any other Health sleep. Sleep need = baseline (8 h until 14 nights, then learnt from your longer nights, 7–9 h) + up to 45 min for a hard day + 30 % of your sleep debt; debt is a running balance that decays by 15 % a night and is repaid by extra sleep. Regularity is the Sleep Regularity Index: how likely you are in the same state (asleep or awake) at the same clock time on consecutive days.',
-    sources: ['Hirshkowitz M et al. 2015, Sleep Health: NSF sleep duration', 'Ohayon M et al. 2017, Sleep Health: NSF sleep-quality indicators', 'Phillips AJK et al. 2017, Sci Rep: sleep regularity', 'Sridhar N et al. 2020, npj Digit Med: sleep staging from instantaneous heart rate', 'Radha M et al. 2019, Sci Rep: sleep stages from HRV with LSTM', 'Alvarez-Estevez D, Rijsman R 2021, PLoS One: HMC sleep staging database', 'Ohayon M et al. 2004, Sleep: normative sleep architecture', 'Charlton PH et al. 2016, Physiol Meas: respiratory rate from the ECG', 'Van Dongen HPA et al. 2003, Sleep: cumulative cost of sleep restriction', 'Klerman EB, Dijk DJ 2005, Curr Biol: sleep need under extended sleep', 'Schyvens AM et al. 2025: six wearables vs polysomnography', 'de Zambotti M et al. 2019, Med Sci Sports Exerc: wearable sleep technology', 'Karlen W et al. 2013, IEEE TBME: smart fusion'],
+    how: 'Wake, light, deep and REM sleep are estimated every 30 s from your heart rhythm and ECG-derived breathing by a small neural network (convolution + bidirectional GRU) trained on 151 hospital sleep-lab nights with expert scoring. Tested on sleep-lab nights it never saw, it agrees with expert scoring about 6 epochs in 10 (κ 0.36), similar to consumer wearables: total sleep and timing are reliable, deep and REM minutes are estimates. The score combines duration, efficiency, time to fall asleep, time awake, wake-ups, overnight HRV vs your normal, the heart-rate drop in sleep and timing regularity. Breathing rate comes from your ECG and is shown only when two independent methods agree. Nights come from the best device you wore: the patch (ECG stages), then Apple Watch stages from Apple Health, then the ring (sleep and wake from its heart-rate log and your iPhone\u2019s motion, no stages), then any other Health sleep. Sleep need = baseline (8 h until 14 nights, then learnt from your longer nights, 7–9 h) + up to 45 min for a hard day + your sleep debt. Each night, 55 % of what you missed carries into the next night\u2019s target (a rule that tracked WHOOP\u2019s own sleep debt within 15 minutes on 93 % of 853 nights); extra sleep clears it but never banks. Regularity is the Sleep Regularity Index: how likely you are in the same state (asleep or awake) at the same clock time on consecutive days.',
+    sources: ['Hirshkowitz M et al. 2015, Sleep Health: NSF sleep duration', 'Ohayon M et al. 2017, Sleep Health: NSF sleep-quality indicators', 'Phillips AJK et al. 2017, Sci Rep: sleep regularity', 'Sridhar N et al. 2020, npj Digit Med: sleep staging from instantaneous heart rate', 'Radha M et al. 2019, Sci Rep: sleep stages from HRV with LSTM', 'Alvarez-Estevez D, Rijsman R 2021, PLoS One: HMC sleep staging database', 'Ohayon M et al. 2004, Sleep: normative sleep architecture', 'Charlton PH et al. 2016, Physiol Meas: respiratory rate from the ECG', 'Van Dongen HPA et al. 2003, Sleep: cumulative cost of sleep restriction', 'Banks S et al. 2010, Sleep: recovery sleep dose response', 'Klerman EB, Dijk DJ 2005, Curr Biol: sleep need under extended sleep', 'Schyvens AM et al. 2025: six wearables vs polysomnography', 'de Zambotti M et al. 2019, Med Sci Sports Exerc: wearable sleep technology', 'Karlen W et al. 2013, IEEE TBME: smart fusion'],
   },
   strain: {
     title: 'Strain',
@@ -50,7 +50,13 @@ export default function WellnessDetail() {
       <Stack.Screen options={{ title: m.title }} />
       {metric === 'recovery' ? (
         <>
-          <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} sub={w.recovery.calibrating} />
+          <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} sub={w.recovery.calibrating ?? (w.recovery.confidence === 'building' ? 'Building your baseline (under 14 nights): treat as provisional' : undefined)} />
+          {w.illness?.flagged ? (
+            <Card tone="copper" style={{ gap: space[1] }}>
+              <T v="label">Your body may be fighting something</T>
+              <T v="small">{w.illness.signals.map((x) => `${x.label} (${x.detail})`).join(' · ')} over the last two nights compared with your normal. Rest, fluids and an early night help; see a doctor if you feel unwell. A pattern in your own numbers, not a diagnosis.</T>
+            </Card>
+          ) : null}
           {w.recovery.contributors.length ? <Section title="What moved it"><ContributorList items={w.recovery.contributors} /></Section>
             : <Empty title="No night yet" body="Wear the band to bed and start Overnight sleep. Recovery appears the next morning." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />}
           <Trends w={w} kind="recovery" />
@@ -169,7 +175,7 @@ function SleepNeedCard({ w }: { w: Wellness }) {
   const parts: [string, number, string][] = [
     ['Baseline', n.baselineMin, n.personal ? 'learnt from your nights' : 'adult typical until 14 nights'],
     ['Today\u2019s strain', n.strainMin, 'harder days need more'],
-    ['Paying back debt', n.repayMin, '30 % of your sleep debt'],
+    ['Paying back debt', n.repayMin, 'carried from short nights'],
   ];
   return (
     <Card style={{ gap: space[2] }}>

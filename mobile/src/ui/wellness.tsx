@@ -234,7 +234,7 @@ export function LastNightCard({ n, sleep, history = [], embedded }: { n: Night; 
           sub={n.lowestHrAt ? `at ${fmtClock(n.lowestHrAt)}${n.lowestHrPos != null && n.lowestHrPos > 0.66 ? ' · late' : ''}` : undefined} />
         <MiniMetric icon="waveform.path.ecg" label="Overnight HRV" value={n.sleepRmssd ? `${Math.round(n.sleepRmssd)} ms` : '—'} delta={d('sleepRmssd')} goodUp
           sub={n.lateRmssd ? `${Math.round(n.lateRmssd)} ms by morning` : undefined} />
-        <MiniMetric icon="lungs.fill" color="#6F8CF0" label="Breathing" value={n.respRate ? `${n.respRate.toFixed(1)} /min` : '—'} delta={d('respRate')} goodUp={false} sub="from your ECG" />
+        <MiniMetric icon="lungs.fill" color="#6F8CF0" label="Breathing" value={n.respRate ? `${n.respRate.toFixed(1)} /min` : '—'} delta={d('respRate')} goodUp={false} sub={n.respRate ? "from your devices" : "calibrating"} />
         <MiniMetric icon="arrow.down.heart.fill" color={p.copper} label="HR drop" value={n.hrDropPct != null ? `${Math.round(n.hrDropPct)}%` : '—'} delta={d('hrDropPct')} goodUp
           sub={n.hrDropPct != null ? 'bedtime → asleep' : 'too little time in bed'} />
       </View>

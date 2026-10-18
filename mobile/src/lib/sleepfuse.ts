@@ -11,16 +11,16 @@
 //
 // Sleep need follows WHOOP's published idea (need = baseline + strain + debt − naps), with transparent terms:
 //   baseline 8 h (NSF 7–9 h) until 14 nights, then personal (mean of your longer half of nights, the sleep-extension
-//   asymptote, Klerman & Dijk 2005), clamped 7–9 h; strain adds up to 45 min; 30 % of the current debt is added.
-// Sleep debt is a decaying running balance (Van Dongen et al. 2003: deficits accumulate; surplus sleep repays part):
-//   debt ← max(0, 0.85 · debt + need − slept), over the last 14 nights.
+//   asymptote, Klerman & Dijk 2005), clamped 7–9 h; strain adds up to 45 min; the carried sleep debt is added.
+// Sleep debt: need = base + strain + debt; next debt = 0.55 × max(0, need − slept) (fitted by NOOP on 853 WHOOP
+//   nights; Van Dongen 2003 / Banks 2010 for why deficits carry over partially).
 // Sleep Regularity Index (Phillips et al. 2017): −100 + 200 · P(same sleep/wake state 24 h apart), 5-min bins.
-import type { HealthSleepSegment, PhoneActivity, RingHistorySample } from '../../modules/ky-ecg';
-import type { Night } from './wellness';
+import type { HealthSleepSegment, PhoneActivity, RingHistorySample, RingSleepRecord } from '../../modules/ky-ecg';
+import type { Night } from './wellness-core';
 
-export type SleepSource = 'patch' | 'watch' | 'ring' | 'health';
+export type SleepSource = 'patch' | 'whoop' | 'watch' | 'ring' | 'health';
 export const SOURCE_LABEL: Record<SleepSource, string> = {
-  patch: 'Telomy patch · ECG stages', watch: 'Apple Watch · stages', ring: 'Telomy ring · heart rate + phone motion', health: 'Apple Health · duration',
+  patch: 'Telomy patch · ECG stages', whoop: 'WHOOP · motion + heart rate (via NOOP)', watch: 'Apple Watch · stages', ring: 'Telomy ring · heart rate + phone motion', health: 'Apple Health · duration',
 };
 
 const EPOCH = 30;
@@ -70,6 +70,8 @@ function ringOverlay(n: Night, ring: RingHistorySample[], dayHr: number | null):
     if (dayHr) out.hrDropPct = 100 * (1 - out.sleepHr / dayHr);
     out.hr5 = hr.map((x) => [x.t, x.v, x.v] as [number, number, number]);
   }
+  const temp = inN.filter((s) => s.temp && s.temp >= 30 && s.temp <= 42).map((s) => s.temp!);
+  if (temp.length >= 6) { out.skinTemp = median(temp); out.tempSrc = 'ring'; }
   const hrv = inN.filter((s) => s.hrv).map((s) => s.hrv!);
   if (hrv.length >= 6) { out.sleepRmssd = median(hrv); out.hrvSrc = 'ring'; }
   return out;
@@ -120,47 +122,146 @@ export function healthNights(segs: HealthSleepSegment[]): Night[] {
   return out;
 }
 
+// ------------------------------------------------------------------ WHOOP nights (server: NOOP push → /whoop/nights)
+
+export type WhoopNightIn = { start: number; end: number; stages?: { start: number; end: number; stage: string }[] | null;
+  restingHr?: number; restingHrAt?: number; sleepHr?: number; skinTemp?: number; hr5?: [number, number, number][] };
+const WSTAGE: Record<string, number> = { wake: 0, light: 1, deep: 2, rem: 3 };
+
+/**
+ * WHOOP sessions as Telomy nights. Sleep/wake comes from NOOP's motion-first detection (κ 0.84 vs our ring's 0.62 on
+ * 2026-10-18), resting HR from the strap's 1 Hz HR (matches ECG within ~1 bpm). WHOOP HRV is NOT used (WHOOP 4.0
+ * history R-R is re-delivered; inflated vs ECG). A daytime session (centre 10:00–19:00) counts as a nap only when its
+ *  mean HR is within 5 bpm of the night-time sleeping HR — a still sofa afternoon is not sleep (seen 2026-10-18:
+ * daytime HR ~15 % above the overnight sleeping HR).
+ */
+export function whoopNights(list: WhoopNightIn[]): Night[] {
+  const nightHr = list.filter((w) => { const h = new Date(((w.start + w.end) / 2) * 1000).getHours(); return h < 10 || h >= 19; })
+    .map((w) => w.sleepHr).filter((x): x is number => x != null);
+  const ref = nightHr.length ? median(nightHr) : null;
+  const out: Night[] = [];
+  for (const w of list) {
+    if (!w.end || w.end - w.start < 20 * 60) continue;
+    const h = new Date(((w.start + w.end) / 2) * 1000).getHours();
+    if (h >= 10 && h < 19 && (ref == null || w.sleepHr == null || w.sleepHr > ref + 5)) continue;
+    const grid = new Array(Math.ceil((w.end - w.start) / EPOCH)).fill(-1);
+    const staged = !!w.stages?.length;
+    for (const seg of w.stages ?? []) {
+      const c = WSTAGE[seg.stage] ?? 1;
+      for (let i = Math.max(0, Math.floor((seg.start - w.start) / EPOCH)); i < Math.min(grid.length, Math.ceil((seg.end - w.start) / EPOCH)); i++) grid[i] = c;
+    }
+    if (!staged) grid.fill(4);
+    const sm = summarise(grid, w.start, staged);
+    if (!sm) continue;
+    out.push({ ...sm, id: `whoop-${w.start}`, date: localDate(sm.end), hr5: w.hr5 ?? [], hrv5: [], events: [], source: 'whoop', sourceName: 'WHOOP',
+      lowestHr: w.restingHr, lowestHrAt: w.restingHrAt, lowestHrPos: w.restingHrAt ? (w.restingHrAt - w.start) / (w.end - w.start) : undefined,
+      sleepHr: w.sleepHr, skinTemp: w.skinTemp, tempSrc: w.skinTemp != null ? 'whoop' : undefined });
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------ the ring's own sleep (its accelerometer)
+
+const RSTAGE: Record<number, number> = { 241: 2, 242: 1, 243: 3, 244: 0 };
+/**
+ * The ring firmware's own sleep records → nights. Onset matched WHOOP within 1 min on 2026-10-18; its stage
+ * accuracy is unknown (never validated against PSG), so stages are shown but the vendor's labels are trusted less
+ * than the patch's. Records cut by a BLE drop: if ≥ 50 % of the span has segments the gaps count as unstaged sleep
+ * (the ring only writes a record while it believes you are asleep); below 50 % the record is skipped and the
+ * heart-rate method covers the night instead. Consecutive records < 90 min apart are merged by mergeFragments.
+ */
+export function ringOwnNights(recs: RingSleepRecord[]): Night[] {
+  const out: Night[] = [];
+  for (const r of recs) {
+    if (r.end - r.start < 20 * 60 || r.coverage < 0.5) continue;
+    const grid = new Array(Math.ceil((r.end - r.start) / EPOCH)).fill(4);
+    for (const s of r.segments) {
+      const c = RSTAGE[s.type];
+      if (c == null) continue;
+      for (let i = Math.max(0, Math.floor((s.start - r.start) / EPOCH)); i < Math.min(grid.length, Math.ceil((s.start + s.len - r.start) / EPOCH)); i++) grid[i] = c;
+    }
+    const staged = r.coverage >= 0.8;
+    const sm = summarise(staged ? grid.map((x) => (x === 4 ? 1 : x)) : grid.map((x) => (x > 0 ? 4 : x)), r.start, staged);
+    if (sm) out.push({ ...sm, id: `ringsleep-${r.start}`, date: localDate(sm.end), hr5: [], hrv5: [], events: [], source: 'ring', sourceName: 'Telomy ring (its own sleep sensor)' });
+  }
+  return out;
+}
+
 // ------------------------------------------------------------------ ring-only nights
 
 /**
- * Sleep/wake from the ring's 5-min HR log (+ iPhone motion), for nights with no patch or Watch.
- * A sample is "asleep-like" when its HR is within max(8 bpm, 12 %) of that night's 10th-percentile HR and the phone
- * wasn't walking/running/driving; a 3-sample median removes single blips; the longest run (gaps ≤ 30 min) ≥ 3 h is
- * the night. HR-based sleep/wake from consumer wearables agrees with PSG on sleep vs wake far better than on stages
- * (de Zambotti et al. 2019), so ring-only nights carry duration, timing, lowest HR and HRV — no stages.
+ * Sleep/wake from the ring's 5-min HR log + iPhone motion, for nights with no patch, WHOOP or Watch.
+ * v2 (2026-10-19, after the virtual-population run showed −112 min bias and shift-work sleep invisible):
+ *  • searches the whole timeline (any hour), not only 20:00–12:00;
+ *  • a sample is asleep-like when HR ≤ personal sleep floor + max(10 bpm, 15 %) (band widened to the ring's measured
+ *    ±5 bpm noise), OR when the phone is lying still and HR ≤ floor + max(16 bpm, 25 %) — the phone resting on the
+ *    nightstand is strong evidence of being in bed (motion first, heart second);
+ *  • the phone walking always means awake; 3-sample median smoothing; gaps ≤ 30 min bridged; runs ≥ 3 h are nights,
+ *    runs of 30 min–3 h in the daytime are naps only when HR dips ≥ 8 % below the day's median AND the phone lay still.
+ * Floor = 10th percentile of the trailing 7 days' HR (personal, robust to one hot night). No stages are claimed.
  */
 export function ringNights(ring: RingHistorySample[], phone: PhoneActivity[], days = 14): Night[] {
-  const out: Night[] = [];
   const now = Date.now() / 1000;
-  for (let d = 0; d < days; d++) {
-    const eve = new Date((now - d * 86400) * 1000); eve.setHours(20, 0, 0, 0);
-    const a = eve.getTime() / 1000 - 86400, b = a + 16 * 3600;     // 20:00 → 12:00 the next day
-    if (a > now) continue;
-    const hr = ring.filter((s) => s.hr && s.t / 1000 >= a && s.t / 1000 < b).map((s) => ({ t: s.t / 1000, v: s.hr! }));
-    if (hr.length < 36) continue;
-    const floor = pct(hr.map((x) => x.v), 0.1);
-    const lim = floor + Math.max(8, 0.12 * floor);
-    const moving = (t: number) => phone.some((p) => p.type !== 'still' && p.type !== 'unknown' && t >= p.start && t < p.end);
-    const raw = hr.map((x) => (x.v <= lim && !moving(x.t) ? 1 : 0));
-    const sm = raw.map((_, i) => median(raw.slice(Math.max(0, i - 1), i + 2)));
-    let best: [number, number] | null = null, s0 = -1, lastSleep = -1;
-    for (let i = 0; i <= hr.length; i++) {
-      const asleep = i < hr.length && sm[i] === 1;
-      if (asleep) { if (s0 < 0 || hr[i].t - hr[lastSleep].t > 1800) { if (s0 >= 0 && (!best || hr[lastSleep].t - hr[s0].t > best[1] - best[0])) best = [hr[s0].t, hr[lastSleep].t]; s0 = i; } lastSleep = i; }
-      if (i === hr.length && s0 >= 0 && (!best || hr[lastSleep].t - hr[s0].t > best[1] - best[0])) best = [hr[s0].t, hr[lastSleep].t];
+  // one reading per timestamp: the heart log (type 6) and the combined log (type 9) both carry HR at the same instant
+  const byT = new Map<number, number>();
+  for (const s of ring) if (s.hr && s.t / 1000 >= now - days * 86400) byT.set(s.t, s.hr);
+  const hr = [...byT].map(([t, v]) => ({ t: t / 1000, v })).sort((a, b) => a.t - b.t);
+  if (hr.length < 36) return [];
+  // O(n log n): phone intervals sorted once and looked up by binary search; HR floor computed once per day
+  const ph = [...phone].sort((a, b) => a.start - b.start);
+  const typeAt = (t: number) => {
+    let lo = 0, hi = ph.length - 1, hit: PhoneActivity | null = null;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (ph[m].start <= t) { hit = ph[m]; lo = m + 1; } else hi = m - 1; }
+    for (let k = hit ? ph.indexOf(hit) : -1; k >= 0 && k > (hit ? ph.indexOf(hit) - 4 : 0); k--) if (t >= ph[k].start && t < ph[k].end) return ph[k].type;
+    return null;
+  };
+  const dayFloor = new Map<number, number>();
+  const floorAt = (t: number) => {
+    const d = Math.floor(t / 86400);
+    if (!dayFloor.has(d)) {
+      const w = hr.filter((x) => x.t >= t - 7 * 86400 && x.t < t + 86400).map((x) => x.v);
+      dayFloor.set(d, pct(w.length >= 36 ? w : hr.map((x) => x.v), 0.1));
     }
-    if (!best || best[1] - best[0] < 3 * 3600) continue;
-    const t0 = best[0], t1 = best[1] + 300;
-    const grid = new Array(Math.ceil((t1 - t0) / EPOCH)).fill(-1);
-    hr.forEach((x, i) => {
-      if (x.t < t0 || x.t >= t1) return;
-      for (let k = 0; k < 10; k++) { const j = Math.floor((x.t - t0) / EPOCH) + k; if (j < grid.length) grid[j] = sm[i] ? 4 : 0; }
+    return dayFloor.get(d)!;
+  };
+  const raw = hr.map((x) => {
+    const ty = typeAt(x.t);
+    if (ty && ty !== 'still' && ty !== 'unknown') return 0;
+    const f = floorAt(x.t);
+    return x.v <= f + Math.max(10, 0.15 * f) || (ty === 'still' && x.v <= f + Math.max(16, 0.25 * f)) ? 1 : 0;
+  });
+  const sm = raw.map((_, i) => median(raw.slice(Math.max(0, i - 1), i + 2)));
+  // runs of asleep-like samples, bridging gaps ≤ 30 min
+  const runs: [number, number][] = [];
+  let s0 = -1, last = -1;
+  for (let i = 0; i < hr.length; i++) {
+    if (!sm[i]) continue;
+    if (s0 < 0 || hr[i].t - hr[last].t > 1800) { if (s0 >= 0) runs.push([s0, last]); s0 = i; }
+    last = i;
+  }
+  if (s0 >= 0) runs.push([s0, last]);
+  const out: Night[] = [];
+  for (const [i0, i1] of runs) {
+    const t0 = hr[i0].t, t1 = hr[i1].t + 300, dur = t1 - t0;
+    if (dur < 30 * 60) continue;
+    const mid = new Date(((t0 + t1) / 2) * 1000).getHours();
+    if (dur < 3 * 3600) {
+      if (mid < 10 || mid >= 20) continue;                      // short night-time runs are fragments, not naps
+      const day = hr.filter((x) => Math.abs(x.t - (t0 + t1) / 2) < 6 * 3600).map((x) => x.v);
+      const inRun = hr.slice(i0, i1 + 1).map((x) => x.v);
+      if (!day.length || median(inRun) > 0.92 * median(day)) continue;   // no real HR dip → resting, not napping
+      // and the phone must corroborate: lying still for most of it (a ring-only daytime dip is too often a sofa)
+      const pts = hr.slice(i0, i1 + 1).map((x) => typeAt(x.t));
+      if (pts.filter((ty) => ty === 'still').length < 0.8 * pts.length) continue;
+    }
+    const grid = new Array(Math.ceil((t1 - t0) / EPOCH)).fill(4);
+    hr.slice(i0, i1 + 1).forEach((x, k) => {
+      if (sm[i0 + k]) return;
+      for (let e = 0; e < 10; e++) { const j = Math.floor((x.t - t0) / EPOCH) + e; if (j < grid.length) grid[j] = 0; }
     });
-    // fill short no-data gaps inside the night as asleep (ring's 5-min cadence skips samples while still)
-    for (let i = 0; i < grid.length; i++) if (grid[i] === -1) grid[i] = 4;
-    const s = summarise(grid, t0, false);
-    if (!s) continue;
-    out.push({ ...s, onsetMin: undefined, id: `ring-${Math.round(t0)}`, date: localDate(s.end), hr5: [], hrv5: [], events: [], source: 'ring', sourceName: 'Telomy ring' });
+    const sumr = summarise(grid, t0, false);
+    if (!sumr) continue;
+    out.push({ ...sumr, onsetMin: undefined, id: `ring-${Math.round(t0)}`, date: localDate(sumr.end), hr5: [], hrv5: [], events: [], source: 'ring', sourceName: 'Telomy ring' });
   }
   return out;
 }
@@ -189,18 +290,18 @@ function uncovered(n: Night, chosen: Night[]): Night[] {
   return out;
 }
 
-/** One night per sleep period: patch > Watch > ring > other Health; ring HR/HRV filled into nights that lack it. */
-export function fuseNights(patch: Night[], health: Night[], ring: RingHistorySample[], phone: PhoneActivity[]): Night[] {
+/** One night per sleep period: patch > WHOOP > Watch > ring's own sleep > ring HR > other Health; ring HR/HRV filled into nights that lack it. */
+export function fuseNights(patch: Night[], health: Night[], ring: RingHistorySample[], phone: PhoneActivity[], whoop: Night[] = [], ringOwn: Night[] = []): Night[] {
   const ringOnly = ringNights(ring, phone);
   const order: Night[] = [
     ...patch.map((n) => ({ ...n, source: 'patch' as const, sourceName: 'Telomy patch', hrvSrc: n.hrvSrc ?? ('ecg' as const) })),
-    ...health.filter((n) => n.source === 'watch'), ...ringOnly, ...health.filter((n) => n.source !== 'watch'),
+    ...whoop, ...health.filter((n) => n.source === 'watch'), ...ringOwn, ...ringOnly, ...health.filter((n) => n.source !== 'watch'),
   ];
   const chosen: Night[] = [];
   for (const n of order) {
     if (!chosen.some((c) => overlap(c, n) > 0.3)) { chosen.push(n); continue; }
     // a lower-priority device that covered MORE of the night: keep the part the better device missed
-    // (2026-10-18: patch 01:20–05:03, WHOOP/ring asleep to 09:14 → the 05:03–09:14 tail is kept and merged)
+    // (2026-10-18: the patch stopped early while WHOOP/ring showed ~4 more hours of sleep → that tail is kept and merged)
     for (const piece of uncovered(n, chosen)) chosen.push(piece);
   }
   const fused = chosen.map((n) => {
@@ -215,7 +316,7 @@ export function fuseNights(patch: Night[], health: Night[], ring: RingHistorySam
 
 /**
  * Join pieces of one sleep period (gap < 90 min) into a single night, like NOOP's bridged nights. 2026-10-18 showed
- * a patch night 01:20–05:03 (stopped early) and the rest of the night as a separate piece, so the app displayed
+ * a patch night that stopped early and the rest of the night as a separate piece, so the app displayed
  * only the last fragment. The gap between pieces is "no data" (-1): never counted as sleep or as wake.
  */
 export function mergeFragments(nights: Night[]): Night[] {
@@ -237,7 +338,8 @@ export function mergeFragments(nights: Night[]): Night[] {
       onsetMin: p.onsetMin, source: p.tstMin >= n.tstMin ? p.source : n.source,
       sourceName: p.sourceName === n.sourceName ? p.sourceName : `${p.sourceName ?? p.source} + ${n.sourceName ?? n.source}`,
       sleepHr: w(p.sleepHr, n.sleepHr), sleepRmssd: p.hrvSrc === n.hrvSrc ? w(p.sleepRmssd, n.sleepRmssd) : p.sleepRmssd ?? n.sleepRmssd,
-      lowestHr: lo?.lowestHr, lowestHrAt: lo?.lowestHrAt, hr5: [...p.hr5, ...n.hr5], hrv5: [...p.hrv5, ...n.hrv5], events: [...p.events, ...n.events],
+      lowestHr: lo?.lowestHr, lowestHrAt: lo?.lowestHrAt,
+      ...(p.skinTemp != null ? { skinTemp: p.skinTemp, tempSrc: p.tempSrc } : n.skinTemp != null ? { skinTemp: n.skinTemp, tempSrc: n.tempSrc } : {}), hr5: [...p.hr5, ...n.hr5], hrv5: [...p.hrv5, ...n.hrv5], events: [...p.events, ...n.events],
     };
   }
   return out.sort((a, b) => a.end - b.end);
@@ -259,21 +361,20 @@ export function sleepNeed(nights: Night[], strainToday: number, strainByDate: Re
   const personal = recent.length >= 14;
   const longer = [...recent].map((n) => n.tstMin).sort((a, b) => b - a).slice(0, Math.ceil(recent.length / 2));
   const baselineMin = personal ? Math.max(420, Math.min(540, mean(longer))) : 480;
+  // Debt recurrence fitted by NOOP on 853 consecutive WHOOP nights (within 15 min of WHOOP's next-day debt on 93 %):
+  //   need_n = base + strain + debt_n;  debt_{n+1} = 0.55 · max(0, need_n − slept_n);  < 10 min = balanced.
+  // Surplus sleep never banks; only usable nights step the recurrence (a missing night is unknown, not zero sleep).
   let debt = 0, lastNeed = baselineMin;
-  const last14 = nights.slice(-14);
-  last14.forEach((n, i) => {
+  for (const n of nights.slice(-14)) {
     const prevDay = localDate(n.start - 6 * 3600);   // the day before the night (a 01:00 bedtime counts as the previous day)
-    // debt accrues against baseline + strain only (adding the repayment term here would feed back on itself)
-    const need = baselineMin + strainAdd(strainByDate[prevDay] ?? 0);
-    // skip-day gap: missing nights are unknown, not zero sleep — only decay the balance
-    const gapDays = i ? Math.max(0, Math.round((n.end - last14[i - 1].end) / 86400) - 1) : 0;
-    debt *= 0.85 ** gapDays;
-    debt = Math.max(0, 0.85 * debt + need - n.tstMin);
+    const need = baselineMin + strainAdd(strainByDate[prevDay] ?? 0) + debt;
     lastNeed = need;
-  });
+    debt = 0.55 * Math.max(0, need - n.tstMin);
+    if (debt < 10) debt = 0;
+  }
   const last = nights[nights.length - 1];
   const strainMin = strainAdd(strainToday);
-  const repayMin = Math.min(90, 0.3 * debt);
+  const repayMin = debt;                            // the whole carried debt is added to tonight's target
   const needMin = baselineMin + strainMin + repayMin;
   const wakes = nights.slice(-7).map((n) => { const d = new Date(n.end * 1000); return d.getHours() * 60 + d.getMinutes(); });
   let wake: number | null = null, bedtime: number | null = null;

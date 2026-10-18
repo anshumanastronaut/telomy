@@ -4,7 +4,7 @@
 // HR+HRV samples here are what feed the HR↔HRV comparison and the recovery age clock over time.
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ring, type RingHistorySample } from '../../modules/ky-ecg';
+import { Ring, type RingHistorySample, type RingSleepRecord } from '../../modules/ky-ecg';
 import { bandAvailable } from './band';
 
 const KEY = 'telomy.ring.history.v2';
@@ -76,6 +76,7 @@ export function startRingHistory() {
   started = true;
   load().then(() => emit());
   Ring.onHistory((h) => merge(h.samples));
+  Ring.onSleep((s) => mergeSleep(s.nights));
 }
 
 export type RingHistoryView = {
@@ -114,4 +115,33 @@ export function hrHrvCorrelation(): { r: number | null; n: number } {
 export async function ringSamples(fromMs: number, toMs: number): Promise<RingHistorySample[]> {
   await load();
   return samples.filter((s) => s.t >= fromMs && s.t < toMs);
+}
+
+// ------------------------------------------------------------------ the ring's own sleep records
+
+const SLEEP_KEY = 'telomy.ring.sleep.v1';
+let sleepRecs: RingSleepRecord[] | null = null;
+async function loadSleep() {
+  if (sleepRecs) return sleepRecs;
+  try { sleepRecs = JSON.parse((await AsyncStorage.getItem(SLEEP_KEY)) ?? '[]'); } catch { sleepRecs = []; }
+  return sleepRecs!;
+}
+/** Keep one record per night start; a re-sync that arrives more complete (higher coverage) replaces the cut one. */
+async function mergeSleep(incoming: RingSleepRecord[]) {
+  const recs = await loadSleep();
+  let changed = false;
+  for (const r of incoming) {
+    const i = recs.findIndex((x) => Math.abs(x.start - r.start) < 60);
+    if (i < 0) { recs.push(r); changed = true; }
+    else if (r.coverage > recs[i].coverage + 0.01 || r.end > recs[i].end + 60) { recs[i] = r; changed = true; }
+  }
+  if (!changed) return;
+  recs.sort((a, b) => a.start - b.start);
+  sleepRecs = recs.slice(-120);
+  try { await AsyncStorage.setItem(SLEEP_KEY, JSON.stringify(sleepRecs)); } catch {}
+  emit();
+}
+/** Ring sleep records overlapping [fromMs, toMs). */
+export async function ringSleepRecords(fromMs: number, toMs: number) {
+  return (await loadSleep()).filter((r) => r.end * 1000 >= fromMs && r.start * 1000 < toMs);
 }

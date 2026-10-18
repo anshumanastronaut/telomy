@@ -375,6 +375,7 @@ final class KYRing: NSObject {
             if payload.count > 13, payload[12] >= 20, payload[12] <= 45 { lastTemp = Double(payload[12]) + Double(payload[13]) / 10 }
         case 0x0600: noteSport(payload)                        // sport counters → movement (evening watch)
         case 0x0580:                                           // end of a history stream → next type
+            if histType == 4 { parseSleepRecords() }
             log("history \(histType) done"); nextHistory(); return
         case _ where code >> 8 == 0x05:
             if code != histOp, histOp != 0 { parseHistory(payload) }   // 0x0515 record stream (echo = summary, skipped)
@@ -392,7 +393,8 @@ final class KYRing: NSObject {
     /// keeps any partial tail for the next frame.
     private func parseHistory(_ chunk: [UInt8]) {
         if histType == 4 {                     // ring's own sleep record: variable-length (night header + stage segments)
-            saveSleepHistory(chunk); return     // kept verbatim so we can decode it against real bytes, not a guess
+            saveSleepHistory(chunk)             // raw kept for re-decoding / audits
+            histBuf += chunk; return            // decoded at end-of-stream (parseSleepRecords)
         }
         histBuf += chunk
         let stride = histType == 30 ? 7 : histType == 9 ? 20 : 6
@@ -428,6 +430,55 @@ final class KYRing: NSObject {
         }
         histBuf.removeFirst(i)
         if !samples.isEmpty { emit?("onRingHistory", ["type": histType, "samples": samples]) }
+    }
+
+    /// The ring's own sleep records (Health_HistorySleep 0x0504), decoded per the vendor SDK layout (DataUnpack case 4,
+    /// manufacturer's permission): AF FA | len u16 | start u32 | end u32 | deepCount u16 (0xFFFF = v2) | totals |
+    /// 8-byte segments [type u8 | start u32 | len u24 s]. Types (verified on 2026-10-18 against WHOOP): 241 deep,
+    /// 242 light, 243 REM, 244 awake. Times are local wall-clock (converted to UTC like every ring record).
+    /// The ring detects sleep from its own accelerometer — onset matched WHOOP to 1 min on 2026-10-18 — which gives
+    /// ring-only nights the motion signal the 5-min HR log lacks.
+    /// Completeness: a record whose bytes were cut by a BLE drop (seen: 1 of ~20 segments arrived) is emitted with its
+    /// coverage, and the sleep log is re-requested once a minute later.
+    private var sleepResyncAt = 0.0
+    private func parseSleepRecords() {
+        let b = histBuf
+        func le(_ i: Int, _ n: Int) -> Int { var v = 0; for k in 0..<n { v |= Int(b[i + k]) << (8 * k) }; return v }
+        func utc(_ wall: Int) -> Double {
+            let w = Double(wall) + 946684800
+            return w - Double(TimeZone.current.secondsFromGMT(for: Date(timeIntervalSince1970: w)))
+        }
+        var nights: [[String: Any]] = [], truncated = false
+        var i = 0
+        while i + 20 <= b.count {
+            guard b[i] == 0xAF, b[i + 1] == 0xFA else { i += 1; continue }
+            let L = le(i + 2, 2)
+            if L < 20 { i += 2; continue }
+            if i + L > b.count { truncated = true; break }
+            let start = utc(le(i + 4, 4)), end = utc(le(i + 8, 4))
+            var segs: [[String: Any]] = [], covered = 0
+            var k = i + 20
+            while k + 8 <= i + L {
+                let ty = Int(b[k]), st = utc(le(k + 1, 4)), len = le(k + 5, 2) | (Int(b[k + 7]) << 16)
+                if (241...244).contains(ty), len > 0, len < 86400 { segs.append(["type": ty, "start": st, "len": len]); covered += len }
+                k += 8
+            }
+            if end > start, end - start < 20 * 3600, start > 1_577_836_800, start < Date().timeIntervalSince1970 + 86400 {
+                nights.append(["start": start, "end": end, "segments": segs, "coverage": Double(covered) / (end - start)])
+                if Double(covered) / (end - start) < 0.8 { truncated = true }
+            }
+            i += L
+        }
+        log("ring sleep: \(nights.count) record(s)\(truncated ? ", some incomplete" : "")")
+        if !nights.isEmpty { emit?("onRingSleep", ["nights": nights]) }
+        let now = Date().timeIntervalSince1970
+        if truncated, now - sleepResyncAt > 600 {               // one retry per 10 min
+            sleepResyncAt = now
+            DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
+                guard let self, self.state == "connected", self.histQueue.isEmpty, self.histOp == 0 else { return }
+                self.log("ring sleep: re-requesting incomplete records"); self.histQueue = [(0x0504, 4)]; self.nextHistory()
+            }
+        }
     }
 
     private func saveSleepHistory(_ chunk: [UInt8]) {
@@ -573,9 +624,9 @@ final class KYSleepAuto {
             return
         }
         do {
-            // Morning stop needs POSITIVE evidence of being up. 2026-10-18: the ring dropped its link at 05:03 and the
+            // Morning stop needs POSITIVE evidence of being up. 2026-10-18: the ring dropped its link in the early morning and the
             // patch's own estimate flickered to "awake" — the old rule read "ring not connected" as "up" and ended the
-            // night while the WHOOP showed sleep until 09:14. A lost link, or a heart-rate-only "awake", is not waking.
+            // night while the WHOOP showed ~4 more hours of sleep. A lost link, or a heart-rate-only "awake", is not waking.
             let ringMoving = ring.state == "connected" && ring.movingSeconds >= 10 * 60
             let bandUpMoving = bandAwakeSince.map { now - $0 >= 15 * 60 } ?? false
             let up = phoneWalking || ringMoving || (bandUpMoving && phoneStill < 10 * 60)   // patch awake AND phone handled
