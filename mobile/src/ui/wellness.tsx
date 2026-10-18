@@ -1,4 +1,5 @@
 // Wellness visuals: hero score rings, last-night card, overnight HR chart, zones, stress strip, contributors.
+import { checkArchitecture } from '@/lib/sleeppatterns';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -116,8 +117,12 @@ export function StageBreakdown({ n }: { n: Night }) {
     { i: 1, min: n.lightMin, typical: '50–60 %' },
     { i: 2, min: n.deepMin, typical: '13–23 %' },
   ];
+  const arch = checkArchitecture(n);
   return (
     <View style={{ gap: space[3] }}>
+      {arch && !arch.ok ? (
+        <T v="small" color={p.warn}>Stage minutes are uncertain tonight: {arch.flags.join('; ')}. Total sleep and timing are unaffected.</T>
+      ) : null}
       <View style={{ flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
         {rows.map((r) => (r.min > 0 ? <View key={r.i} style={{ flex: r.min, backgroundColor: STAGE[r.i].c }} /> : null))}
       </View>
