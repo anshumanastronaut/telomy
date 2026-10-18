@@ -510,6 +510,16 @@ def test_doctor_sees_every_report_with_ai_summary(client):
 
 # ---------------------------------------------------------------- voice, routine, activities, environment
 
+def test_voice_ondevice_features_give_stress_without_audio(client):
+    f = {"voiced_s": 6.2, "duration_s": 9.0, "f0_mean": 182.0, "f0_sd": 21.0, "f0_cv": 0.115, "jitter_pct": 1.4,
+         "shimmer_pct": 6.1, "hnr_db": 14.2, "rate_per_s": 3.6, "pause_ratio": 0.31, "energy_db": -24.0}
+    r = client.post("/voice/command", json={"text": "black coffee at 4", "features": f, "source": "voice-ondevice",
+                                            "language": "en", "model": "whisper-base (on this iPhone, Cactus)"}).json()
+    assert r["stress"]["score"] is not None and r["transcription"]["model"].startswith("whisper-base")
+    c = client.post("/voice/command", json={"text": "", "features": f, "source": "checkin"}).json()
+    assert c["stress"]["score"] is not None and c["actions"] == []
+
+
 def test_voice_text_any_sentence_becomes_actions(client):
     r = client.post("/voice/command", json={"text": "Had 2 boiled eggs and dal for lunch, then 2 cigarettes, feeling stressed"}).json()
     kinds = {i["intent"] for i in r["intents"]}

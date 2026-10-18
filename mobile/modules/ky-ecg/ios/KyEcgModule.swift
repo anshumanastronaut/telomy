@@ -4,6 +4,8 @@ import ExpoModulesCore
 public class KyEcgModule: Module {
     public func definition() -> ModuleDefinition {
         Name("KyEcg")
+        // On-device speech (Cactus): no usage telemetry, no cloud hand-off — nothing about the user's voice leaves the phone.
+        OnCreate { setenv("CACTUS_NO_CLOUD_TELE", "1", 1); unsetenv("CACTUS_CLOUD_API_KEY"); unsetenv("CACTUS_CLOUD_KEY") }
 
         Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm", "onRingStatus", "onRingData", "onRingDevice", "onRingHistory")
 
@@ -59,6 +61,9 @@ public class KyEcgModule: Module {
         }
         AsyncFunction("healthDaily") { (days: Int, promise: Promise) in
             KYHealth.shared.daily(days: days) { promise.resolve($0) }
+        }
+        AsyncFunction("voiceFeatures") { (path: String, delete: Bool, promise: Promise) in
+            DispatchQueue.global(qos: .userInitiated).async { promise.resolve(KYVoice.features(path: path, delete: delete)) }
         }
         AsyncFunction("healthSleep") { (days: Int, promise: Promise) in
             KYHealth.shared.sleepSegments(days: days) { promise.resolve($0) }

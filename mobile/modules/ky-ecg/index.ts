@@ -76,6 +76,9 @@ export type HealthDay = {
 };
 /** One Apple Health sleep segment. stage: 0 awake, 1 core/light, 2 deep, 3 REM, 4 asleep (unstaged), 5 in bed. */
 export type HealthSleepSegment = { start: number; end: number; stage: 0 | 1 | 2 | 3 | 4 | 5; source: string; watch: boolean };
+/** On-device voice biomarkers (KYVoice.swift; same maths as backend voice.acoustics). */
+export type VoiceFeatures = { voiced_s: number; duration_s?: number; f0_mean?: number; f0_sd?: number; f0_cv?: number; jitter_pct?: number;
+  shimmer_pct?: number; hnr_db?: number; rate_per_s?: number; pause_ratio?: number; energy_db?: number };
 export type UserEvent = { kind: string; label: string; note?: string; t?: number; amount?: string };
 export type FoundDevice = { id: string; name: string; rssi: number };
 export type CaptureMeta = {
@@ -131,6 +134,7 @@ type Native = {
   healthAuthorize(): Promise<{ ok: boolean; error?: string }>;
   healthDaily(days: number): Promise<HealthDay[]>;
   healthSleep(days: number): Promise<HealthSleepSegment[]>;
+  voiceFeatures(path: string, del: boolean): Promise<VoiceFeatures>;
   wellnessRead(kind: string, days: number): Promise<Record<string, any>[]>;
   reanalyseCapture(id: string): Promise<{ id?: string; summary?: Record<string, any>; error?: string }>;
   addListener<K extends keyof Events>(event: K, listener: Events[K]): EventSubscription;
@@ -208,6 +212,8 @@ export const Band = {
   healthAuthorize: async () => (native ? native.healthAuthorize() : { ok: false, error: 'Not available' }),
   /** Daily Apple Health summaries for the last `days` days, oldest first. */
   healthDaily: async (days: number): Promise<HealthDay[]> => (native ? native.healthDaily(days) : []),
+  /** Voice biomarkers from a recording, computed on the phone; `del` deletes the audio file right after reading it. */
+  voiceFeatures: async (path: string, del = true): Promise<VoiceFeatures> => (native?.voiceFeatures ? native.voiceFeatures(path, del) : { voiced_s: 0 }),
   /** Raw Apple Health sleep segments (Watch stages when present), oldest first. */
   healthSleep: async (days: number): Promise<HealthSleepSegment[]> => (native?.healthSleep ? native.healthSleep(days) : []),
   addUserEvent: (e: UserEvent) => native?.addUserEvent(e as any) ?? { },

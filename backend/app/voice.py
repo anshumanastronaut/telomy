@@ -316,6 +316,14 @@ def command(text: str, features: dict | None = None, language: str | None = None
     return {"text": text, "language": language, "normalised": parsed["normalised"], "intents": parsed["intents"], "actions": actions, "stress": st}
 
 
+def record_stress(features: dict, source: str = "checkin") -> dict:
+    """Score and store a words-free voice sample (the read-aloud check-in)."""
+    st = stress_score(features)
+    db.exec_("INSERT INTO voice_samples (ts, language, text, features, stress, intents, source) VALUES (?,?,?,?,?,?,?)",
+             (engine.now_iso(), None, "", db.j(features), st["score"], db.j([]), source))
+    return st
+
+
 def from_audio(data: bytes, filename: str = "audio.wav", language: str | None = None) -> dict:
     a = decode(data, filename)
     tr = transcribe(a, language)

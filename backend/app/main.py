@@ -8,6 +8,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from . import config  # noqa: F401  (loads backend/.env first)
+from . import whoop
 from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
@@ -21,7 +22,7 @@ async def lifespan(_app):
     therapy.init()
     rx.init()
     summaries.init()
-    for mod in (voice, routine, activities, exposome, devices, band):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -55,7 +56,7 @@ from fastapi import Request as _Req
 from fastapi.responses import JSONResponse as _JR
 _PW = _os.environ.get("TELOMY_ACCESS_PASSWORD", "")
 _SECRET = _os.environ.get("TELOMY_SECRET", "") or _hl.sha256(("telomy:" + _PW).encode()).hexdigest()
-_OPEN = {"/auth/password", "/auth/status", "/docs", "/openapi.json", "/static/telomy_anatomy.glb"}  # model: public CC-BY anatomy, nothing personal
+_OPEN = {"/auth/password", "/auth/status", "/docs", "/openapi.json", "/static/telomy_anatomy.glb", "/whoop/push"}  # /whoop/push has its own bearer token  # model: public CC-BY anatomy, nothing personal
 
 
 def _token() -> str:
@@ -641,6 +642,45 @@ def report_review(rid: int, body: ReportReviewIn):
         raise HTTPException(400, str(e))
 
 
+# ------------------------------------------------------------------ WHOOP via NOOP self-hosted push (app/whoop.py)
+
+def _push_err(e: "whoop.PushError"):
+    return _JR({"type": "error", "protocolVersion": whoop.VERSION, "code": e.code}, status_code=e.status)
+
+
+@app.get("/whoop/push")
+def whoop_caps(request: _Req):
+    if not whoop.token_ok(request.headers.get("authorization")):
+        return _push_err(whoop.PushError(401, "unauthorized"))
+    try:
+        return whoop.capabilities(request.headers.get("noop-push-accept-version"))
+    except whoop.PushError as e:
+        return _push_err(e)
+
+
+@app.post("/whoop/push")
+async def whoop_push(request: _Req):
+    if not whoop.token_ok(request.headers.get("authorization")):
+        return _push_err(whoop.PushError(401, "unauthorized"))
+    body = await request.body()
+    if len(body) > whoop.MAX_NDJSON + 64 * 1024:
+        return _push_err(whoop.PushError(413, "too_large"))
+    try:
+        return whoop.receive(body, request.headers.get("content-encoding"))
+    except whoop.PushError as e:
+        return _push_err(e)
+
+
+@app.get("/whoop/status")
+def whoop_status():
+    return whoop.status()
+
+
+@app.get("/whoop/nights")
+def whoop_nights(days: int = 30):
+    return {"nights": whoop.nights(days), "daily": whoop.daily(days)}
+
+
 # ------------------------------------------------------------------ Sinc voice (any language, say anything)
 
 @app.post("/voice/audio")
@@ -657,13 +697,22 @@ async def voice_audio(file: UploadFile = File(...), language: str | None = None)
 class VoiceText(BaseModel):
     text: str
     language: str | None = None
+    features: dict | None = None     # acoustic features computed on the phone (raw audio never sent)
+    source: str | None = None        # "typed" | "voice-ondevice" | "checkin"
+    model: str | None = None
 
 
 @app.post("/voice/command")
 def voice_command(body: VoiceText):
     if not body.text.strip():
+        if body.features:   # a voice check-in with no words still gives a stress reading
+            return {"text": "", "actions": [], "stress": voice.record_stress(body.features, body.source or "checkin")}
         raise HTTPException(400, "Say or type something first.")
-    return voice.command(body.text, None, body.language, "typed")
+    out = voice.command(body.text, body.features, body.language, body.source or "typed")
+    if body.model:
+        out["transcription"] = {"text": body.text, "language": body.language, "model": body.model}
+    out["features"] = body.features
+    return out
 
 
 @app.get("/voice/stress")
