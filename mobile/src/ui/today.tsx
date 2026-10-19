@@ -19,6 +19,8 @@ import { BeatHeart } from '@/ui/ecg';
 import { Icon, Row, T } from '@/ui/core';
 import { LastNightCard, ScoreRing } from '@/ui/wellness';
 import { VitalsGrid } from '@/ui/vitals';
+import { useApi } from '@/lib/api';
+import { useHomeLayout, type HomeWidget } from '@/lib/homeprefs';
 import { DayTimeline } from '@/ui/trends';
 
 const EASE_OUT = ReEasing.bezier(0.23, 1, 0.32, 1);
@@ -305,28 +307,50 @@ export function WellnessToday({ age }: { age?: number | null }) {
   // refresh when coming back (e.g. after logging an event or finishing a session)
   const first = useRef(true);
   useFocusEffect(useCallback(() => { if (first.current) { first.current = false; return; } w.reload(); }, [w.reload]));
-  if (w.loading) return null;
+  const { enabledInOrder, loaded } = useHomeLayout();
+  if (w.loading || !loaded) return null;
   const s = w.today.stress;
+
+  // each Home widget → its block; the screen renders only the enabled ones, in the saved order (Settings → Home layout)
+  const blocks: Record<HomeWidget, React.ReactNode> = {
+    recovery: <TodayHero w={w} />,
+    sleep: w.last ? <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /> : <PhoneNight />,
+    vitals: <VitalsGrid />,
+    timeline: <DayTimeline w={w} />,
+    strain: <BodyTile icon="flame.fill" color={data.heart} title="Effort / strain" value={w.today.worn >= 10 ? (Math.round(w.today.strain * 10) / 10).toFixed(1) : '—'}
+      sub={`${w.today.activeMin} active min today`} onPress={() => router.push('/wellness/strain')} />,
+    stress: <BodyTile icon="waveform.path" color={data.stress} title="Stress" value={s.score == null ? '—' : `${s.score}`} unit={s.score == null ? undefined : '/100'}
+      sub={s.minutes ? `${s.stressMin} stressed · ${s.calmMin} calm min` : 'Wear the band during the day'} onPress={() => router.push('/wellness/stress')} />,
+    fitness: <BodyTile icon="figure.run" color={data.activity} title="Fitness" value={w.vo2 ? `${Math.round(w.vo2)}` : '—'} unit={w.vo2 ? 'VO₂max' : undefined}
+      sub={w.restingHr ? `Resting HR ${Math.round(w.restingHr)} bpm` : 'Needs calm minutes with the band'} onPress={() => router.push('/wellness/recovery')} />,
+    bioage: <BodyTile icon="hourglass" color={data.age} title="Biological age" value="View" sub="Blood · heart · muscle · fitness ages" onPress={() => router.push('/age')} />,
+    longevity: <LongevityTile />,
+    activity: <ActivityCard />,
+    devices: <BodyTile icon="sensor.tag.radiowaves.forward" color={data.temp} title="Devices" value="Manage" sub="Patch · ring · Apple Health" onPress={() => router.push('/devices')} />,
+  };
+
   return (
     <View style={{ gap: space[3] }}>
-      <ReAnimated.View entering={FadeInDown.duration(320).easing(EASE_OUT)}><TodayHero w={w} /></ReAnimated.View>
-      {w.last ? <ReAnimated.View entering={FadeInDown.duration(320).delay(60).easing(EASE_OUT)}><LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /></ReAnimated.View> : <PhoneNight />}
-      <ReAnimated.View entering={FadeInDown.duration(320).delay(90).easing(EASE_OUT)}><VitalsGrid /></ReAnimated.View>
-      <ReAnimated.View entering={FadeInDown.duration(320).delay(120).easing(EASE_OUT)}><DayTimeline w={w} /></ReAnimated.View>
-      <ReAnimated.View entering={FadeInDown.duration(320).delay(180).easing(EASE_OUT)} style={{ gap: space[3] }}>
-      <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
-        <BodyTile icon="waveform.path" color={data.stress} title="Stress" value={s.score == null ? '—' : `${s.score}`} unit={s.score == null ? undefined : '/100'}
-          sub={s.minutes ? `${s.stressMin} stressed · ${s.calmMin} calm min` : 'Wear the band during the day'} onPress={() => router.push('/wellness/stress')} />
-        <BodyTile icon="figure.run" color={data.activity} title="Fitness" value={w.vo2 ? `${Math.round(w.vo2)}` : '—'} unit={w.vo2 ? 'VO₂max' : undefined}
-          sub={w.restingHr ? `Resting HR ${Math.round(w.restingHr)} bpm` : 'Needs calm minutes with the band'} onPress={() => router.push('/wellness/recovery')} />
-      </Row>
-      <RingStrip />
-      <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
-        <BodyTile icon="hourglass" color={data.age} title="Biological age" value="Clocks" sub="Fitness · recovery · heart · muscle" onPress={() => router.push('/age')} />
-        <BodyTile icon="sensor.tag.radiowaves.forward" color={data.temp} title="Devices" value="Manage" sub="Patch · ring · Apple Health" onPress={() => router.push('/devices')} />
-      </Row>
-      </ReAnimated.View>
-      <ReAnimated.View entering={FadeInDown.duration(320).delay(240).easing(EASE_OUT)}><ActivityCard /></ReAnimated.View>
+      {enabledInOrder.map((k, i) => (
+        <ReAnimated.View key={k} entering={FadeInDown.duration(320).delay(Math.min(240, i * 40)).easing(EASE_OUT)}>{blocks[k]}</ReAnimated.View>
+      ))}
+      <Pressable onPress={() => router.push('/home-settings' as any)} accessibilityRole="button"
+        style={{ alignSelf: 'center', paddingVertical: space[2] }}>
+        <Row gap={6}><Icon name="slider.horizontal.3" size={13} color={onInk.muted} /><T v="small" color={onInk.muted}>Customise home</T></Row>
+      </Pressable>
     </View>
+  );
+}
+
+/** Blood age vs chronological, straight on the Home when enabled. */
+function LongevityTile() {
+  const bio = useApi<any>('/bioage');
+  const h = bio.data?.headline;
+  const chrono = bio.data?.chronological_age;
+  return (
+    <BodyTile icon="hourglass.bottomhalf.filled" color={data.age} title="Longevity"
+      value={h?.age != null ? `${Math.round(h.age)}` : '—'} unit={h?.age != null ? 'yr' : undefined}
+      sub={h?.age != null && chrono != null ? `${h.method} · you are ${Math.round(chrono)}` : 'Add a blood panel to see your blood age'}
+      onPress={() => router.push('/age')} />
   );
 }

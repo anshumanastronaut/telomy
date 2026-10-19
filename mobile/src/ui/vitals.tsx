@@ -81,8 +81,12 @@ export function VitalsGrid({ title = 'Telomy is watching' }: { title?: string })
     { key: 'risk', icon: 'shield.lefthalf.filled', label: 'Risk', value: 'View', color: p.teal, source: '5 disease models', live: false, to: '/predict' },
     { key: 'devices', icon: 'sensor.tag.radiowaves.forward', label: 'Devices', value: `${d.devices.filter((x) => x.connected).length}/${d.devices.length}`, color: p.graphite, source: 'Connected', live: d.anyConnected, to: '/devices' },
   ];
-  const withValue = candidates.filter((x) => x.value != null);
-  const shown = withValue.slice(0, Math.max(3, Math.min(9, Math.floor(withValue.length / 3) * 3)));
+  // always show a core set of vital slots (even when empty, with "—" and a hint) so vitals never disappear; then fill
+  // the rest of the grid with whatever else has a value, up to 9 total.
+  const CORE = ['hrv', 'sleep', 'spo2', 'recovery', 'steps', 'rest'];
+  const core = candidates.filter((x) => CORE.includes(x.key)).map((x) => (x.value == null ? { ...x, value: '—', source: x.source ?? 'Wear a device' } : x));
+  const extra = candidates.filter((x) => !CORE.includes(x.key) && x.value != null);
+  const shown = [...core, ...extra].slice(0, 9);
   const live = shown.filter((x) => x.live).length + (streaming ? 1 : 0);
 
   // ---- heart row: live ECG, else recent heart-rate trend (this session, then the last day of band minutes)

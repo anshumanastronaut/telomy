@@ -12,6 +12,7 @@ from . import config  # noqa: F401  (loads backend/.env first)
 from . import whoop
 from . import cgm
 from . import accounts as acctmod  # noqa: E402  (module; /accounts route shadows the name)
+from . import vitals as vitalsmod  # noqa: E402
 from . import bioage  # noqa: E402
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
@@ -30,7 +31,7 @@ async def lifespan(_app):
     rx.init()
     summaries.init()
     acctmod.init()
-    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -1873,6 +1874,32 @@ def science_add(body: Finding):
 @app.post("/science/{fid}/active")
 def science_toggle(fid: int, active: bool = True):
     return science.set_active(fid, active)
+
+
+class VitalsBatch(BaseModel):
+    samples: list[dict]
+    source: str
+
+
+@app.post("/vitals/ingest")
+def vitals_ingest(body: VitalsBatch):
+    """A device batch of high-frequency vitals (ts, metric, value, step_s). Idempotent; fills the longitudinal record."""
+    return vitalsmod.ingest(body.samples, body.source[:40] or "device")
+
+
+@app.get("/vitals/day")
+def vitals_day(day: str | None = None):
+    return vitalsmod.day(day)
+
+
+@app.get("/vitals/series")
+def vitals_series(metric: str, start: int, end: int, max_points: int = 1000):
+    return vitalsmod.series(metric, start, end, min(max_points, 5000))
+
+
+@app.get("/vitals/coverage")
+def vitals_coverage(days: int = 7):
+    return vitalsmod.coverage(days)
 
 
 @app.get("/bioage")

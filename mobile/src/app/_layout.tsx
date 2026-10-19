@@ -56,6 +56,7 @@ export default function RootLayout() {
         <Stack.Screen name="age" options={{ title: 'Biological age' }} />
         <Stack.Screen name="about" options={{ title: 'About you' }} />
         <Stack.Screen name="trackers" options={{ title: 'Your trackers' }} />
+        <Stack.Screen name="home-settings" options={{ title: 'Home layout' }} />
         <Stack.Screen name="tracker/[id]" options={{ title: 'Tracker' }} />
         <Stack.Screen name="muscle" options={{ title: 'Muscle age test' }} />
         <Stack.Screen name="insurance" options={{ title: 'Insurance' }} />
