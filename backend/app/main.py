@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from . import config  # noqa: F401  (loads backend/.env first)
 from . import whoop
+from . import cgm
 from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
@@ -23,7 +24,7 @@ async def lifespan(_app):
     therapy.init()
     rx.init()
     summaries.init()
-    for mod in (voice, routine, activities, exposome, devices, band, whoop):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -79,7 +80,7 @@ def _token() -> str:
 
 @app.middleware("http")
 async def _require_password(request: _Req, call_next):
-    if not _PW or request.method == "OPTIONS" or request.url.path in _OPEN:
+    if not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith("/nightscout/"):
         return await call_next(request)
     auth = request.headers.get("authorization", "")
     if auth.startswith("Bearer ") and _hm.compare_digest(auth[7:], _token()):
@@ -683,6 +684,41 @@ async def whoop_push(request: _Req):
         return whoop.receive(body, request.headers.get("content-encoding"))
     except whoop.PushError as e:
         return _push_err(e)
+
+
+# ------------------------------------------------------------------ CGM via Nightscout-compatible upload (app/cgm.py)
+
+def _ns_auth(request: _Req):
+    if not cgm.secret_ok(request.headers.get("api-secret"), request.query_params.get("token")):
+        raise HTTPException(401, "Unauthorized")
+
+
+@app.get("/nightscout/api/v1/status.json")
+@app.get("/nightscout/api/v1/status")
+def ns_status(request: _Req):
+    _ns_auth(request)
+    return cgm.status()
+
+
+@app.post("/nightscout/api/v1/entries")
+@app.post("/nightscout/api/v1/entries.json")
+async def ns_add_entries(request: _Req):
+    _ns_auth(request)
+    body = await request.json()
+    return {"ok": True, "n": cgm.add_entries(body)}
+
+
+@app.get("/nightscout/api/v1/entries")
+@app.get("/nightscout/api/v1/entries.json")
+@app.get("/nightscout/api/v1/entries/sgv.json")
+def ns_entries(request: _Req, count: int = 10):
+    _ns_auth(request)
+    return cgm.entries(count)
+
+
+@app.get("/cgm/summary")
+def cgm_summary(days: int = 14):
+    return cgm.summary(days)
 
 
 @app.get("/whoop/status")
