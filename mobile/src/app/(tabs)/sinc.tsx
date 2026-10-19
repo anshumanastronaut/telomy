@@ -4,6 +4,7 @@ import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, useApi } from '@/lib/api';
+import { askOnDevice, SLM_INFO, useSlm } from '@/lib/slm';
 import { radius, space, type, usePalette } from '@/lib/theme';
 import { Button, Chip, ConfBar, Icon, Row, Spacer, StatusChip, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
@@ -31,6 +32,8 @@ export default function Sinc() {
   const scroll = useRef<ScrollView>(null);
   const chats = useApi<any[]>(history ? '/sinc/chats' : null, [history]);
   const health = useApi<any>('/health');
+  const slm = useSlm();
+  const [slmCard, setSlmCard] = useState(false);
 
   async function send(q: string) {
     if (!q.trim() || busy) return;
@@ -38,6 +41,28 @@ export default function Sinc() {
     setMsgs((m) => [...m, { role: 'user', content: q }, { role: 'assistant', content: '', pending: true }]);
     setBusy(true);
     try {
+      // On this iPhone first when chosen (quick answers only — deep research needs the citation library on the server).
+      if (slm.on && mode === 'normal') {
+        let streamed = '';
+        const d = await askOnDevice(q, (t) => {
+          streamed += t;
+          const shown = streamed.replace(/<think>[\s\S]*?(<\/think>|$)/g, '');
+          setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: shown, pending: !shown.trim() }]);
+        });
+        if ('answer' in d) {
+          const r = await api('/sinc/log', { body: { question: q, answer: d.answer, chat_id: chatId, model: d.model } });
+          setChatId(r.chat_id);
+          setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: d.answer, id: r.message_id,
+            meta: { ...r, notice: `${d.model}${d.tps ? ` · ${Math.round(d.tps)} tokens/s` : ''} · every number checked against your data` } }]);
+          return;
+        }
+        setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: '', pending: true }]);
+        const r = await api('/sinc/ask', { body: { question: q, chat_id: chatId, mode } });
+        setChatId(r.chat_id);
+        setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: r.answer, id: r.message_id,
+          meta: { ...r, notice: `Answered from your Vault on your server — ${d.fallback}.` } }]);
+        return;
+      }
       const r = await api('/sinc/ask', { body: { question: q, chat_id: chatId, mode } });
       setChatId(r.chat_id);
       setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: r.answer, meta: r, id: r.message_id }]);
@@ -135,7 +160,23 @@ export default function Sinc() {
               <Chip label={m === 'normal' ? 'Quick answer' : 'Deep research · with citations'} fg={mode === m ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={mode === m ? p.teal : p.surfaceAlt} icon={m === 'deep' ? 'books.vertical' : 'bolt'} />
             </Pressable>
           ))}
+          {slm.available ? (
+            <Pressable onPress={() => (slm.ready ? slm.setOn(!slm.on) : setSlmCard(!slmCard))} accessibilityRole="switch"
+              accessibilityState={{ checked: slm.on }} testID="mode-device">
+              <Chip label={slm.on ? 'On this iPhone' : 'On-device'} fg={slm.on ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={slm.on ? p.copper : p.surfaceAlt} icon="iphone" />
+            </Pressable>
+          ) : null}
         </Row>
+        {slmCard && !slm.ready ? (
+          <View style={{ marginHorizontal: space[4], marginBottom: 6, padding: 12, gap: 8, borderRadius: radius.md, backgroundColor: p.surface }}>
+            <T v="body" style={{ fontWeight: '600' }}>Sinc on this iPhone</T>
+            <T v="small">{SLM_INFO.label} ({SLM_INFO.note}) answers quick questions without your question leaving the phone. Every number it writes is checked against your data; if one doesn't match, your server answers instead. One-time download about {(SLM_INFO.mb / 1000).toFixed(1)} GB — use Wi-Fi.</T>
+            {slm.error ? <T v="small" color={p.warn}>{slm.error}</T> : null}
+            <Button kind="secondary" icon="arrow.down.circle" disabled={slm.progress != null}
+              title={slm.progress != null ? `Downloading… ${Math.round(slm.progress * 100)}%` : 'Download the model'}
+              onPress={async () => { await slm.download(); slm.setOn(true); }} />
+          </View>
+        ) : null}
         {notice ? (
           <View style={{ marginHorizontal: space[4], marginBottom: 6, padding: 12, borderRadius: radius.md, backgroundColor: p.successSoft }}>
             <T v="small" color={p.success}>{notice}</T>

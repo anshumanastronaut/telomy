@@ -1695,6 +1695,25 @@ def ask(body: Ask):
     return sinc.ask(body.question.strip(), body.chat_id, body.mode if body.mode in ("normal", "deep") else "normal")
 
 
+@app.get("/sinc/context")
+def sinc_context(q: str = ""):
+    return sinc.slm_context(q)
+
+
+class OnDevice(BaseModel):
+    question: str
+    answer: str
+    chat_id: int | None = None
+    model: str = "on-device"
+
+
+@app.post("/sinc/log")
+def sinc_log(body: OnDevice):
+    if not body.question.strip() or not body.answer.strip():
+        raise HTTPException(400, "Question and answer are required.")
+    return sinc.log_on_device(body.question.strip(), body.answer.strip()[:4000], body.chat_id, body.model[:60])
+
+
 @app.get("/sinc/chats")
 def chats():
     return db.rows("""SELECT c.*, (SELECT content FROM messages m WHERE m.chat_id = c.id AND role = 'assistant'
