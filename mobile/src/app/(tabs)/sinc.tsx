@@ -34,6 +34,7 @@ export default function Sinc() {
   const scroll = useRef<ScrollView>(null);
   const chats = useApi<any[]>(history ? '/sinc/chats' : null, [history]);
   const health = useApi<any>('/health');
+  const insights = useApi<any>('/sinc/insights');
   const slm = useSlm();
   const [slmCard, setSlmCard] = useState(false);
 
@@ -150,6 +151,23 @@ export default function Sinc() {
                 <T v="display" style={{ textAlign: 'center' }}>Always watching.</T>
                 <T v="small" color={p.muted} style={{ textAlign: 'center' }}>Sinc knows your whole Vault — and shows its evidence.</T>
               </View>
+              {insights.data?.threads?.length ? (
+                <View style={{ width: '100%', gap: space[2] }}>
+                  <T v="label">What Sinc connects across your data</T>
+                  {insights.data.threads.map((t: any) => (
+                    <Pressable key={t.insight_id} onPress={() => send(`Tell me more about: ${t.headline}`)}
+                      style={{ backgroundColor: p.surface, borderRadius: radius.lg, padding: space[3], gap: 4 }}>
+                      <Row>
+                        <Chip label={t.theme} fg={p.teal} bg={p.tealSoft} />
+                        <View style={{ flex: 1 }} />
+                        <T v="small" color={p.muted}>{Math.round((t.confidence ?? 0) * 100)}%</T>
+                      </Row>
+                      <T v="body" style={{ fontWeight: '600' }}>{t.headline}</T>
+                      <T v="small" color={p.muted} numberOfLines={3}>{t.story}</T>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
               {/* all starters kept, as one quiet scrollable row of small pills */}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space[2], paddingHorizontal: space[1] }}>
                 {STARTERS.map((s) => (

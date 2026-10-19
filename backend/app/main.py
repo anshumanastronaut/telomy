@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from . import config  # noqa: F401  (loads backend/.env first)
 from . import whoop
 from . import cgm
+from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
 from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
@@ -123,7 +124,7 @@ def today():
 @app.get("/health")
 def health():
     return {"ok": True, "version": app.version, "engine": engine.ENGINE_VERSION,
-            "sinc": sinc.MODEL if sinc._claude_available() else "telomy-retrieval (no API key)"}
+            "sinc": telomy_llm.model_name() if telomy_llm.available() else "telomy-retrieval (grounded composer)"}
 
 
 @app.post("/admin/reset")
@@ -1780,6 +1781,20 @@ def client_log(body: ClientLog):
     db.exec_("INSERT INTO client_log (ts, area, stage, message, data) VALUES (?,?,?,?,?)",
              (engine.now_iso(), body.area[:40], body.stage[:40], body.message[:500], db.j({"model": body.model, "free_bytes": body.free_bytes})))
     return {"ok": True}
+
+
+@app.get("/sinc/insights")
+def sinc_insights():
+    """The connected story — Sinc links labs, wearables, trackers and genetics into themed threads with evidence."""
+    from . import retrieval
+    return retrieval.connect()
+
+
+@app.get("/sinc/retrieve")
+def sinc_retrieve(q: str, k: int = 12):
+    """What Sinc would ground on for a question (debug/transparency): the retrieved cards."""
+    from . import retrieval
+    return [{"id": c["id"], "kind": c["kind"], "title": c["title"], "text": c["text"]} for c in retrieval.retrieve(q, k)]
 
 
 @app.get("/sinc/chats")

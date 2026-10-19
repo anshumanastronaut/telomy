@@ -16,6 +16,7 @@ export type Night = {
   stages?: number[];  // 4-stage model per 30-s epoch: 0 wake, 1 light, 2 deep, 3 REM, -1 no data
   lightMin?: number; deepMin?: number; remMin?: number; remLatencyMin?: number; remCycles?: number;
   source?: SleepSource; sourceName?: string;   // which device this night came from (lib/sleepfuse.ts)
+  stageConfidence?: 'low';                      // 'low' = stages estimated from 5-min ring HR (not patch/watch-grade)
   hrvSrc?: 'ecg' | 'ring';
   skinTemp?: number;                          // night temperature, °C — compare only within the same tempSrc
   tempSrc?: 'ring' | 'whoop';                 // ring: coarse body estimate; WHOOP 4.0: skin, deviation-only                    // HRV scales differ by device: baselines only compare like with like
@@ -98,14 +99,15 @@ export function sleepScore(n: Night, history: Night[], needMin?: number, sri?: n
     score: knots(n.onsetMin, [[15, 100], [30, 70], [45, 30], [60, 0]]) });
   c.push({ key: 'waso', label: 'Awake after falling asleep', w: 0.08, value: `${Math.round(n.wasoMin)} min`, note: '20 min or less is good',
     score: knots(n.wasoMin, [[20, 100], [35, 65], [50, 30], [80, 0]]) });
+  const estW = n.stageConfidence === 'low' ? 0.04 : 0.09;   // ring HR-estimated stages count for less than the patch's
   if (n.deepMin != null && n.tstMin > 0) {
     const f = n.deepMin / n.tstMin;
-    c.push({ key: 'deep', label: 'Deep sleep', w: 0.09, value: `${fmtDur(n.deepMin)} · ${Math.round(f * 100)}%`, note: 'Typical 13–23 % for adults (less with age)',
+    c.push({ key: 'deep', label: 'Deep sleep', w: estW, value: `${fmtDur(n.deepMin)} · ${Math.round(f * 100)}%`, note: 'Typical 13–23 % for adults (less with age)',
       score: knots(f, [[0.03, 0], [0.08, 40], [0.13, 85], [0.16, 100], [0.25, 100], [0.35, 85]]) });
   }
   if (n.remMin != null && n.tstMin > 0) {
     const f = n.remMin / n.tstMin;
-    c.push({ key: 'rem', label: 'REM sleep', w: 0.09, value: `${fmtDur(n.remMin)} · ${Math.round(f * 100)}%`, note: 'Typical 20–25 % of sleep',
+    c.push({ key: 'rem', label: 'REM sleep', w: estW, value: `${fmtDur(n.remMin)} · ${Math.round(f * 100)}%`, note: 'Typical 20–25 % of sleep',
       score: knots(f, [[0.05, 0], [0.12, 45], [0.18, 85], [0.2, 100], [0.26, 100], [0.33, 80]]) });
   }
   c.push({ key: 'awakenings', label: 'Wake-ups', w: 0.04, value: `${n.awakenings}`, note: 'Brief wake-ups are normal; fewer is better',

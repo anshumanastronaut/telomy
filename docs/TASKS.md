@@ -11,6 +11,8 @@ Legend: [ ] open · [~] in progress · [x] done (date) · [u] needs the user (ac
 - [ ] Device purchase advice follow-up once the user picks (Galaxy Watch 8 / Apple Watch 11 / WHOOP 5 / ring)
 
 ## Sleep
+- [x] 2026-10-19 Ring-only nights now get a coarse 4-stage estimate (deep/REM/light) from the 5-min HR + phone motion
+      (de Zambotti 2019 cardiac method), labelled low-confidence and down-weighted vs the patch — no more asleep/awake only
 - [x] Fusion priority + fragment merge + uncovered tails; WHOOP nights staged by the Telomy motion+HR stager
 - [x] Architecture norms (HMC) + uncertain-minute flag; sleep need (0.55 recurrence)
 - [ ] Re-run the Telomy-vs-WHOOP night comparison on a fully-captured patch night
@@ -45,6 +47,15 @@ Legend: [ ] open · [~] in progress · [x] done (date) · [u] needs the user (ac
 - [ ] Indian dish coverage beyond the curated 40 (INDB licence unclear — ask the Jaacks lab, or compose recipes from USDA ingredients)
 
 ## Sinc & the SLM
+- [x] 2026-10-19 Telomy LLM wrapper (telomy_llm.py): provider-agnostic (Anthropic / any OpenAI-compatible free endpoint),
+      response cache, timeout, server-side number-grounding guard; Sinc routes through it, composer is the guarded fallback
+- [x] 2026-10-19 Telomy RAG (retrieval.py): 308 fact-cards over labs/signals/insights/trackers/nutrition/twin/WHOOP/CGM/
+      memories/bio-age; BM25 retrieval feeds Sinc the question-relevant cards; /sinc/retrieve for transparency
+- [x] 2026-10-19 Connected insights (connect() + /sinc/insights + Sinc screen): themed threads linking labs↔wearables↔
+      genetics↔food lever (cardiovascular, metabolic, liver, sleep); shown on Sinc empty state
+- [x] 2026-10-19 Blood-age permutation study (tools/bloodage_study.py): RDW is 51% of the lever, then glucose/creatinine
+- [ ] Systems screen (adopt Ultrahuman's organ-grouping; see docs/research/UI_STUDY_ULTRAHUMAN.md) rendering connect() threads
+- [ ] Fine-tune a Telomy SLM (LoRA on Qwen3-1.7B) once guard-failure data shows where the base model falls short
 - [x] 2026-10-19 On-device Sinc (Qwen3-1.7B via Cactus) with grounded facts + number guard; server fallback
 - [x] 2026-10-19 Talk-to-track: any statement → tracker (pain, symptom, supplement, medicine, habit, measure, custom),
       baseline, plan, red-flag safety, drivers analysis; Trackers screens

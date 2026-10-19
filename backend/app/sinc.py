@@ -233,11 +233,19 @@ def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict
         mid = db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)",
                        (chat_id, engine.now_iso(), "assistant", out["answer"], db.j(out)))
         return {"chat_id": chat_id, "message_id": mid, **out}
-    try:
-        out = _ask_claude(question, history) if _claude_available() else _compose(question)
-    except Exception as exc:  # network/API problems must be visible, never silent
+    from . import telomy_llm
+    out = None
+    if telomy_llm.available():
+        from . import retrieval
+        ctx = retrieval.context(question)              # RAG: the cards that matter for THIS question, grounded
+        r = telomy_llm.ask(SYSTEM, ctx, question, history, SCHEMA)
+        if r and "_error" not in r:
+            out = r
+        elif r and "_error" in r:
+            out = _compose(question)
+            out["notice"] = f"Answered from your Vault directly ({r['_error']})."
+    if out is None:
         out = _compose(question)
-        out["notice"] = f"I couldn't reach the language model ({type(exc).__name__}); this answer comes from your Vault directly."
     out["medical"] = bool(out.get("medical") or MEDICAL_WORDS.search(question))
     out["mode"] = mode
     if mode == "deep":

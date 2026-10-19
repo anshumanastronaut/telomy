@@ -120,6 +120,9 @@ export function StageBreakdown({ n }: { n: Night }) {
   const arch = checkArchitecture(n);
   return (
     <View style={{ gap: space[3] }}>
+      {n.stageConfidence === 'low' ? (
+        <T v="small" color={p.warn}>Stages estimated from the ring's 5-minute heart rate — a coarse view. Wear the patch (or an Apple Watch) for sleep-lab-grade staging.</T>
+      ) : null}
       {arch && !arch.ok ? (
         <T v="small" color={p.warn}>Stage minutes are uncertain tonight: {arch.flags.join('; ')}. Total sleep and timing are unaffected.</T>
       ) : null}

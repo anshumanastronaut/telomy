@@ -200,6 +200,51 @@ export function ringOwnNights(recs: RingSleepRecord[]): Night[] {
  *    runs of 30 min–3 h in the daytime are naps only when HR dips ≥ 8 % below the day's median AND the phone lay still.
  * Floor = 10th percentile of the trailing 7 days' HR (personal, robust to one hot night). No stages are claimed.
  */
+/**
+ * Coarse 4-stage estimate for a ring-only night, from the 5-minute heart-rate curve + phone motion. No ring gives
+ * beat-to-beat HRV to the phone, so this can't match the patch or a watch — it is the cardiac-only method the first
+ * consumer rings used (de Zambotti 2019; Oura's pre-PPG-HRV generation). Rules grounded in sleep physiology:
+ *   • Deep (SWS): heart rate near its nightly trough with little 5-min-to-5-min change; parasympathetic dominance,
+ *     front-loaded into the first half of the night (Carskadon & Dement).
+ *   • REM: heart rate lifts back toward waking level and becomes variable, with the body still (atonia → phone not
+ *     moving); clustered, and essentially absent in the first ~15 min after onset (normal REM latency 70–120 min).
+ *   • Light (N1/N2): everything else — the bulk of the night.
+ * Returned at 5-min resolution (each sample fills its 10 epochs); marked low-confidence so the app labels it and the
+ * sleep score trusts it less than the patch.
+ */
+function ringStageGrid(samples: { t: number; v: number; still: boolean }[], t0: number, nEpoch: number): number[] {
+  const grid = new Array(nEpoch).fill(0);                         // 0 wake until proven asleep
+  if (samples.length < 6) { for (const s of samples) fill(grid, s.t, t0, 4); return grid; }
+  const vals = samples.map((s) => s.v);
+  const trough = pct(vals, 0.08), p40 = pct(vals, 0.40), p60 = pct(vals, 0.60);
+  const span = Math.max(4, p60 - trough);
+  const vrOf = (i: number) => {                                   // local |Δ| to neighbours: variability proxy
+    const a = i > 0 ? Math.abs(samples[i].v - samples[i - 1].v) : 0;
+    const b = i < samples.length - 1 ? Math.abs(samples[i + 1].v - samples[i].v) : 0;
+    return (a + b) / (i > 0 && i < samples.length - 1 ? 2 : 1);
+  };
+  const vr = samples.map((_, i) => vrOf(i));
+  const vrHi = pct(vr, 0.6);
+  const onset = samples[0].t;
+  const stageAt = samples.map((s, i) => {
+    const sinceOnset = (s.t - onset) / 60;
+    const low = (s.v - trough) / span;                            // 0 at trough … 1 near p60
+    if (s.v <= p40 && vr[i] <= vrHi && sinceOnset > 5) return 2;  // deep: low, steady HR
+    if (s.v >= p60 && vr[i] >= vrHi && s.still && sinceOnset > 15) return 3;  // REM: raised, variable, still, not at onset
+    void low;
+    return 1;                                                     // light
+  });
+  // median-3 smoothing, then cap deep after the first half (SWS is front-loaded; late "deep" is usually light)
+  const sm = stageAt.map((_, i) => median(stageAt.slice(Math.max(0, i - 1), i + 2)));
+  const halfT = (samples[0].t + samples[samples.length - 1].t) / 2;
+  samples.forEach((s, i) => { let st = sm[i]; if (st === 2 && s.t > halfT && s.v > trough + 0.5 * span) st = 1; fill(grid, s.t, t0, st); });
+  return grid;
+}
+
+function fill(grid: number[], t: number, t0: number, stage: number) {
+  for (let e = 0; e < 10; e++) { const j = Math.floor((t - t0) / EPOCH) + e; if (j >= 0 && j < grid.length) grid[j] = stage; }
+}
+
 export function ringNights(ring: RingHistorySample[], phone: PhoneActivity[], days = 14): Night[] {
   const now = Date.now() / 1000;
   // one reading per timestamp: the heart log (type 6) and the combined log (type 9) both carry HR at the same instant
@@ -254,14 +299,26 @@ export function ringNights(ring: RingHistorySample[], phone: PhoneActivity[], da
       const pts = hr.slice(i0, i1 + 1).map((x) => typeAt(x.t));
       if (pts.filter((ty) => ty === 'still').length < 0.8 * pts.length) continue;
     }
-    const grid = new Array(Math.ceil((t1 - t0) / EPOCH)).fill(4);
-    hr.slice(i0, i1 + 1).forEach((x, k) => {
-      if (sm[i0 + k]) return;
-      for (let e = 0; e < 10; e++) { const j = Math.floor((x.t - t0) / EPOCH) + e; if (j < grid.length) grid[j] = 0; }
-    });
-    const sumr = summarise(grid, t0, false);
+    const nEpoch = Math.ceil((t1 - t0) / EPOCH);
+    // full nights (≥ 3 h) get the coarse cardiac stage estimate; shorter naps stay asleep/awake only
+    const isFullNight = dur >= 3 * 3600;
+    let grid: number[];
+    if (isFullNight) {
+      const asleep = hr.slice(i0, i1 + 1).map((x, k) => ({ x, k })).filter(({ k }) => sm[i0 + k])
+        .map(({ x }) => ({ t: x.t, v: x.v, still: typeAt(x.t) === 'still' || typeAt(x.t) === null }));
+      grid = ringStageGrid(asleep, t0, nEpoch);
+      hr.slice(i0, i1 + 1).forEach((x, k) => { if (!sm[i0 + k]) for (let e = 0; e < 10; e++) { const j = Math.floor((x.t - t0) / EPOCH) + e; if (j >= 0 && j < grid.length) grid[j] = 0; } });
+    } else {
+      grid = new Array(nEpoch).fill(4);
+      hr.slice(i0, i1 + 1).forEach((x, k) => {
+        if (sm[i0 + k]) return;
+        for (let e = 0; e < 10; e++) { const j = Math.floor((x.t - t0) / EPOCH) + e; if (j < grid.length) grid[j] = 0; }
+      });
+    }
+    const sumr = summarise(grid, t0, isFullNight);
     if (!sumr) continue;
-    out.push({ ...sumr, onsetMin: undefined, id: `ring-${Math.round(t0)}`, date: localDate(sumr.end), hr5: [], hrv5: [], events: [], source: 'ring', sourceName: 'Telomy ring' });
+    out.push({ ...sumr, onsetMin: undefined, id: `ring-${Math.round(t0)}`, date: localDate(sumr.end), hr5: [], hrv5: [], events: [],
+      source: 'ring', sourceName: isFullNight ? 'Telomy ring · heart-rate stage estimate' : 'Telomy ring', ...(isFullNight ? { stageConfidence: 'low' as const } : {}) });
   }
   return out;
 }
