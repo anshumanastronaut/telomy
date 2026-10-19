@@ -226,26 +226,48 @@ def series(stream: str, start: int, end: int, limit: int = 200000) -> list[dict]
     return out
 
 
-def nights(days: int = 30) -> list[dict]:
-    """NOOP's sleep sessions (its interpretation of the WHOOP strap), newest last."""
+def nights(days: int = 30, merge_gap_s: int = 90 * 60) -> list[dict]:
+    """WHOOP sleep sessions (NOOP's read of the strap), newest last. NOOP often splits one night into several sessions
+    (a long awakening ends one and starts another); sessions whose gap is under `merge_gap_s` are merged into one night
+    and the whole span is re-staged, so 'last night' is the whole night with proper REM/deep/light — not a fragment."""
     init()   # idempotent; a database reset (tests, seed) may have dropped the tables
-    out = []
-    for r in db.rows("SELECT key, data FROM whoop_rows WHERE stream='sleepSession' ORDER BY ts DESC LIMIT ?", (days * 2,)):
+    raw = []
+    for r in db.rows("SELECT key, data FROM whoop_rows WHERE stream='sleepSession' ORDER BY ts LIMIT ?", (days * 3,)):
         k, d = json.loads(r["key"]), json.loads(r["data"])
+        start, end = k["startTs"], d.get("endTs")
+        if not end or end <= start:
+            continue
         st = d.get("stagesJSON")
         try:
             st = json.loads(st) if isinstance(st, str) else st
         except json.JSONDecodeError:
             st = None
-        start, end = k["startTs"], d.get("endTs")
-        hr = night_hr(start, end) if end else {}
-        tel = telomy_stages(start, end) if end else None
-        out.append({"start": start, "end": end, "efficiency": d.get("efficiency"), "noopRestingHr": d.get("restingHr"),
-                    "noopStages": st, "stages": tel["segments"] if tel else st, "stager": tel["model"] if tel else "NOOP",
-                    "userEdited": d.get("userEdited"), **hr})
+        raw.append({"start": start, "end": end, "efficiency": d.get("efficiency"), "noopRestingHr": d.get("restingHr"),
+                    "noopStages": st, "userEdited": d.get("userEdited")})
+    raw.sort(key=lambda x: x["start"])
+    # merge adjacent sessions that belong to the same sleep period
+    merged: list[dict] = []
+    for s in raw:
+        if merged and s["start"] - merged[-1]["end"] <= merge_gap_s:
+            m = merged[-1]
+            m["end"] = max(m["end"], s["end"])
+            m["efficiency"] = m["efficiency"] or s["efficiency"]
+            m["userEdited"] = m["userEdited"] or s["userEdited"]
+            m["_parts"] = m.get("_parts", 1) + 1
+        else:
+            merged.append(dict(s))
+    out = []
+    for m in merged:
+        start, end = m["start"], m["end"]
+        hr = night_hr(start, end)
+        tel = telomy_stages(start, end)                    # re-stages the WHOLE merged span from the 1 Hz stream
+        out.append({"start": start, "end": end, "efficiency": m["efficiency"], "noopRestingHr": m["noopRestingHr"],
+                    "noopStages": m["noopStages"], "stages": tel["segments"] if tel else m["noopStages"],
+                    "stager": tel["model"] if tel else "NOOP", "userEdited": m["userEdited"],
+                    "mergedSessions": m.get("_parts", 1), **hr})
     # NOOP's avgHrv is deliberately NOT passed on: WHOOP 4.0 history R-R is re-delivered (~2.4x), so its HRV is
     # inflated vs ECG (~1.5x on a shared night, 2026-10-18). Telomy takes HRV from the patch or ring instead.
-    return out[::-1]
+    return out
 
 
 def telomy_stages(start: int, end: int) -> dict | None:

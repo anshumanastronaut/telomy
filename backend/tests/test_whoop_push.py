@@ -69,7 +69,8 @@ def test_replace_window_multipart_deletes_absent_rows(client):
     assert part(r1, 1, 2, [s(100)]).json()["status"] == "accepted"
     assert len(client.get("/whoop/nights").json()["nights"]) == 0        # not applied until every part is in
     part(r1, 2, 2, [s(200)])
-    assert [n["start"] for n in client.get("/whoop/nights").json()["nights"]] == [100, 200]
+    ns = client.get("/whoop/nights").json()["nights"]   # both sessions are stored; nights() merges adjacent ones
+    assert [n["start"] for n in ns] == [100] and ns[0].get("mergedSessions") == 2
     r2 = str(uuid.uuid4())
     part(r2, 1, 1, [s(200)])                                               # 100 is gone from the authoritative window
     assert [n["start"] for n in client.get("/whoop/nights").json()["nights"]] == [200]
