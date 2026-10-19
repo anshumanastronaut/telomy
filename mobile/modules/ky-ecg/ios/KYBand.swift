@@ -38,6 +38,7 @@ final class KYBand: NSObject {
     private var probedAcc = false
     private var capture: KYCapture?
     private var restingSavedAt = 0.0
+    private var lastVitalAt = 0.0   // throttle for the continuous longitudinal vitals record
     private var state: State = .idle
     private var userDisconnected = false
     private(set) var wantsStream = false
@@ -501,6 +502,15 @@ final class KYBand: NSObject {
         if let v = m.sdnn300 { mm["sdnn300"] = v }
         if let v = m.artefactPercent60 { mm["artefactPercent"] = v }
         if capture != nil { mm["capturing"] = capture!.id; capture?.addMetrics(mm) }
+        // Longitudinal vitals: persist a compact summary continuously while connected — all day, not only during a
+        // capture — so the whole day's physiology lands on one clock for the sync queue to upload. Throttled to ~10 s.
+        if now - lastVitalAt >= 9.5, let hr = st.hr {
+            lastVitalAt = now
+            var vital: [String: Any] = ["ts": Int(now.rounded()), "hr": hr, "motion": st.motionIndex,
+                                        "quality": m.quality.rawValue, "step_s": 10]
+            if let hrv = m.rmssd60, st.hrvState == "ok" || st.hrvState == "active" { vital["hrv"] = hrv }
+            KYWellnessStore.append(kind: "vitals", record: vital)
+        }
         emit?("onMetrics", mm)
         // Lock Screen live heart (ActivityKit), throttled to 5 s inside
         let live = KYLiveActivity.shared

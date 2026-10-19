@@ -10,6 +10,7 @@ import { ringSamples, ringSleepRecords } from './ringhistory';
 import { fuseNights, healthNights, ringOwnNights, sleepNeed, sleepRegularity, whoopNights, type SleepNeed, type WhoopNightIn } from './sleepfuse';
 import { api } from './api';
 import { syncDaily } from './sync';
+import { syncVitals } from './vitalsync';
 import { illnessWatch, coachLine, fmtClock, fmtDur, isNight, knots, nightsFrom, recoveryScore, sleepScore, strainFromTrimp, stressFor, vo2max, zonesFor, type Contributor, type DayEvent, type MinuteRec, type Night, type Score, type UserEventRec, localDate } from './wellness-core';
 export * from './wellness-core';
 
@@ -70,6 +71,7 @@ export function useWellness(ageHint?: number | null): Wellness {
     // real daily summaries → server (Vault, insights, twin, predictions run on them); throttled, queued offline
     const hdays = await healthConnected().then((c) => (c && bandAvailable ? Band.healthDaily(14) : [])).catch(() => []);
     syncDaily(nights, hdays);
+    syncVitals();                               // upload the continuous patch/ring vitals to the longitudinal record
     setState({ nights, minutes, age: age!, sessions, userEvents, whoopDay: whoopDay?.ok ? whoopDay : undefined });
   }, [ageHint]);
   useEffect(() => { reloaders.add(load); load(); return () => { reloaders.delete(load); }; }, [load]);
