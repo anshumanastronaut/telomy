@@ -56,7 +56,10 @@ const readForm = (node) => { const o = {}; node.querySelectorAll('[data-key]').f
 const NAV = {
   centre: [
     { sect: 'Operate' }, { id: 'dashboard', ic: '◈', label: 'Dashboard' }, { id: 'schedule', ic: '🗓', label: 'Schedule' },
-    { id: 'members', ic: '👤', label: 'Members' }, { id: 'fulfillment', ic: '📦', label: 'Orders & pickups' }, { id: 'goals', ic: '◎', label: 'Goals' },
+    { id: 'people', ic: '👤', label: 'Members & patients' }, { id: 'doctors', ic: '🩺', label: 'Doctors' },
+    { id: 'fulfillment', ic: '📦', label: 'Orders & pickups' }, { id: 'goals', ic: '◎', label: 'Goals' },
+    { sect: 'Resources' }, { id: 'therapies', ic: '✶', label: 'Therapies' }, { id: 'machines', ic: '⚙', label: 'Machines & rooms' },
+    { sect: 'Business' }, { id: 'performance', ic: '📈', label: 'Staff performance' }, { id: 'revenue', ic: '₹', label: 'Revenue' },
     { sect: 'Configure' }, { id: 'config', ic: '⚙', label: 'Modules & catalog' }, { id: 'interop', ic: '🔌', label: 'Integrations' },
   ],
   doctor: [
@@ -64,7 +67,13 @@ const NAV = {
     { id: 'tasks', ic: '✓', label: 'Tasks' }, { id: 'orders', ic: '℞', label: 'Prescriptions & orders' },
     { sect: 'Configure' }, { id: 'templates', ic: '▤', label: 'Note templates' },
   ],
+  platform: [
+    { sect: 'Network' }, { id: 'overview', ic: '◈', label: 'Overview' }, { id: 'centres', ic: '🏢', label: 'Centres' },
+    { id: 'doctors', ic: '🩺', label: 'Doctors' }, { id: 'people', ic: '👤', label: 'People' },
+  ],
 };
+// where each workspace lands on sign-in
+const HOME = { centre: 'dashboard', doctor: 'inbox', platform: 'overview' };
 function renderNav() {
   const n = document.getElementById('nav'); n.innerHTML = '';
   NAV[S.ws].forEach(item => {
@@ -72,6 +81,11 @@ function renderNav() {
     const a = el('a'); a.dataset.route = item.id; a.innerHTML = `<span class="ic">${item.ic}</span><span>${item.label}</span>`;
     a.onclick = () => { location.hash = `${S.ws}/${item.id}`; }; n.appendChild(a);
   });
+  if (S.me && S.me.admin) {  // admins manage their own team (separate doctor vs centre staff)
+    n.appendChild(el('div', 'sect', 'Admin'));
+    const a = el('a'); a.dataset.route = 'staff'; a.innerHTML = `<span class="ic">⊕</span><span>Team & access</span>`;
+    a.onclick = () => { location.hash = `${S.ws}/staff`; }; n.appendChild(a);
+  }
   document.querySelectorAll('.ws-switch button').forEach(b => b.classList.toggle('on', b.dataset.ws === S.ws));
 }
 
@@ -217,14 +231,41 @@ V.inbox = async () => {
   if ((d.care_queue || []).length) { const cc = el('div', 'card'); cc.style.marginTop = '16px'; cc.appendChild(el('h3', null, 'Care review queue')); cc.appendChild(tableOf(['Finding', ''], d.care_queue.map(c => [c.title, statusBadge('awaiting')]), '')); v.appendChild(cc); }
 };
 V.patients = async () => {
-  setTitle('Patients', []);
+  setTitle('Patients', [btn('Intake patient', 'primary', doctorIntake)]);
   const v = view(); v.appendChild(skeletonRow(1));
-  const d = await api('/mgmt/clinic/inbox?' + q({ org: S.org }));
+  const [panel, centres] = await Promise.all([api('/mgmt/doctor/patients'), api('/mgmt/doctor/centres')]);
+  S._centres = centres;
   v.innerHTML = '';
+  v.appendChild(el('p', 'muted small', 'Your panel. Intake a new patient, chart them, and assign them to a wellness centre for therapy delivery.'));
   const c = el('div', 'card table-card');
-  c.appendChild(tableOf(['Name', 'Age', 'Sex', ''], (d.patients || []).map(p => [`<b>${p.name || ('#' + p.id)}</b>`, p.age ? Math.round(p.age) : '—', p.sex || '—', btn('Chart', 'sm', () => openChart(p.id, p.name))]), 'No patients on your panel.'));
+  c.appendChild(tableOf(['Name', 'Age', 'Sex', 'City', ''], (panel || []).map(p => [`<b>${p.name || ('#' + p.id)}</b>`, p.age ? Math.round(p.age) : '—', p.sex || '—', p.city || '—',
+    spanActions([btn('Chart', 'sm', () => openChart(p.id, p.name)), btn('→ Centre', 'sm', () => assignCentre(p.id))])]), 'No patients yet — intake one.'));
   v.appendChild(c);
 };
+function spanActions(btns) { const d = el('div', 'row'); btns.forEach(b => d.appendChild(b)); return d; }
+async function doctorIntake() {
+  const centres = S._centres || await api('/mgmt/doctor/centres');
+  const node = formNode([
+    { key: 'name', label: 'Full name', type: 'text', required: true },
+    { key: 'age', label: 'Age', type: 'number' }, { key: 'sex', label: 'Sex', type: 'select', options: ['male', 'female'] },
+    { key: 'city', label: 'City', type: 'text' },
+    { key: 'org', label: 'Refer to centre (optional)', type: 'select', options: centres.map(c => ({ value: c.slug, label: c.name })) },
+  ]);
+  drawer('Intake patient', node, [{ label: 'Cancel', onClick: closeDrawer }, { label: 'Intake', kind: 'primary', onClick: async () => {
+    const v = readForm(node); if (!v.name) { toast('Name is required.'); return; }
+    try { await api('/mgmt/patients/onboard', { method: 'POST', body: { name: v.name, age: v.age ?? null, sex: v.sex || null, city: v.city || '', org: v.org || null } }); closeDrawer(); toast('Patient intaken'); V.patients(); } catch (e) { toast(e.message); }
+  } }]);
+}
+async function assignCentre(pid) {
+  const centres = S._centres || await api('/mgmt/doctor/centres');
+  if (!centres.length) { toast('You are not affiliated with any centre yet.'); return; }
+  const node = formNode([{ key: 'org', label: 'Centre', type: 'select', options: centres.map(c => ({ value: c.slug, label: c.name })), required: true },
+    { key: 'note', label: 'Referral note (optional)', type: 'textarea' }]);
+  drawer('Assign to centre', node, [{ label: 'Cancel', onClick: closeDrawer }, { label: 'Assign', kind: 'primary', onClick: async () => {
+    const v = readForm(node); if (!v.org) { toast('Pick a centre.'); return; }
+    try { await api('/mgmt/assign/centre', { method: 'POST', body: { patient_id: pid, org: v.org, note: v.note || '' } }); closeDrawer(); toast('Assigned to centre'); } catch (e) { toast(e.message); }
+  } }]);
+}
 V.tasks = async () => {
   setTitle('Tasks', [btn('New task', 'primary', newTask)]);
   const v = view(); const rows = await api('/mgmt/clinic/tasks?' + q({ org: S.org })); v.innerHTML = '';
@@ -240,8 +281,218 @@ V.templates = async () => {
   c.appendChild(tableOf(['Name', 'Sections', ''], t.map(x => [`<b>${x.name}</b>`, (x.data.sections || []).map(s => s.title).join(' · '), '']), 'No templates.'));
   v.appendChild(c);
 };
+// ======================= PLATFORM (super-admin) =======================
+V.overview = async () => {
+  setTitle('Network overview');
+  const v = view(); const d = await api('/mgmt/admin/overview');
+  v.appendChild(kpis([['Centres', d.centres], ['Doctors', d.doctors], ['People', d.patients], ['Network revenue', money(d.total_revenue)]]));
+  const c = el('div', 'card table-card'); c.style.marginTop = '16px';
+  c.appendChild(tableOf(['Centre', 'City', 'Status', 'People', 'Staff', 'Revenue', 'Outstanding'],
+    (d.rows || []).map(r => [`<b>${r.name}</b><div class="small muted">${r.slug}</div>`, r.city || '—', statusBadge(r.status),
+      r.patients, r.staff, money(r.revenue), r.outstanding ? `<span class="badge warn">${money(r.outstanding)}</span>` : '—']),
+    'No centres yet — onboard one from Centres.'));
+  v.appendChild(c);
+};
+V.centres = async () => {
+  setTitle('Centres', [btn('Onboard centre', 'primary', newCentre)]);
+  const v = view(); const rows = await api('/mgmt/admin/centres');
+  const c = el('div', 'card table-card');
+  c.appendChild(tableOf(['Centre', 'Slug', 'City', 'Status', ''], rows.map(r => [`<b>${r.name}</b>`, r.slug, r.city || '—', statusBadge(r.status),
+    btn(r.status === 'active' ? 'Suspend' : 'Activate', 'sm' + (r.status === 'active' ? ' danger' : ''), () => setCentreStatus(r.slug, r.status === 'active' ? 'suspended' : 'active'))]), 'No centres yet.'));
+  v.appendChild(c);
+};
+V.doctors = async () => {   // shared name: platform lists all doctors; centre lists its affiliated doctors
+  if (S.ws === 'platform') {
+    setTitle('Doctors', [btn('Onboard doctor', 'primary', newDoctor)]);
+    const v = view(); const all = await api('/mgmt/admin/staff');
+    const docs = all.filter(s => ['doctor', 'clinic_admin'].includes(s.role));
+    const c = el('div', 'card table-card');
+    c.appendChild(tableOf(['Doctor', 'Email', 'Role', 'Centre', 'Status'], docs.map(s => [`<b>${s.name}</b>`, s.email, s.label, s.org, s.active ? '<span class="badge ok">active</span>' : '<span class="badge">off</span>']), 'No doctors yet.'));
+    v.appendChild(c); return;
+  }
+  // centre workspace: affiliated doctors (super-admin affiliates them)
+  setTitle('Affiliated doctors');
+  const v = view(); const docs = await api('/mgmt/centre/doctors?' + q({ org: S.org }));
+  v.appendChild(el('p', 'muted small', 'Doctors affiliated to your centre. Patients can be assigned to them. New doctors are onboarded by the Telomy super-admin.'));
+  const c = el('div', 'card table-card');
+  c.appendChild(tableOf(['Doctor', 'Email', 'Specialty'], docs.map(s => [`<b>${s.name}</b>`, s.email, (s.profile || {}).specialty || '—']), 'No affiliated doctors yet.'));
+  v.appendChild(c);
+};
+V.people = async () => {    // shared name: platform = all people by centre; centre = its members/patients
+  if (S.ws === 'platform') {
+    setTitle('People');
+    const v = view(); const d = await api('/mgmt/admin/overview');
+    v.appendChild(el('p', 'muted small', 'People are managed inside each centre and clinic. Totals by centre:'));
+    const c = el('div', 'card table-card');
+    c.appendChild(tableOf(['Centre', 'People'], (d.rows || []).map(r => [`<b>${r.name}</b>`, r.patients]), 'No people yet.'));
+    v.appendChild(c); return;
+  }
+  setTitle('Members & patients', [btn('Onboard person', 'primary', newPerson)]);
+  const v = view(); const [people, docs] = await Promise.all([api('/mgmt/centre/people?' + q({ org: S.org })), api('/mgmt/centre/doctors?' + q({ org: S.org }))]);
+  S._docs = docs;
+  const c = el('div', 'card table-card');
+  c.appendChild(tableOf(['Name', 'Age', 'Sex', 'City', 'Doctor', ''], people.map(p => [`<b>${p.name}</b>`, p.age ? Math.round(p.age) : '—', p.sex || '—', p.city || '—',
+    p.doctor ? p.doctor : '<span class="faint">unassigned</span>', btn(p.doctor ? 'Reassign' : 'Assign doctor', 'sm', () => assignDoctor(p.id))]), 'No members yet — onboard one.'));
+  v.appendChild(c);
+};
+V.therapies = async () => {
+  setTitle('Therapies', [btn('Add therapy', 'primary', () => newCatalog('service_type', 'Therapy / service'))]);
+  const v = view(); const [items, staff] = await Promise.all([api('/mgmt/catalog?' + q({ org: S.org, kind: 'service_type' })), api('/mgmt/staff?' + q({ org: S.org }))]);
+  await renderResourceList(v, items, 'service', staff, 'therapists');
+};
+V.machines = async () => {
+  setTitle('Machines & rooms', [btn('Add machine / room', 'primary', () => newCatalog('resource', 'Machine / room'))]);
+  const v = view(); const [items, staff] = await Promise.all([api('/mgmt/catalog?' + q({ org: S.org, kind: 'resource' })), api('/mgmt/staff?' + q({ org: S.org }))]);
+  await renderResourceList(v, items, 'resource', staff, 'operators');
+};
+V.performance = async () => {
+  setTitle('Staff performance');
+  const v = view(); const rows = await api('/mgmt/centre/performance?' + q({ org: S.org }));
+  const c = el('div', 'card table-card');
+  c.appendChild(tableOf(['Staff', 'Role', 'Delivered', 'No-show', 'Revenue'], rows.map(r => [
+    `<b>${r.name}</b>`, r.label || r.role, r.delivered, r.no_show || 0, money(r.revenue)]), 'No staff activity yet.'));
+  v.appendChild(c);
+  v.appendChild(el('p', 'muted small', 'Delivered sessions and revenue are computed from the booking ledger — no separate bookkeeping.'));
+};
+V.revenue = async () => {
+  setTitle('Revenue');
+  const v = view(); const d = await api('/mgmt/centre/revenue?' + q({ org: S.org }));
+  v.appendChild(kpis([['Total revenue', money(d.total_revenue)], ['Sessions', money(d.session_revenue), `${d.sessions_delivered} delivered`],
+    ['Orders', money(d.orders_value), `${d.orders_n} orders`], ['Outstanding', money(d.outstanding)]]));
+  v.appendChild(el('p', 'muted small', 'One app runs the whole centre — scheduling, memberships, fulfilment and billing roll into a single revenue view.'));
+};
+// a therapy/machine card list with an "assign delivering staff" drawer
+async function renderResourceList(v, items, dutyKind, staff, who) {
+  const delivering = staff.filter(s => s.delivers);
+  const allDuties = await api('/mgmt/duties?' + q({ org: S.org }));
+  const dutyMap = {};
+  items.forEach(it => { dutyMap[it.id] = allDuties.filter(d => d.duty_kind === dutyKind && d.ref_id === it.id); });
+  const grid = el('div', 'grid cols-2');
+  items.forEach(it => {
+    const assigned = (dutyMap[it.id] || []).map(d => d.staff_id);
+    const names = delivering.filter(s => assigned.includes(s.id)).map(s => s.name);
+    const card = el('div', 'card');
+    card.innerHTML = `<div class="row between center"><b>${it.name}</b>${it.data?.price ? `<span class="badge primary">${money(it.data.price)}</span>` : ''}</div>
+      <div class="small muted" style="margin:6px 0">${it.data?.minutes ? it.data.minutes + ' min · ' : ''}${names.length ? who + ': ' + names.join(', ') : 'No ' + who + ' assigned'}</div>`;
+    card.appendChild(btn('Assign ' + who, 'sm', () => assignDuty(it, dutyKind, delivering, assigned, who)));
+    grid.appendChild(card);
+  });
+  v.appendChild(items.length ? grid : empty('None yet — add one.'));
+}
+async function assignDuty(item, dutyKind, delivering, assigned, who) {
+  const node = el('div'); node.innerHTML = `<p class="muted small">Choose which ${who} can run <b>${item.name}</b>.</p>`;
+  const state = new Set(assigned);
+  delivering.forEach(s => {
+    const row = el('label', 'row center'); row.style.margin = '6px 0'; row.style.cursor = 'pointer';
+    const cb = el('input'); cb.type = 'checkbox'; cb.style.width = 'auto'; cb.checked = state.has(s.id);
+    cb.onchange = () => { cb.checked ? state.add(s.id) : state.delete(s.id); };
+    row.appendChild(cb); row.appendChild(el('span', null, `&nbsp; ${s.name} <span class="faint small">· ${s.label}</span>`));
+    node.appendChild(row);
+  });
+  drawer('Assign ' + who, node, [{ label: 'Cancel', onClick: closeDrawer }, { label: 'Save', kind: 'primary', onClick: async () => {
+    try {
+      for (const s of delivering) {
+        const now = state.has(s.id), was = assigned.includes(s.id);
+        if (now && !was) await api('/mgmt/duties', { method: 'POST', body: { org: S.org, staff_id: s.id, duty_kind: dutyKind, ref_id: item.id } });
+        if (!now && was) await api('/mgmt/duties?' + q({ org: S.org, staff_id: s.id, duty_kind: dutyKind, ref_id: item.id }), { method: 'DELETE' });
+      }
+      closeDrawer(); toast('Saved'); route();
+    } catch (e) { toast(e.message); }
+  } }]);
+}
+V.staff = async () => {
+  if (!S.me || !S.me.admin) { setTitle('Team & access'); view().appendChild(empty('Admins only.')); return; }
+  setTitle('Team & access', [btn('Add staff', 'primary', newStaff)]);
+  const v = view();
+  const [rows, status] = await Promise.all([api('/mgmt/staff?' + q({ org: S.org })), api('/mgmt/auth/status')]);
+  S._roles = status.roles || {};
+  v.innerHTML = '';
+  v.appendChild(el('p', 'muted small', 'Centre and Doctor sides sign in separately. Add doctors and clinic admins for the Doctor side; centre admins and front-desk staff for the Centre side.'));
+  const c = el('div', 'card table-card');
+  c.appendChild(tableOf(['Name', 'Email', 'Role', 'Status', ''], rows.map(s => [
+    `<b>${s.name}</b>`, s.email, `<span class="badge ${ (S._roles[s.role]?.workspace) === 'doctor' ? 'primary' : 'copper'}">${s.label}</span>`,
+    s.active ? '<span class="badge ok">active</span>' : '<span class="badge">disabled</span>',
+    s.id === S.me.staff_id ? '<span class="small muted">you</span>' : btn(s.active ? 'Disable' : 'Enable', 'sm' + (s.active ? ' danger' : ''), () => toggleStaff(s.id, !s.active)),
+  ]), 'No staff yet.'));
+  v.appendChild(c);
+};
 
 // ---- actions ----
+async function newStaff() {
+  const roles = S._roles || {};
+  // an admin can only create roles in their own workspace (platform super-admins use Onboard centre/doctor instead)
+  const roleOpts = Object.entries(roles).filter(([k, v]) => v.workspace === S.me.workspace && k !== 'super_admin')
+    .map(([k, v]) => ({ value: k, label: v.label }));
+  const node = formNode([
+    { key: 'name', label: 'Full name', type: 'text', required: true },
+    { key: 'email', label: 'Email (their login)', type: 'text', required: true },
+    { key: 'role', label: 'Role', type: 'select', options: roleOpts, required: true },
+    { key: 'password', label: 'Temporary password (8+ chars)', type: 'text', required: true },
+  ]);
+  drawer('Add staff', node, [{ label: 'Cancel', onClick: closeDrawer }, { label: 'Create account', kind: 'primary', onClick: async () => {
+    const v = readForm(node);
+    if (!v.name || !v.email || !v.role || !(v.password || '').length) { toast('All fields are required.'); return; }
+    try { await api('/mgmt/staff', { method: 'POST', body: { org: S.org, role: v.role, name: v.name, email: v.email, password: String(v.password) } }); closeDrawer(); toast('Staff account created'); V.staff(); } catch (e) { toast(e.message); }
+  } }]);
+}
+async function toggleStaff(id, active) {
+  try { await api(`/mgmt/staff/${id}/active`, { method: 'POST', body: { active } }); toast(active ? 'Enabled' : 'Disabled'); V.staff(); } catch (e) { toast(e.message); }
+}
+// ---- platform (super-admin) actions ----
+function newCentre() {
+  const node = formNode([
+    { key: 'name', label: 'Centre name', type: 'text', required: true },
+    { key: 'city', label: 'City', type: 'text' },
+    { key: 'admin_name', label: "Centre admin's name", type: 'text' },
+    { key: 'admin_email', label: "Admin login email", type: 'text' },
+    { key: 'admin_password', label: 'Temporary password (8+ chars)', type: 'text' },
+  ]);
+  drawer('Onboard centre', node, [{ label: 'Cancel', onClick: closeDrawer }, { label: 'Onboard', kind: 'primary', onClick: async () => {
+    const v = readForm(node); if (!v.name) { toast('Name is required.'); return; }
+    try { await api('/mgmt/admin/centres', { method: 'POST', body: { name: v.name, city: v.city || '', admin_name: v.admin_name || '', admin_email: v.admin_email || '', admin_password: v.admin_password ? String(v.admin_password) : '' } }); closeDrawer(); toast('Centre onboarded'); V.centres(); } catch (e) { toast(e.message); }
+  } }]);
+}
+async function setCentreStatus(slug, status) {
+  try { await api(`/mgmt/admin/centres/${slug}/status`, { method: 'POST', body: { status } }); toast('Updated'); V.centres(); } catch (e) { toast(e.message); }
+}
+async function newDoctor() {
+  const centres = await api('/mgmt/admin/centres');
+  const node = formNode([
+    { key: 'name', label: 'Doctor name', type: 'text', required: true },
+    { key: 'email', label: 'Login email', type: 'text', required: true },
+    { key: 'password', label: 'Temporary password (8+ chars)', type: 'text', required: true },
+    { key: 'org', label: 'Affiliate to centre (optional)', type: 'select', options: [{ value: '', label: 'Independent' }, ...centres.map(c => ({ value: c.slug, label: c.name }))] },
+    { key: 'clinic_admin', label: 'Clinic admin (manages the clinic)?', type: 'bool' },
+  ]);
+  drawer('Onboard doctor', node, [{ label: 'Cancel', onClick: closeDrawer }, { label: 'Onboard', kind: 'primary', onClick: async () => {
+    const v = readForm(node); if (!v.name || !v.email || !v.password) { toast('Name, email and password are required.'); return; }
+    try { await api('/mgmt/admin/doctors', { method: 'POST', body: { name: v.name, email: v.email, password: String(v.password), org: v.org || null, clinic_admin: v.clinic_admin === 'Yes' } }); closeDrawer(); toast('Doctor onboarded'); V.doctors(); } catch (e) { toast(e.message); }
+  } }]);
+}
+// ---- centre: onboard a person & assign to a doctor ----
+async function newPerson() {
+  const docs = S._docs || await api('/mgmt/centre/doctors?' + q({ org: S.org }));
+  const node = formNode([
+    { key: 'name', label: 'Full name', type: 'text', required: true },
+    { key: 'age', label: 'Age', type: 'number' }, { key: 'sex', label: 'Sex', type: 'select', options: ['male', 'female'] },
+    { key: 'city', label: 'City', type: 'text' },
+    { key: 'doctor_id', label: 'Assign to doctor (optional)', type: 'select', options: docs.map(d => ({ value: d.id, label: d.name })) },
+  ]);
+  drawer('Onboard person', node, [{ label: 'Cancel', onClick: closeDrawer }, { label: 'Onboard', kind: 'primary', onClick: async () => {
+    const v = readForm(node); if (!v.name) { toast('Name is required.'); return; }
+    try { await api('/mgmt/patients/onboard', { method: 'POST', body: { name: v.name, age: v.age ?? null, sex: v.sex || null, city: v.city || '', doctor_id: v.doctor_id ? Number(v.doctor_id) : null } }); closeDrawer(); toast('Onboarded'); V.people(); } catch (e) { toast(e.message); }
+  } }]);
+}
+async function assignDoctor(pid) {
+  const docs = S._docs || await api('/mgmt/centre/doctors?' + q({ org: S.org }));
+  if (!docs.length) { toast('No affiliated doctors yet — ask the super-admin to add one.'); return; }
+  const node = formNode([{ key: 'doctor_id', label: 'Doctor', type: 'select', options: docs.map(d => ({ value: d.id, label: `${d.name} · ${d.label || 'Doctor'}` })), required: true },
+    { key: 'note', label: 'Note (optional)', type: 'text' }]);
+  drawer('Assign doctor', node, [{ label: 'Cancel', onClick: closeDrawer }, { label: 'Assign', kind: 'primary', onClick: async () => {
+    const v = readForm(node); if (!v.doctor_id) { toast('Pick a doctor.'); return; }
+    try { await api('/mgmt/assign/doctor', { method: 'POST', body: { patient_id: pid, doctor_id: Number(v.doctor_id), note: v.note || '' } }); closeDrawer(); toast('Assigned'); V.people(); } catch (e) { toast(e.message); }
+  } }]);
+}
 async function newMember() {
   const schema = await api('/mgmt/form?' + q({ org: S.org, entity: 'member' }));
   const base = [{ key: 'name', label: 'Full name', type: 'text', required: true }, { key: 'phone', label: 'Phone', type: 'text' }, { key: 'email', label: 'Email', type: 'text' }];
@@ -396,36 +647,77 @@ function selectOf(label, pairs) { const s = el('select'); pairs.forEach(([v, t])
 
 // ---- router ----
 function route() {
-  const [ws, page] = (location.hash.replace('#', '') || 'centre/dashboard').split('/');
-  S.ws = (ws === 'doctor') ? 'doctor' : 'centre';
+  let [ws, page] = (location.hash.replace('#', '') || 'centre/dashboard').split('/');
+  // a role may only enter a workspace it is allowed — doctor, centre and platform logins are separate
+  if (S.allowedWs && !S.allowedWs.includes(ws)) { ws = S.me ? S.me.workspace : 'centre'; location.hash = `${ws}/${HOME[ws]}`; return; }
+  S.ws = ws;
   renderNav();
   document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === page));
-  const fn = V[page] || V[S.ws === 'doctor' ? 'inbox' : 'dashboard'];
+  const fn = V[page] || V[HOME[S.ws]] || V.dashboard;
   fn().catch(e => { if (e.message !== 'unauthorised') view().appendChild(empty('Could not load: ' + e.message)); });
 }
 window.addEventListener('hashchange', route);
 document.querySelectorAll('.ws-switch button').forEach(b => b.onclick = () => { location.hash = `${b.dataset.ws}/${b.dataset.ws === 'doctor' ? 'inbox' : 'dashboard'}`; });
-document.getElementById('signout').onclick = () => { localStorage.removeItem('tc.token'); location.reload(); };
+document.getElementById('signout').onclick = async () => { try { await api('/mgmt/auth/logout', { method: 'POST' }); } catch (e) {} localStorage.removeItem('tc.token'); S.token = ''; S.me = null; location.reload(); };
 
-// ---- auth / boot ----
-function showLogin() { document.getElementById('app').hidden = true; document.getElementById('login').hidden = false; document.getElementById('srv').value = S.api; }
+// ---- auth / boot (separate Centre vs Doctor logins) ----
+let SIGNUP = false;
+function showLogin() {
+  document.getElementById('app').hidden = true;
+  const L = document.getElementById('login'); L.hidden = false;
+  document.getElementById('srv').value = S.api;
+  // populate roles + decide if this is the very first account (bootstrap)
+  fetch(S.api + '/mgmt/auth/status').then(r => r.json()).then(st => {
+    const sel = document.getElementById('suRole'); sel.innerHTML = '';
+    Object.entries(st.roles || {}).forEach(([k, v]) => { const o = document.createElement('option'); o.value = k; o.textContent = v.label; sel.appendChild(o); });
+    const tog = document.getElementById('toggleSignup');
+    if (!st.has_staff) { tog.textContent = 'No accounts yet — create the first admin'; } else { tog.textContent = 'First time? Ask your admin to add you'; }
+  }).catch(() => {});
+}
+document.getElementById('toggleSignup').onclick = () => {
+  SIGNUP = !SIGNUP;
+  document.getElementById('signupFields').hidden = !SIGNUP;
+  document.getElementById('loginBtn').textContent = SIGNUP ? 'Create account' : 'Sign in';
+  document.getElementById('loginSub').textContent = SIGNUP ? 'Create a staff account (first one is the admin).' : 'Sign in — the Centre and Doctor sides use separate accounts.';
+  document.getElementById('toggleSignup').textContent = SIGNUP ? 'Have an account? Sign in' : 'First time? Create the first admin account';
+};
 document.getElementById('loginBtn').onclick = async () => {
   S.api = document.getElementById('srv').value.replace(/\/$/, '') || location.origin;
-  const pw = document.getElementById('pw').value;
+  const email = document.getElementById('email').value.trim(), pw = document.getElementById('pw').value;
+  const err = document.getElementById('loginErr'); err.textContent = '';
   try {
-    const st = await fetch(S.api + '/auth/status').then(r => r.json());
-    if (st.password_required || st.accounts_enabled === false) { const r = await fetch(S.api + '/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) }).then(r => r.json()); if (!r.token && st.password_required) { document.getElementById('loginErr').textContent = 'Wrong password.'; return; } S.token = r.token || ''; }
-    localStorage.setItem('tc.api', S.api); localStorage.setItem('tc.token', S.token); boot();
-  } catch (e) { document.getElementById('loginErr').textContent = 'Could not reach the server.'; }
+    if (SIGNUP) {
+      const body = { org: S.org, role: document.getElementById('suRole').value, name: document.getElementById('suName').value || email, email, password: pw };
+      const r = await fetch(S.api + '/mgmt/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { err.textContent = (await r.json()).detail || 'Could not create account.'; return; }
+      SIGNUP = false; document.getElementById('toggleSignup').onclick();  // flip back to sign in
+    }
+    const r = await fetch(S.api + '/mgmt/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) });
+    const j = await r.json();
+    if (!r.ok) { err.textContent = j.detail || 'Sign in failed.'; return; }
+    S.token = j.token; S.me = j;
+    localStorage.setItem('tc.api', S.api); localStorage.setItem('tc.token', S.token);
+    boot();
+  } catch (e) { err.textContent = 'Could not reach the server.'; }
 };
 async function boot() {
   try {
-    S.cfg = await api('/mgmt/overview?' + q({ org: S.org }));
-    document.getElementById('orgName').textContent = S.cfg.branding?.name || 'Telomy';
-    const prim = S.cfg.branding?.primary; if (prim) document.documentElement.style.setProperty('--primary', prim);
-    document.getElementById('apiHost').textContent = new URL(S.api).host;
+    if (!S.me) S.me = await api('/mgmt/auth/me');          // resolve role from the staff token
+    S.org = S.me.org || 'default';
+    // one login == one workspace. Centre and Doctor sign in separately; the super-admin lives in the platform workspace.
+    S.ws = S.me.workspace;
+    S.allowedWs = [S.ws];
+    if (S.ws === 'platform') {
+      document.getElementById('orgName').textContent = 'Telomy · Network';
+    } else {
+      S.cfg = await api('/mgmt/overview?' + q({ org: S.org })).catch(() => null);
+      document.getElementById('orgName').textContent = S.cfg?.branding?.name || (S.ws === 'doctor' ? 'Telomy Clinic' : 'Telomy Centre');
+      const prim = S.cfg?.branding?.primary; if (prim) document.documentElement.style.setProperty('--primary', prim);
+    }
+    document.getElementById('apiHost').textContent = `${S.me.name} · ${S.me.label}`;
+    document.querySelector('.ws-switch').style.display = 'none';  // no cross-workspace switching — roles are separate
     document.getElementById('login').hidden = true; document.getElementById('app').hidden = false;
-    if (!location.hash) location.hash = 'centre/dashboard'; route();
-  } catch (e) { showLogin(); }
+    location.hash = `${S.ws}/${HOME[S.ws]}`; route();
+  } catch (e) { S.me = null; showLogin(); }
 }
 boot();

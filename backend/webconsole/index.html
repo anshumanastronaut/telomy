@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Telomy Console</title>
 <meta name="description" content="Wellness-centre and doctor management console for Telomy.">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=1792431597">
 </head>
 <body>
 <div id="app" class="app" hidden>
@@ -29,13 +29,21 @@
 </div>
 
 <!-- login -->
-<div id="login" class="card" style="max-width:380px;margin:12vh auto;" hidden>
-  <div class="brand" style="padding:0 0 14px"><span class="dot">T</span><span>Telomy Console</span></div>
-  <p class="muted small" style="margin-top:0">Sign in to your centre / clinic workspace.</p>
+<div id="login" class="card" style="max-width:400px;margin:10vh auto;" hidden>
+  <div class="brand" style="padding:0 0 6px"><span class="dot">T</span><span id="loginTitle">Telomy Console</span></div>
+  <p class="muted small" style="margin-top:0" id="loginSub">Sign in — the Centre and Doctor sides use separate accounts.</p>
   <label class="field"><span>Server</span><input id="srv" placeholder="https://your-telomy-server"></label>
-  <label class="field"><span>Access password</span><input id="pw" type="password" placeholder="••••••••"></label>
-  <div id="loginErr" class="small" style="color:var(--danger)"></div>
+  <div id="signinFields">
+    <label class="field"><span>Email</span><input id="email" type="email" placeholder="you@centre.com" autocomplete="username"></label>
+    <label class="field"><span>Password</span><input id="pw" type="password" placeholder="••••••••" autocomplete="current-password"></label>
+  </div>
+  <div id="signupFields" hidden>
+    <label class="field"><span>Your name</span><input id="suName" placeholder="Full name"></label>
+    <label class="field"><span>Role</span><select id="suRole"></select></label>
+  </div>
+  <div id="loginErr" class="small" style="color:var(--danger);min-height:16px"></div>
   <button class="btn primary" style="width:100%;justify-content:center" id="loginBtn">Sign in</button>
+  <div style="text-align:center;margin-top:12px"><a id="toggleSignup" class="small">First time? Create the first admin account</a></div>
 </div>
 
 <div class="scrim" id="scrim"></div>
@@ -46,6 +54,6 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=1792431597"></script>
 </body>
 </html>

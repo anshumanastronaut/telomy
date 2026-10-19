@@ -17,7 +17,7 @@ from . import bioage  # noqa: E402
 from . import platform as pform  # noqa: E402
 from . import centre as centremod  # noqa: E402
 from . import clinic as clinicmod  # noqa: E402
-from . import fulfillment, goals, interop  # noqa: E402
+from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancymod  # noqa: E402
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
@@ -35,7 +35,7 @@ async def lifespan(_app):
     rx.init()
     summaries.init()
     acctmod.init()
-    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod, pform, centremod, clinicmod, fulfillment, goals, interop):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod, pform, centremod, clinicmod, fulfillment, goals, interop, staffmod, tenancymod):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -83,7 +83,7 @@ from fastapi import Request as _Req
 from fastapi.responses import JSONResponse as _JR
 _PW = _os.environ.get("TELOMY_ACCESS_PASSWORD", "")
 _SECRET = _os.environ.get("TELOMY_SECRET", "") or _hl.sha256(("telomy:" + _PW).encode()).hexdigest()
-_OPEN = {"/auth/password", "/auth/status", "/docs", "/openapi.json", "/static/telomy_anatomy.glb", "/whoop/push"}  # /whoop/push has its own bearer token  # model: public CC-BY anatomy, nothing personal
+_OPEN = {"/auth/password", "/auth/status", "/docs", "/openapi.json", "/static/telomy_anatomy.glb", "/whoop/push", "/mgmt/auth/login", "/mgmt/auth/signup", "/mgmt/auth/status"}  # /whoop/push has its own bearer token  # model: public CC-BY anatomy, nothing personal
 
 
 def _token() -> str:
@@ -95,7 +95,7 @@ async def _require_password(request: _Req, call_next):
     if acctmod.enabled() or not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith(("/nightscout/", "/console")):
         return await call_next(request)
     auth = request.headers.get("authorization", "")
-    if auth.startswith("Bearer ") and _hm.compare_digest(auth[7:], _token()):
+    if auth.startswith("Bearer ") and (_hm.compare_digest(auth[7:], _token()) or staffmod.whoami(auth[7:])):
         return await call_next(request)
     return _JR({"detail": "Telomy is locked. Enter your access password."}, status_code=401)
 
@@ -133,7 +133,7 @@ async def _bind_user(request: _Req, authorization: str = _Hdr(default="")):
     if not acctmod.enabled():
         return                                                # single-user mode unchanged
     path = request.url.path
-    if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith(("/nightscout/", "/console")):
+    if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith(("/nightscout/", "/console", "/mgmt", "/interop")):
         return
     uid = acctmod.user_for_token(authorization[7:] if authorization.startswith("Bearer ") else "")
     if not uid:
@@ -2040,6 +2040,367 @@ def mgmt_webhooks(org: str = "default"):
 @app.post("/mgmt/webhooks")
 def mgmt_webhook_add(body: dict):
     return interop.add_webhook(body.get("org", "default"), body.get("url", ""), body.get("events", ["*"]))
+
+
+# ---- Staff accounts & role-based login (centre vs doctor log in separately) ----
+class StaffSignup(BaseModel):
+    org: str = "default"
+    role: str
+    name: str
+    email: str
+    password: str
+
+
+class StaffLogin(BaseModel):
+    email: str
+    password: str
+
+
+@app.get("/mgmt/auth/status")
+def mgmt_auth_status():
+    return {"roles": staffmod.ROLES, "has_staff": staffmod.any_staff()}
+
+
+@app.post("/mgmt/auth/signup")
+def mgmt_auth_signup(body: StaffSignup, authorization: str = _Hdr(default="")):
+    # first account bootstraps; after that, only an admin can add staff
+    me = None
+    if staffmod.any_staff():
+        me = staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+        if not me or not me["admin"]:
+            raise HTTPException(403, "Only an admin can add staff.")
+    _guard_staff_creation(me, body.role, body.org)
+    try:
+        return staffmod.create_staff(body.org, body.role, body.name, body.email, body.password, by=(me or {}).get("email", "bootstrap"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/auth/login")
+def mgmt_auth_login(body: StaffLogin):
+    try:
+        return staffmod.login(body.email, body.password)
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+
+
+@app.get("/mgmt/auth/me")
+def mgmt_auth_me(authorization: str = _Hdr(default="")):
+    me = staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+    if not me:
+        raise HTTPException(401, "Not signed in.")
+    return me
+
+
+@app.post("/mgmt/auth/logout")
+def mgmt_auth_logout(authorization: str = _Hdr(default="")):
+    if authorization.startswith("Bearer "):
+        staffmod.logout(authorization[7:])
+    return {"ok": True}
+
+
+@app.get("/mgmt/staff")
+def mgmt_staff(org: str = "default"):
+    return staffmod.list_staff(org)
+
+
+@app.post("/mgmt/staff")
+def mgmt_staff_add(body: StaffSignup, authorization: str = _Hdr(default="")):
+    me = staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+    if staffmod.any_staff() and (not me or not me["admin"]):
+        raise HTTPException(403, "Only an admin can add staff.")
+    _guard_staff_creation(me, body.role, body.org)
+    try:
+        return staffmod.create_staff(body.org, body.role, body.name, body.email, body.password, by=(me or {}).get("email", "setup"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+def _guard_staff_creation(me: dict | None, role: str, org: str):
+    """Privilege rules: only a super-admin creates super-admins or staff outside their own org/workspace."""
+    if role not in staffmod.ROLES:
+        raise HTTPException(400, "Unknown role.")
+    if me is None:
+        return  # bootstrap: the very first account may be anything (typically super_admin or a centre_admin)
+    if me["role"] == "super_admin":
+        return
+    target_ws = staffmod.ROLES[role]["workspace"]
+    if role == "super_admin" or target_ws == "platform":
+        raise HTTPException(403, "Only a super-admin can create platform accounts.")
+    if org != me["org"]:
+        raise HTTPException(403, "You can only add staff to your own organisation.")
+    if target_ws != me["workspace"]:
+        raise HTTPException(403, f"A {me['workspace']} admin cannot create {target_ws}-side accounts.")
+
+
+class StaffActive(BaseModel):
+    active: bool = True
+
+
+@app.post("/mgmt/staff/{sid}/active")
+def mgmt_staff_active(sid: int, body: StaffActive, authorization: str = _Hdr(default="")):
+    me = staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+    if not me or not me["admin"]:
+        raise HTTPException(403, "Only an admin can change staff access.")
+    if sid == me["staff_id"]:
+        raise HTTPException(400, "You cannot disable your own account.")
+    if not any(s["id"] == sid for s in staffmod.list_staff(me["org"])):
+        raise HTTPException(404, "No such staff member in your organisation.")
+    staffmod.set_active(sid, body.active)
+    return {"ok": True, "id": sid, "active": body.active}
+
+
+# ---- staff auth helpers (shared by the admin / assignment / performance endpoints) ----
+def _staff(authorization: str) -> dict | None:
+    return staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+
+
+def _require_staff(authorization: str) -> dict:
+    me = _staff(authorization)
+    if not me:
+        raise HTTPException(401, "Sign in to the console first.")
+    return me
+
+
+def _require_super(authorization: str) -> dict:
+    me = _require_staff(authorization)
+    if me["role"] != "super_admin":
+        raise HTTPException(403, "Super-admin only.")
+    return me
+
+
+def _require_org_admin(authorization: str, org: str) -> dict:
+    """An admin of this org, or any super-admin."""
+    me = _require_staff(authorization)
+    if me["role"] == "super_admin":
+        return me
+    if not me["admin"] or me["org"] != org:
+        raise HTTPException(403, "You must be an admin of this organisation.")
+    return me
+
+
+@app.post("/mgmt/staff/{sid}/profile")
+def mgmt_staff_profile(sid: int, body: dict, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    tgt = staffmod.get_staff(sid)
+    if not tgt:
+        raise HTTPException(404, "No such staff member.")
+    if not (me["role"] == "super_admin" or (me["admin"] and me["org"] == tgt["org"]) or me["staff_id"] == sid):
+        raise HTTPException(403, "Not allowed.")
+    return staffmod.update_profile(sid, name=body.get("name"), profile=body.get("profile") or {})
+
+
+# ---- Super-admin: onboard & oversee the whole network ----
+class CentreOnboard(BaseModel):
+    name: str
+    city: str = ""
+    slug: str | None = None
+    admin_name: str = ""
+    admin_email: str = ""
+    admin_password: str = ""
+
+
+@app.get("/mgmt/admin/overview")
+def mgmt_admin_overview(authorization: str = _Hdr(default="")):
+    _require_super(authorization)
+    return tenancymod.platform_overview()
+
+
+@app.get("/mgmt/admin/centres")
+def mgmt_admin_centres(authorization: str = _Hdr(default="")):
+    _require_super(authorization)
+    return tenancymod.list_centres()
+
+
+@app.post("/mgmt/admin/centres")
+def mgmt_admin_centre_add(body: CentreOnboard, authorization: str = _Hdr(default="")):
+    me = _require_super(authorization)
+    try:
+        return tenancymod.onboard_centre(body.name, body.city, body.slug, body.admin_name, body.admin_email,
+                                         body.admin_password, by=me["email"])
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/admin/centres/{slug}/status")
+def mgmt_admin_centre_status(slug: str, body: dict, authorization: str = _Hdr(default="")):
+    _require_super(authorization)
+    tenancymod.set_centre_status(slug, body.get("status", "active"))
+    return {"ok": True}
+
+
+@app.get("/mgmt/admin/staff")
+def mgmt_admin_staff(authorization: str = _Hdr(default="")):
+    _require_super(authorization)
+    return staffmod.all_staff()
+
+
+class DoctorOnboard(BaseModel):
+    name: str
+    email: str
+    password: str
+    org: str | None = None          # affiliate to a centre on creation (optional)
+    clinic_admin: bool = False
+
+
+@app.post("/mgmt/admin/doctors")
+def mgmt_admin_doctor_add(body: DoctorOnboard, authorization: str = _Hdr(default="")):
+    me = _require_super(authorization)
+    role = "clinic_admin" if body.clinic_admin else "doctor"
+    org = body.org or "independent"
+    try:
+        doc = staffmod.create_staff(org, role, body.name, body.email, body.password, by=me["email"])
+        if body.org:
+            tenancymod.affiliate_doctor(doc["id"], body.org)
+        return doc
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- The care graph: onboarding & assignments (doctor ⇄ centre ⇄ patient) ----
+class PatientOnboard(BaseModel):
+    name: str
+    user_ref: str | None = None
+    age: float | None = None
+    sex: str | None = None
+    city: str = ""
+    org: str | None = None          # assign to this centre
+    doctor_id: int | None = None    # assign to this doctor
+
+
+@app.post("/mgmt/patients/onboard")
+def mgmt_patient_onboard(body: PatientOnboard, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    # a centre person may only onboard into their own centre; a doctor may onboard freely (they then assign to a centre)
+    if me["workspace"] == "centre":
+        body.org = me["org"]
+    by_role = me["role"]
+    try:
+        return tenancymod.onboard_patient(body.name, by_role, by=me["email"], user_ref=body.user_ref, age=body.age,
+                                          sex=body.sex, city=body.city, org=body.org, doctor_id=body.doctor_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class AssignCentre(BaseModel):
+    patient_id: int
+    org: str
+    note: str = ""
+
+
+@app.post("/mgmt/assign/centre")
+def mgmt_assign_centre(body: AssignCentre, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)   # doctors assign their patients to a centre
+    try:
+        return tenancymod.assign_to_centre(body.patient_id, body.org, by=me["email"], note=body.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class AssignDoctor(BaseModel):
+    patient_id: int
+    doctor_id: int
+    note: str = ""
+
+
+@app.post("/mgmt/assign/doctor")
+def mgmt_assign_doctor(body: AssignDoctor, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)   # centres assign their members to an affiliated doctor
+    try:
+        return tenancymod.assign_to_doctor(body.patient_id, body.doctor_id, by=me["email"], note=body.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/patients/{pid}/graph")
+def mgmt_patient_graph(pid: int, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.patient_graph(pid)
+
+
+@app.get("/mgmt/centre/people")
+def mgmt_centre_people(org: str = "default", authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.centre_patients(org)
+
+
+@app.get("/mgmt/doctor/patients")
+def mgmt_doctor_patients(authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    return tenancymod.doctor_patients(me["staff_id"])
+
+
+@app.get("/mgmt/doctor/centres")
+def mgmt_doctor_centres(authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    # a doctor sees the centres they're affiliated to; a super-admin sees all
+    if me["role"] == "super_admin":
+        return tenancymod.list_centres()
+    return tenancymod.doctor_centres(me["staff_id"])
+
+
+# ---- doctor ⇄ centre affiliation ----
+@app.get("/mgmt/centre/doctors")
+def mgmt_centre_doctors(org: str = "default", authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.centre_doctors(org)
+
+
+class Affiliate(BaseModel):
+    doctor_id: int
+    org: str
+
+
+@app.post("/mgmt/centre/doctors")
+def mgmt_centre_affiliate(body: Affiliate, authorization: str = _Hdr(default="")):
+    _require_org_admin(authorization, body.org)
+    try:
+        return tenancymod.affiliate_doctor(body.doctor_id, body.org)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- operational staff ⇄ therapy / machine ----
+class Duty(BaseModel):
+    staff_id: int
+    org: str
+    duty_kind: str                  # 'service' | 'resource'
+    ref_id: int
+
+
+@app.get("/mgmt/duties")
+def mgmt_duties(org: str = "default", staff_id: int | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.staff_duties(org, staff_id)
+
+
+@app.post("/mgmt/duties")
+def mgmt_duty_add(body: Duty, authorization: str = _Hdr(default="")):
+    _require_org_admin(authorization, body.org)
+    try:
+        return tenancymod.assign_duty(body.staff_id, body.org, body.duty_kind, body.ref_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/mgmt/duties")
+def mgmt_duty_del(staff_id: int, duty_kind: str, ref_id: int, org: str = "default", authorization: str = _Hdr(default="")):
+    _require_org_admin(authorization, org)
+    tenancymod.remove_duty(staff_id, duty_kind, ref_id)
+    return {"ok": True}
+
+
+# ---- performance & revenue (one app runs the whole centre) ----
+@app.get("/mgmt/centre/performance")
+def mgmt_centre_performance(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.staff_performance(org, since=since)
+
+
+@app.get("/mgmt/centre/revenue")
+def mgmt_centre_revenue(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.centre_revenue(org, since=since)
 
 
 # ---- Platform: modular, customisable config for centres & clinics ----
