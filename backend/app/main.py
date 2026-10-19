@@ -14,6 +14,9 @@ from . import cgm
 from . import accounts as acctmod  # noqa: E402  (module; /accounts route shadows the name)
 from . import vitals as vitalsmod  # noqa: E402
 from . import bioage  # noqa: E402
+from . import platform as pform  # noqa: E402
+from . import centre as centremod  # noqa: E402
+from . import clinic as clinicmod  # noqa: E402
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
@@ -31,7 +34,7 @@ async def lifespan(_app):
     rx.init()
     summaries.init()
     acctmod.init()
-    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod, pform, centremod, clinicmod):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -1900,6 +1903,224 @@ def vitals_series(metric: str, start: int, end: int, max_points: int = 1000):
 @app.get("/vitals/coverage")
 def vitals_coverage(days: int = 7):
     return vitalsmod.coverage(days)
+
+
+# ---- Platform: modular, customisable config for centres & clinics ----
+class OrgCfg(BaseModel):
+    org: str = "default"
+    kind: str | None = None
+    modules: dict | None = None
+    branding: dict | None = None
+    settings: dict | None = None
+
+
+class CatalogIn(BaseModel):
+    org: str = "default"
+    kind: str
+    name: str
+    data: dict | None = None
+    key: str | None = None
+
+
+class FieldIn(BaseModel):
+    org: str = "default"
+    entity: str
+    label: str
+    type: str
+    options: list | None = None
+    required: bool = False
+    section: str = ""
+
+
+@app.get("/mgmt/overview")
+def mgmt_overview(org: str = "default"):
+    return pform.overview(org)
+
+
+@app.post("/mgmt/config")
+def mgmt_config(body: OrgCfg):
+    return pform.set_org(body.org, body.kind, body.modules, body.branding, body.settings)
+
+
+@app.get("/mgmt/catalog")
+def mgmt_catalog(org: str = "default", kind: str = "service_type", include_inactive: bool = False):
+    return pform.list_catalog(org, kind, include_inactive)
+
+
+@app.post("/mgmt/catalog")
+def mgmt_catalog_add(body: CatalogIn):
+    try:
+        return pform.add_catalog(body.org, body.kind, body.name, body.data, body.key)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/catalog/{cid}")
+def mgmt_catalog_update(cid: int, body: dict):
+    try:
+        return pform.update_catalog(cid, body.get("name"), body.get("data"), body.get("active"), body.get("sort"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/fields")
+def mgmt_fields(org: str = "default", entity: str = "member"):
+    return pform.fields_for(org, entity)
+
+
+@app.post("/mgmt/fields")
+def mgmt_fields_add(body: FieldIn):
+    try:
+        return pform.add_field(body.org, body.entity, body.label, body.type, body.options, body.required, body.section)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/mgmt/fields/{fid}")
+def mgmt_fields_del(fid: int):
+    pform.delete_field(fid); return {"ok": True}
+
+
+@app.get("/mgmt/form")
+def mgmt_form(org: str = "default", entity: str = "member"):
+    return pform.form_schema(org, entity)
+
+
+# ---- Centre operations ----
+class MemberIn(BaseModel):
+    org: str = "default"
+    name: str
+    phone: str = ""
+    email: str = ""
+    patient_id: int | None = None
+    fields: dict | None = None
+
+
+class BookIn(BaseModel):
+    org: str = "default"
+    member_id: int
+    service_id: int
+    start_ts: str
+    staff_id: int | None = None
+    resource_id: int | None = None
+    fields: dict | None = None
+
+
+@app.get("/mgmt/centre/dashboard")
+def mgmt_centre_dash(org: str = "default", day: str | None = None):
+    return centremod.dashboard(org, day)
+
+
+@app.get("/mgmt/centre/members")
+def mgmt_members(org: str = "default"):
+    return centremod.list_members(org)
+
+
+@app.post("/mgmt/centre/members")
+def mgmt_member_add(body: MemberIn):
+    try:
+        return centremod.add_member(body.org, body.name, body.phone, body.email, body.patient_id, body.fields)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/centre/members/{mid}")
+def mgmt_member(mid: int):
+    m = centremod.member(mid)
+    if not m:
+        raise HTTPException(404, "no such member")
+    return m
+
+
+@app.post("/mgmt/centre/members/{mid}/enroll")
+def mgmt_enroll(mid: int, body: dict):
+    try:
+        return centremod.enroll(body.get("org", "default"), mid, int(body["plan_id"]))
+    except (ValueError, KeyError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/centre/schedule")
+def mgmt_schedule(org: str = "default", day: str | None = None):
+    return centremod.schedule(org, day)
+
+
+@app.post("/mgmt/centre/book")
+def mgmt_book(body: BookIn):
+    try:
+        return centremod.book(body.org, body.member_id, body.service_id, body.start_ts, body.staff_id, body.resource_id, body.fields)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/centre/bookings/{bid}/checkin")
+def mgmt_checkin(bid: int):
+    try:
+        return centremod.check_in(bid)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/centre/bookings/{bid}/status")
+def mgmt_book_status(bid: int, body: dict):
+    try:
+        return centremod.set_status(bid, body.get("status", ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/centre/invoices/{iid}/pay")
+def mgmt_pay(iid: int, body: dict):
+    return centremod.pay(iid, body.get("method", "card"))
+
+
+# ---- Clinic (doctor) operations ----
+@app.get("/mgmt/clinic/inbox")
+def mgmt_inbox(org: str = "default", doctor_id: int = 2):
+    return clinicmod.inbox(org, doctor_id)
+
+
+@app.get("/mgmt/clinic/templates")
+def mgmt_templates(org: str = "default"):
+    return clinicmod.templates(org)
+
+
+@app.get("/mgmt/clinic/patients/{pid}/notes")
+def mgmt_notes(pid: int):
+    return clinicmod.notes_for(pid)
+
+
+@app.post("/mgmt/clinic/patients/{pid}/notes")
+def mgmt_note_add(pid: int, body: dict):
+    try:
+        return clinicmod.add_note(body.get("org", "default"), pid, body.get("author", "Doctor"), body.get("template_id"),
+                                  body.get("title", ""), body.get("content"), body.get("fields"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/clinic/notes/{nid}/sign")
+def mgmt_note_sign(nid: int, body: dict):
+    return clinicmod.sign(nid, body.get("by", "Doctor"))
+
+
+@app.get("/mgmt/clinic/tasks")
+def mgmt_tasks(org: str = "default", status: str = "open"):
+    return clinicmod.tasks(org, status)
+
+
+@app.post("/mgmt/clinic/tasks")
+def mgmt_task_add(body: dict):
+    try:
+        return clinicmod.add_task(body.get("org", "default"), body.get("text", ""), body.get("patient_id"),
+                                  body.get("assignee", ""), body.get("due"), int(body.get("priority", 1)))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/clinic/tasks/{tid}/complete")
+def mgmt_task_done(tid: int):
+    return clinicmod.complete_task(tid)
 
 
 @app.get("/bioage")
