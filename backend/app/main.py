@@ -17,7 +17,7 @@ from . import bioage  # noqa: E402
 from . import platform as pform  # noqa: E402
 from . import centre as centremod  # noqa: E402
 from . import clinic as clinicmod  # noqa: E402
-from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancymod  # noqa: E402
+from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancymod, billing as billingmod  # noqa: E402
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
@@ -35,7 +35,7 @@ async def lifespan(_app):
     rx.init()
     summaries.init()
     acctmod.init()
-    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod, pform, centremod, clinicmod, fulfillment, goals, interop, staffmod, tenancymod):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod, pform, centremod, clinicmod, fulfillment, goals, interop, staffmod, tenancymod, billingmod):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -2401,6 +2401,78 @@ def mgmt_centre_performance(org: str = "default", since: str | None = None, auth
 def mgmt_centre_revenue(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
     _require_staff(authorization)
     return tenancymod.centre_revenue(org, since=since)
+
+
+# ---- Billing, payments & subscriptions ----
+@app.get("/mgmt/billing/gateways")
+def mgmt_billing_gateways(authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return billingmod.gateways()
+
+
+@app.get("/mgmt/billing/plans")
+def mgmt_billing_plans(org: str = "default", authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return {"memberships": pform.list_catalog(org, "membership_plan"),
+            "packages": [s for s in pform.list_catalog(org, "service_type") if s["data"].get("category") == "Package"],
+            "services": [s for s in pform.list_catalog(org, "service_type") if s["data"].get("category") != "Package"]}
+
+
+@app.post("/mgmt/billing/seed-plans")
+def mgmt_billing_seed(body: dict, authorization: str = _Hdr(default="")):
+    org = body.get("org", "default")
+    _require_org_admin(authorization, org)
+    return billingmod.seed_plans(org)
+
+
+class PayBody(BaseModel):
+    org: str = "default"
+    invoice_id: int
+    gateway: str
+
+
+@app.post("/mgmt/billing/pay")
+def mgmt_billing_pay(body: PayBody, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    try:
+        return billingmod.record_payment(body.org, body.invoice_id, body.gateway)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class SubscribeBody(BaseModel):
+    org: str = "default"
+    member_id: int
+    plan_id: int
+    gateway: str
+
+
+@app.post("/mgmt/billing/subscribe")
+def mgmt_billing_subscribe(body: SubscribeBody, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    try:
+        return billingmod.create_subscription(body.org, body.member_id, body.plan_id, body.gateway)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/billing/run-cycle")
+def mgmt_billing_run_cycle(body: dict, authorization: str = _Hdr(default="")):
+    org = body.get("org", "default")
+    _require_org_admin(authorization, org)
+    return billingmod.run_billing_cycle(org, body.get("as_of", date.today().isoformat()))
+
+
+@app.get("/mgmt/billing/payments")
+def mgmt_billing_payments(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return billingmod.list_payments(org, since=since)
+
+
+@app.get("/mgmt/billing/summary")
+def mgmt_billing_summary(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return billingmod.summary(org, since=since)
 
 
 # ---- Platform: modular, customisable config for centres & clinics ----

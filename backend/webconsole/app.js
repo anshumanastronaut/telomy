@@ -60,6 +60,7 @@ const NAV = {
     { id: 'fulfillment', ic: '📦', label: 'Orders & pickups' }, { id: 'goals', ic: '◎', label: 'Goals' },
     { sect: 'Resources' }, { id: 'therapies', ic: '✶', label: 'Therapies' }, { id: 'machines', ic: '⚙', label: 'Machines & rooms' },
     { sect: 'Business' }, { id: 'performance', ic: '📈', label: 'Staff performance' }, { id: 'revenue', ic: '₹', label: 'Revenue' },
+    { id: 'billing', ic: '💳', label: 'Billing & payments' }, { id: 'plans', ic: '🏷', label: 'Plans & pricing' },
     { sect: 'Configure' }, { id: 'config', ic: '⚙', label: 'Modules & catalog' }, { id: 'interop', ic: '🔌', label: 'Integrations' },
   ],
   doctor: [
@@ -361,6 +362,37 @@ V.revenue = async () => {
     ['Orders', money(d.orders_value), `${d.orders_n} orders`], ['Outstanding', money(d.outstanding)]]));
   v.appendChild(el('p', 'muted small', 'One app runs the whole centre — scheduling, memberships, fulfilment and billing roll into a single revenue view.'));
 };
+V.billing = async () => {
+  setTitle('Billing & payments');
+  const v = view();
+  const [s, pays, gws] = await Promise.all([api('/mgmt/billing/summary?' + q({ org: S.org })), api('/mgmt/billing/payments?' + q({ org: S.org })), api('/mgmt/billing/gateways')]);
+  v.appendChild(kpis([['Collected (gross)', money(s.gross), `${s.payments} payments`], ['Gateway fees', money(s.fees)],
+    ['Net settled', money(s.net)], ['MRR', money(s.mrr), `${s.active_subscriptions} active subs`]]));
+  const gw = el('div', 'card'); gw.style.marginTop = '16px'; gw.innerHTML = '<h3>By gateway</h3>';
+  gw.appendChild(tableOf(['Gateway', 'Payments', 'Gross', 'Fees', 'Net'], s.by_gateway.map(g => {
+    const meta = gws.find(x => x.key === g.gateway) || {}; return [`${meta.label || g.gateway}`, g.n, money(g.gross), money(g.fees), money(g.net)];
+  }), 'No payments yet.'));
+  v.appendChild(gw);
+  const pc = el('div', 'card'); pc.style.marginTop = '16px'; pc.innerHTML = '<h3>Recent payments</h3>';
+  pc.appendChild(tableOf(['When', 'Gateway', 'Amount', 'Fee', 'Net', 'Ref'], pays.slice(0, 40).map(p => [
+    (p.ts || '').slice(0, 16).replace('T', ' '), (gws.find(x => x.key === p.gateway) || {}).label || p.gateway, money(p.amount), money(p.fee), money(p.net), `<span class="small faint">${p.ref || ''}</span>`]), 'No payments yet.'));
+  v.appendChild(pc);
+};
+V.plans = async () => {
+  setTitle('Plans & pricing', [btn('Seed market plans', '', seedPlans)]);
+  const v = view(); const d = await api('/mgmt/billing/plans?' + q({ org: S.org }));
+  const sec = (title, items, priceOf, subOf) => {
+    const c = el('div', 'card'); c.style.marginTop = '16px'; c.innerHTML = `<h3>${title}</h3>`;
+    c.appendChild(tableOf(['Name', 'Price', 'Details'], items.map(it => [`<b>${it.name}</b>`, money(priceOf(it)), subOf(it)]), 'None yet — seed market plans.'));
+    v.appendChild(c);
+  };
+  sec('Memberships (recurring)', d.memberships, p => p.data.price, p => `${p.data.cycle_days}-day cycle${p.data.credits ? ' · ' + p.data.credits + ' credits' : ' · unlimited'}${(p.data.entitlements || []).length ? '<div class="small muted">' + p.data.entitlements.join(' · ') + '</div>' : ''}`);
+  sec('Assessment packages (one-time)', d.packages, p => p.data.price, p => `${p.data.minutes || ''} min · <span class="small muted">${p.data.desc || ''}</span>`);
+  sec('À-la-carte therapies & diagnostics', d.services, p => p.data.price, p => `${p.data.minutes || ''} min · ${p.data.category || ''}`);
+};
+async function seedPlans() {
+  try { const r = await api('/mgmt/billing/seed-plans', { method: 'POST', body: { org: S.org } }); toast(`Seeded ${r.memberships} plans, ${r.packages} packages, ${r.services} services`); V.plans(); } catch (e) { toast(e.message); }
+}
 // a therapy/machine card list with an "assign delivering staff" drawer
 async function renderResourceList(v, items, dutyKind, staff, who) {
   const delivering = staff.filter(s => s.delivers);
@@ -717,7 +749,9 @@ async function boot() {
     document.getElementById('apiHost').textContent = `${S.me.name} · ${S.me.label}`;
     document.querySelector('.ws-switch').style.display = 'none';  // no cross-workspace switching — roles are separate
     document.getElementById('login').hidden = true; document.getElementById('app').hidden = false;
-    location.hash = `${S.ws}/${HOME[S.ws]}`; route();
+    // navigate home — set the hash OR route once, never both (avoids a double-render race on load)
+    const target = `${S.ws}/${HOME[S.ws]}`;
+    if (location.hash === '#' + target) route(); else location.hash = target;
   } catch (e) { S.me = null; showLogin(); }
 }
 boot();
