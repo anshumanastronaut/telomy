@@ -44,6 +44,12 @@ final class KYRing: NSObject {
     private var histType: Int = 0            // subtype of the history dump currently streaming (6 heart, 26 spo2, 30 temp, 9 all)
     private var histOp: UInt16 = 0           // opcode of the request in flight; its echo is a summary, not records
     private var histBuf = [UInt8]()          // reassembled record body for the current dump
+    private var lastHistHR: Int?, lastHistHRAt = 0.0
+    /// Newest heart rate from the ring's own flash log, if logged within `maxAge` seconds.
+    func recentHistoryHR(maxAge: Double) -> Double? {
+        guard let h = lastHistHR, Date().timeIntervalSince1970 - lastHistHRAt <= maxAge else { return nil }
+        return Double(h)
+    }
     private var histQueue: [(UInt16, Int)] = []
     private var histWatchdog: DispatchWorkItem?
     private var setupDone = false            // didUpdateNotificationStateFor fires once per characteristic — set up once
@@ -429,6 +435,8 @@ final class KYRing: NSObject {
             i += stride
         }
         histBuf.removeFirst(i)
+        if let newest = samples.compactMap({ s -> (Double, Int)? in guard let t = s["t"] as? Double, let h = s["hr"] as? Int else { return nil }; return (t / 1000, h) }).max(by: { $0.0 < $1.0 }),
+           newest.0 > lastHistHRAt { lastHistHRAt = newest.0; lastHistHR = newest.1 }
         if !samples.isEmpty { emit?("onRingHistory", ["type": histType, "samples": samples]) }
     }
 
@@ -601,13 +609,22 @@ final class KYSleepAuto {
         }
         if !active {
             // Stricter onset (2026-10-15: a still ring at a desk late at night was mistaken for sleep).
-            guard hour >= 22 || hour < 4, now >= cooldownUntil else { return }
+            // 21:00–06:00 (2026-10-19: asleep at 03:02 and nothing recorded — the old 22–04 window and rules missed it)
+            guard hour >= 21 || hour < 6, now >= cooldownUntil else { return }
             let bandSays = bandAsleepSince.map { now - $0 >= 20 * 60 } ?? false          // ECG-based: the strongest signal
-            let hrLow = ring.lastHR.map { resting >= 30 && Double($0) <= resting } ?? false   // must be MEASURED, at/below resting
-            let ringSays = ring.state == "connected" && ring.stillSeconds >= 30 * 60 && hrLow && phoneStill >= 30 * 60
-            guard bandSays || ringSays else { return }
+            // The patch only streams during a recording, so its own "asleep" estimate can't start the first one
+            // (2026-10-19: patch on skin all night, never streamed). Patch on skin + phone lying still 20 min at night
+            // starts the recording; the false-start rule below cancels it if you're actually up.
+            let b = KYBand.shared.status()
+            let patchOn = (b["leadOn"] as? Bool) == true && ["connected", "streaming"].contains(b["state"] as? String ?? "")
+            let patchSays = patchOn && phoneStill >= 20 * 60
+            // Ring: live HR is rarely available at night — fall back to the newest flash-log HR (≤ 15 min old)
+            let hrNow = ring.lastHR.map(Double.init) ?? ring.recentHistoryHR(maxAge: 15 * 60)
+            let hrLow = hrNow.map { resting >= 30 && $0 <= resting + 3 } ?? false
+            let ringSays = ring.state == "connected" && (ring.stillSeconds >= 30 * 60 || phoneStill >= 40 * 60) && hrLow && phoneStill >= 30 * 60
+            guard bandSays || patchSays || ringSays else { return }
             active = true; ours = true; startedAt = now
-            ring.log("auto-sleep: onset detected (band=\(bandSays) ring=\(ringSays)) — starting the night")
+            ring.log("auto-sleep: onset detected (band=\(bandSays) patch=\(patchSays) ring=\(ringSays)) — starting the night")
             KYRing.shared.startOvernight()
             if KYBand.shared.captureId == nil, KYBand.shared.status()["state"] as? String != "idle" {
                 _ = KYBand.shared.startCapture(meta: ["therapy": "Overnight sleep", "therapyId": "sleep", "settings": [:],
@@ -634,6 +651,11 @@ final class KYSleepAuto {
             guard (morning && up) || (hour >= 13 && hour < 20) else { return }
             active = false
             ring.log("auto-sleep: wake detected — ending the night")
+            // the ring finalises its own sleep record some time after waking (2026-10-19: record stopped at 05:08,
+            // asleep to 07:01) — pull the sleep log again later so the complete record is captured
+            for delay in [30.0 * 60, 90.0 * 60] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { KYRing.shared.syncHistory() }
+            }
             ring.stopOvernight()
             if isOvernightTherapy(KYBand.shared.captureMeta?["therapyId"]) { _ = KYBand.shared.stopCapture(extra: ["autoStopped": true]) }
         }

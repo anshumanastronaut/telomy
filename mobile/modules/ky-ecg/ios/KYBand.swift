@@ -271,8 +271,13 @@ final class KYBand: NSObject {
         publish()
     }
 
+    private var lastAutoEval = 0.0
     private func publish() {
         emit?("onStatus", status())
+        // patch-only nights: status updates (lead-on/off, ~every 15 s) also drive auto-sleep, at most once a minute —
+        // without the ring there is no other heartbeat while the patch is connected but not streaming
+        let now = Date().timeIntervalSince1970
+        if now - lastAutoEval > 60 { lastAutoEval = now; DispatchQueue.main.async { KYSleepAuto.shared.evaluate() } }
         log("status \(state.rawValue) holter=\(holterState) blocked=\(liveBlockedByRecording) lead=\(leadOn.map { "\($0)" } ?? "?") batt=\(info?.battery ?? -1)")
     }
 
