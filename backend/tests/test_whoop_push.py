@@ -74,3 +74,25 @@ def test_replace_window_multipart_deletes_absent_rows(client):
     part(r2, 1, 1, [s(200)])                                               # 100 is gone from the authoritative window
     assert [n["start"] for n in client.get("/whoop/nights").json()["nights"]] == [200]
     assert part(r1, 1, 2, [s(300)]).status_code == 409                    # late part of a superseded/complete generation
+
+
+def test_whoop_day_detects_planted_workout(client):
+    """Synthetic day: resting 60 bpm, still; 30-min run at ~150 bpm with wrist motion at 18:00 IST → one workout found,
+    strain > a still day's, stress computed only on still minutes."""
+    import math
+    day0 = 1792348200 - 86400 * 2                                    # 2026-10-17 00:00 IST
+    hr, grav = [], []
+    for t in range(day0 + 6 * 3600, day0 + 22 * 3600):
+        run = day0 + 18 * 3600 <= t < day0 + 18 * 3600 + 1800
+        hr.append({"key": {"ts": t}, "data": {"bpm": 150 if run else 60 + (t % 7)}})
+        a = 0.3 * math.sin(t) if run else 0.0
+        grav.append({"key": {"ts": t}, "data": {"x": a, "y": 0.0, "z": 1.0, "dynAccel": None}})
+    for stream, recs in (("hrSample", hr), ("gravitySample", grav)):
+        for i in range(0, len(recs), 5000):
+            chunk = recs[i:i + 5000]
+            h = {"type": "batch", "protocolVersion": "1.0", "batchId": str(uuid.uuid4()), "sourceId": SRC, "deviceId": "strap-day",
+                 "stream": stream, "delivery": "append", "recordCount": len(chunk), "startCursor": None, "endCursor": {"rowId": i + len(chunk), "keySha256": "c" * 64}}
+            assert post(client, ndjson(h, chunk)).json()["status"] == "accepted"
+    r = client.get("/whoop/day", params={"day": "2026-10-17"}).json()
+    assert r["ok"] and len(r["workouts"]) == 1 and 28 <= r["workouts"][0]["min"] <= 31
+    assert r["strain"] > 5 and r["stress"]["minutes"] > 0

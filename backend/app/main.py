@@ -676,6 +676,14 @@ def whoop_status():
     return whoop.status()
 
 
+@app.get("/whoop/day")
+def whoop_day(day: str | None = None):
+    """Day strain, auto-detected workouts, calories and HR-based stress from the WHOOP 1 Hz stream."""
+    from . import whoop_day as wd
+    whoop.init()
+    return wd.day(day)
+
+
 @app.get("/whoop/nights")
 def whoop_nights(days: int = 30):
     return {"nights": whoop.nights(days), "daily": whoop.daily(days)}

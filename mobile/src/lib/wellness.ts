@@ -12,9 +12,14 @@ import { api } from './api';
 import { illnessWatch, coachLine, fmtClock, fmtDur, isNight, knots, nightsFrom, recoveryScore, sleepScore, strainFromTrimp, stressFor, vo2max, zonesFor, type Contributor, type DayEvent, type MinuteRec, type Night, type Score, type UserEventRec, localDate } from './wellness-core';
 export * from './wellness-core';
 
+/** Server day engine on the WHOOP 1 Hz stream (backend/app/whoop_day.py). */
+export type WhoopDay = { ok: boolean; day: string; wornMin: number; restingHr: number; strain: number; trimp: number; zonesMin: number[];
+  workouts: { start: number; end: number; min: number; avgHr: number; maxHr: number; kcal: number | null }[];
+  stress: { avg: number | null; minutes: number; highMin: number } };
+
 export type Wellness = {
   loading: boolean; nights: Night[]; last?: Night; sleep: Score | null; recovery: Score; age: number;
-  today: { minutes: MinuteRec[]; zones: number[]; trimp: number; strain: number; stress: ReturnType<typeof stressFor>; worn: number; activeMin: number };
+  today: { minutes: MinuteRec[]; zones: number[]; trimp: number; strain: number; stress: ReturnType<typeof stressFor>; worn: number; activeMin: number; source: 'patch' | 'whoop'; whoop?: WhoopDay };
   yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void; sessionsToday: DayEvent[]; userEvents: UserEventRec[];
   need: SleepNeed; sri: number | null; illness: ReturnType<typeof illnessWatch>;
 };
@@ -26,7 +31,7 @@ let pending: Promise<void> | null = null;
 const reloaders = new Set<() => void>();
 
 export function useWellness(ageHint?: number | null): Wellness {
-  const [state, setState] = useState<{ nights: Night[]; minutes: MinuteRec[]; age: number; sessions: DayEvent[]; userEvents: UserEventRec[] } | null>(null);
+  const [state, setState] = useState<{ nights: Night[]; minutes: MinuteRec[]; age: number; sessions: DayEvent[]; userEvents: UserEventRec[]; whoopDay?: WhoopDay } | null>(null);
   const load = useCallback(async () => {
     const caps = bandAvailable ? Band.listCaptures() : [];
     // nights recorded before the night metrics existed: re-analyse once (in the background) so they get them.
@@ -60,7 +65,8 @@ export function useWellness(ageHint?: number | null): Wellness {
     const wn = await api<{ nights: WhoopNightIn[] }>('/whoop/nights?days=21').then((r) => whoopNights(r.nights ?? [])).catch(() => [] as Night[]);
     const ro = ringOwnNights(await ringSleepRecords(Date.now() - 22 * 86400000, Date.now()).catch(() => []));
     const nights = fuseNights(nightsFrom(caps), healthNights(segs), ring, phone, wn, ro);
-    setState({ nights, minutes, age: age!, sessions, userEvents });
+    const whoopDay = await api<WhoopDay>('/whoop/day').catch(() => undefined);
+    setState({ nights, minutes, age: age!, sessions, userEvents, whoopDay: whoopDay?.ok ? whoopDay : undefined });
   }, [ageHint]);
   useEffect(() => { reloaders.add(load); load(); return () => { reloaders.delete(load); }; }, [load]);
 
@@ -86,12 +92,22 @@ export function useWellness(ageHint?: number | null): Wellness {
   const restingHr = restings.length ? restings[restings.length - 1] : null;
   const calmRef = mins.filter((m) => m.rmssd && m.activity === 'rest' && m.sleep !== 'asleep').map((m) => m.rmssd!) ;
   const stress = stressFor(tm, restingHr ?? 65, calmRef);
+  // Daytime: the patch only covers recorded sessions; when it covered < 1 h today and the WHOOP stream has the day,
+  // strain / zones / stress / workouts come from the server's WHOOP day engine (all-day 1 Hz heart rate + motion).
+  const wd = state?.whoopDay;
+  const useWhoop = !!wd && tm.length < 60 && wd.wornMin >= 60;
+  const today = useWhoop
+    ? { minutes: tm, zones: wd!.zonesMin, trimp: wd!.trimp, strain: wd!.strain, worn: wd!.wornMin, source: 'whoop' as const, whoop: wd,
+        activeMin: wd!.workouts.reduce((a, w) => a + w.min, 0),
+        stress: { score: wd!.stress.minutes >= 30 ? Math.round((100 * wd!.stress.highMin) / wd!.stress.minutes) : null, stressMin: wd!.stress.highMin,
+          calmMin: Math.max(0, wd!.stress.minutes - wd!.stress.highMin), minutes: wd!.stress.minutes, timeline: [] } }
+    : { minutes: tm, zones, trimp, strain: strainFromTrimp(trimp), stress, worn: tm.length, source: 'patch' as const,
+        activeMin: tm.filter((m) => m.activity === 'active').length };
   return {
     loading: !state, nights, last: fresh, sleep, recovery, age,
-    today: { minutes: tm, zones, trimp, strain: strainFromTrimp(trimp), stress, worn: tm.length,
-      activeMin: tm.filter((m) => m.activity === 'active').length },
+    today,
     yesterdayTrimp: byDay(yKey).length >= 60 ? zonesFor(byDay(yKey), age).trimp : null,
     restingHr, vo2: restingHr ? vo2max(age, restingHr) : null, reload: load, sessionsToday: state?.sessions ?? [], userEvents: state?.userEvents ?? [],
-    need: sleepNeed(nights, strainFromTrimp(trimp), strainByDate), sri, illness: illnessWatch(nights),
+    need: sleepNeed(nights, today.strain, strainByDate), sri, illness: illnessWatch(nights),
   };
 }

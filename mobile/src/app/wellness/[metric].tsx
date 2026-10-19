@@ -26,8 +26,8 @@ const METHODS: Record<string, { title: string; how: string; sources: string[] }>
   },
   strain: {
     title: 'Strain',
-    how: 'Every minute you wear the band, your heart rate is placed in one of five zones of your maximum (208 − 0.7 × age). Minutes are weighted 1–5 by zone (Edwards TRIMP) and mapped to a 0–21 scale: about 3 for a short walk, 13 for a 45-minute moderate run, 17+ for a hard long session.',
-    sources: ['Edwards S 1993, The Heart Rate Monitor Book: zone TRIMP', 'Tanaka H et al. 2001, JACC: age-predicted maximal HR', 'Banister EW 1991: training impulse'],
+    how: 'During patch sessions, each minute\u2019s heart rate is placed in one of five zones of your maximum (208 − 0.7 × age), weighted 1–5 (Edwards TRIMP) and mapped to 0–21. When you wear a WHOOP all day, every minute counts in proportion to effort measured against your heart-rate reserve (Banister TRIMP), ignoring near-resting minutes, because fixed zones counted ordinary walking as training on all-day data. Workouts are detected when heart rate rises 15+ bpm above resting while your wrist is moving for 5+ minutes; calories use the Keytel 2005 equation. The all-day number is not yet calibrated against WHOOP\u2019s own Day Strain.',
+    sources: ['Edwards S 1993, The Heart Rate Monitor Book: zone TRIMP', 'Tanaka H et al. 2001, JACC: age-predicted maximal HR', 'Banister EW 1991: training impulse', 'Karvonen MJ 1957: heart-rate reserve', 'Keytel LR et al. 2005, J Sports Sci: energy expenditure from heart rate'],
   },
   stress: {
     title: 'Stress',
@@ -95,7 +95,17 @@ export default function WellnessDetail() {
 
       {metric === 'strain' ? (
         <>
-          <DetailHero value={w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null} max={21} unit="OF 21" label="Today’s strain" sub={`${w.today.worn} min worn · ${w.today.activeMin} min active`} color={C.strain} />
+          <DetailHero value={w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null} max={21} unit="OF 21" label="Today’s strain" sub={`${w.today.worn} min worn · ${w.today.activeMin} min active${w.today.source === 'whoop' ? ' · from WHOOP (all-day heart rate)' : ''}`} color={C.strain} />
+          {w.today.whoop?.workouts.length ? (
+            <Section title="Workouts detected today">
+              {w.today.whoop.workouts.map((x) => (
+                <Card key={x.start} style={{ gap: 2 }}>
+                  <T v="h3">{fmtClock(x.start)} · {x.min} min</T>
+                  <T v="small">avg {x.avgHr} bpm · max {x.maxHr}{x.kcal != null ? ` · ${x.kcal} kcal` : ''} · heart rate and wrist motion</T>
+                </Card>
+              ))}
+            </Section>
+          ) : null}
           <Button kind="secondary" title="Exercise & training" icon="figure.run" onPress={() => router.push('/training' as any)} />
           <Section title="Your day, hour by hour">
             <Card><StrainColumns mins={w.today.minutes} age={w.age} /><T v="small">Each column is one hour; height is that hour's load, colours are minutes in each heart-rate zone.</T></Card>
