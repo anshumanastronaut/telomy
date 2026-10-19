@@ -1764,6 +1764,24 @@ def tracker_stop(tid: int):
     return trackers.summary(tid)
 
 
+class ClientLog(BaseModel):
+    area: str
+    stage: str = ""
+    message: str = ""
+    model: str | None = None
+    free_bytes: float | None = None
+
+
+@app.post("/client/log")
+def client_log(body: ClientLog):
+    """App-side failures (e.g. the on-device model download) land here so they can be diagnosed without the phone.
+    Technical messages only — the app never sends health data on this route."""
+    db.exec_("CREATE TABLE IF NOT EXISTS client_log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, area TEXT, stage TEXT, message TEXT, data TEXT)")
+    db.exec_("INSERT INTO client_log (ts, area, stage, message, data) VALUES (?,?,?,?,?)",
+             (engine.now_iso(), body.area[:40], body.stage[:40], body.message[:500], db.j({"model": body.model, "free_bytes": body.free_bytes})))
+    return {"ok": True}
+
+
 @app.get("/sinc/chats")
 def chats():
     return db.rows("""SELECT c.*, (SELECT content FROM messages m WHERE m.chat_id = c.id AND role = 'assistant'

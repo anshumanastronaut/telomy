@@ -12,7 +12,7 @@ import { Platform } from 'react-native';
 import { api } from '@/lib/api';
 
 export const SLM_MODEL = 'qwen3-1.7b';
-export const SLM_INFO = { label: 'Qwen3 1.7B', mb: 1100, note: 'Apache-2.0 · int4 · runs on this iPhone' };
+export const SLM_INFO = { label: 'Qwen3 1.7B', mb: 960, note: 'Apache-2.0 · int4 · runs on this iPhone' };
 const KEY_ON = 'telomy.slm.on';
 const OPTS = { telemetryEnabled: false, temperature: 0.3, topP: 0.9, maxTokens: 380, enableThinking: false } as const;
 
@@ -89,6 +89,10 @@ export async function askOnDevice(question: string, onToken?: (t: string) => voi
   }
 }
 
+function report(stage: string, message: string, free: number | null) {
+  api('/client/log', { body: { area: 'slm-download', stage, message: message.slice(0, 500), model: SLM_MODEL, free_bytes: free } }).catch(() => {});
+}
+
 /** On/off, download state and progress for the Sinc screen. */
 export function useSlm() {
   const [on, setOnS] = useState(false);
@@ -104,9 +108,32 @@ export function useSlm() {
     const m = model();
     if (!m) { setError('On-device Sinc needs the iPhone app.'); return; }
     setError(null); setProgress(0);
-    try { await m.download({ onProgress: (p: number) => setProgress(p) }); await refresh(); }
-    catch (e: any) { setError(e?.message ?? 'Download failed — check your connection and try again.'); }
-    finally { setProgress(null); }
+    // 959 MB zip + ~1 GB unzipped: the download runs in a normal (foreground) session, so the screen must stay on and
+    // the app open; network drops are retried. Any failure is reported to the user's own server for diagnosis.
+    let free: number | null = null;
+    try { free = require('expo-file-system').Paths.availableDiskSpace; } catch {}
+    if (free != null && free < 2.2e9) {
+      const msg = `Needs about 2.2 GB free; this iPhone has ${(free / 1e9).toFixed(1)} GB. Free some space and try again.`;
+      setError(msg); setProgress(null); report('space', msg, free); return;
+    }
+    const ka = (() => { try { return require('expo-keep-awake'); } catch { return null; } })();
+    try { await ka?.activateKeepAwakeAsync('slm-download'); } catch {}
+    let last: any = null;
+    try {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try { await m.download({ onProgress: (p: number) => setProgress(p) }); last = null; break; }
+        catch (e: any) {
+          last = e; report(`attempt ${attempt}`, String(e?.message ?? e), free);
+          if (/already downloading/i.test(String(e?.message))) break;
+          await new Promise((r) => setTimeout(r, 3000 * attempt));
+        }
+      }
+      await refresh();
+      if (last) setError(`Download failed: ${String(last?.message ?? last).slice(0, 160)}. Keep Telomy open on Wi-Fi and try again.`);
+    } finally {
+      try { ka?.deactivateKeepAwake('slm-download'); } catch {}
+      setProgress(null);
+    }
   }, [refresh]);
   return {
     available: slmAvailable(), on: on && ready, ready, progress, error, download,
