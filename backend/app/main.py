@@ -30,6 +30,18 @@ async def lifespan(_app):
     import threading
     from . import physio
     threading.Thread(target=physio.validate_prior, args=(20,), daemon=True).start()
+
+    def _warm_whoop_day():   # keep today's WHOOP day engine warm so the app never waits ~10 s for it
+        import time as _t
+        from . import whoop_day
+        while True:
+            try:
+                if db.one("SELECT 1 AS x FROM whoop_rows LIMIT 1"):
+                    whoop_day.day()
+            except Exception:  # noqa: BLE001 — no WHOOP data / table yet
+                pass
+            _t.sleep(540)
+    threading.Thread(target=_warm_whoop_day, daemon=True).start()
     yield
 
 

@@ -27,8 +27,27 @@ def _rows(stream: str, a: int, b: int):
             db.rows("SELECT key, data FROM whoop_rows WHERE stream=? AND ts>=? AND ts<? ORDER BY ts", (stream, a, b))]
 
 
+_CACHE: dict[tuple, tuple[float, dict]] = {}
+
+
 def day(day_iso: str | None = None) -> dict:
+    """Cached: a past day is final once computed; today is recomputed at most every 10 min (≈ 10 s on the 1-core
+    server for a full day of 1 Hz rows)."""
+    import time
     d = date.fromisoformat(day_iso) if day_iso else datetime.now(IST).date()
+    key = (db.DB_PATH, d.isoformat())
+    today = d == datetime.now(IST).date()
+    hit = _CACHE.get(key)
+    if hit and (not today or time.time() - hit[0] < 600) and hit[1].get("ok"):
+        return hit[1]
+    out = _compute(d)
+    _CACHE[key] = (time.time(), out)
+    if len(_CACHE) > 64:
+        _CACHE.pop(next(iter(_CACHE)))
+    return out
+
+
+def _compute(d: date) -> dict:
     a = int(datetime(d.year, d.month, d.day, tzinfo=IST).timestamp()); b = a + 86400
     hr = {t: v["bpm"] for t, v in _rows("hrSample", a, b) if 30 <= (v.get("bpm") or 0) <= 220}
     if len(hr) < 600:
