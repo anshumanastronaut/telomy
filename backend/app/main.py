@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from . import config  # noqa: F401  (loads backend/.env first)
 from . import whoop
 from . import cgm
+from . import trackers  # noqa: E402
 from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
@@ -24,7 +25,7 @@ async def lifespan(_app):
     therapy.init()
     rx.init()
     summaries.init()
-    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -40,6 +41,7 @@ async def lifespan(_app):
             try:
                 if db.one("SELECT 1 AS x FROM whoop_rows LIMIT 1"):
                     whoop_day.day()
+                    whoop_day.store_signals()     # finished days → strain / exercise signals for the load models
                     whoop.nights(21)        # stages each new WHOOP night once (cached) so the app never waits
             except Exception:  # noqa: BLE001 — no WHOOP data / table yet
                 pass
@@ -1712,6 +1714,54 @@ def sinc_log(body: OnDevice):
     if not body.question.strip() or not body.answer.strip():
         raise HTTPException(400, "Question and answer are required.")
     return sinc.log_on_device(body.question.strip(), body.answer.strip()[:4000], body.chat_id, body.model[:60])
+
+
+class Capture(BaseModel):
+    text: str
+
+
+@app.post("/sinc/capture")
+def sinc_capture(body: Capture):
+    """Statements only (used by on-device Sinc before it answers): set up / update trackers. {captured: false} otherwise."""
+    r = trackers.capture(body.text.strip()) if body.text.strip() else None
+    return {"captured": bool(r), **(r or {})}
+
+
+@app.get("/trackers")
+def trackers_list(active: bool = False):
+    return trackers.all_trackers(active)
+
+
+@app.get("/trackers/today")
+def trackers_today():
+    return trackers.today()
+
+
+@app.get("/trackers/{tid}")
+def tracker_get(tid: int):
+    if not db.one("SELECT 1 AS x FROM trackers WHERE id = ?", (tid,)):
+        raise HTTPException(404, "No such tracker.")
+    return {**trackers.summary(tid), "drivers": trackers.drivers(tid),
+            "entries": db.rows("SELECT ts, value, note, source FROM tracker_entries WHERE tracker_id = ? ORDER BY ts DESC LIMIT 60", (tid,))}
+
+
+class TrackerEntry(BaseModel):
+    value: float | None = None
+    note: str | None = None
+
+
+@app.post("/trackers/{tid}/entry")
+def tracker_entry(tid: int, body: TrackerEntry):
+    if not db.one("SELECT 1 AS x FROM trackers WHERE id = ?", (tid,)):
+        raise HTTPException(404, "No such tracker.")
+    trackers.log_entry(tid, body.value, note=body.note, source="app")
+    return trackers.summary(tid)
+
+
+@app.post("/trackers/{tid}/stop")
+def tracker_stop(tid: int):
+    db.exec_("UPDATE trackers SET active = 0 WHERE id = ?", (tid,))
+    return trackers.summary(tid)
 
 
 @app.get("/sinc/chats")

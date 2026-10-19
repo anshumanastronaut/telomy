@@ -33,6 +33,7 @@ SIGNALS = {
     "sbp": ("Systolic blood pressure", "mmHg", "low", 0),
     "dbp": ("Diastolic blood pressure", "mmHg", "low", 0),
     "glucose_mean": ("Glucose (CGM mean)", "mg/dL", "low", 0),
+    "strain": ("Daily strain (WHOOP)", "", "mid", 1),
     "daylight_min": ("Time in daylight", "min", "high", 0),
     "mindful_min": ("Mindful minutes", "min", "high", 0),
 }
@@ -888,7 +889,8 @@ def trend_insights() -> list[dict]:
 def regenerate_insights() -> list[dict]:
     """Recompute all engine insights; review state and dismissals persist by stable id."""
     now = now_iso()
-    produced = cross_panel_patterns() + event_effects() + lab_wearable_links() + signal_correlations() + trend_insights()
+    from .routine_rules import routine_patterns
+    produced = cross_panel_patterns() + routine_patterns() + event_effects() + lab_wearable_links() + signal_correlations() + trend_insights()
     for ins in produced:
         existing = db.one("SELECT review_state, dismissed FROM insights WHERE id = ?", (ins["id"],))
         medical = 1 if ins.get("medical") else 0

@@ -224,6 +224,15 @@ def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict
     history = db.rows("SELECT role, content FROM messages WHERE chat_id = ? ORDER BY id", (chat_id,))
     db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)",
              (chat_id, now, "user", question, None))
+    from . import trackers
+    cap = trackers.capture(question)              # anything said to Sinc can set up tracking, baselines and a plan
+    if cap:
+        out = {"answer": cap["answer"], "evidence_ids": [], "confidence": 0.9, "medical": cap["medical"], "engine": "telomy-trackers",
+               "trackers": [{"id": t["id"], "name": t["name"], "kind": t["kind"], "new": t["new"]} for t in cap["trackers"]],
+               "red_flag": cap["red_flag"], "mode": mode, "chips": [], "review_state": "none"}
+        mid = db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)",
+                       (chat_id, engine.now_iso(), "assistant", out["answer"], db.j(out)))
+        return {"chat_id": chat_id, "message_id": mid, **out}
     try:
         out = _ask_claude(question, history) if _claude_available() else _compose(question)
     except Exception as exc:  # network/API problems must be visible, never silent

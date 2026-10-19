@@ -53,6 +53,7 @@ export default function Profile() {
       </Card>
 
       <Group title="Take care of yourself">
+        <ListRow icon="list.bullet.clipboard" title="Your trackers" subtitle="Pain, symptoms, supplements, habits — anything you told Sinc" onPress={() => router.push('/trackers' as any)} />
         <ListRow icon="pills.fill" title="Curated supplements" subtitle="Only what your labs support — dose, timing, evidence grade" onPress={() => router.push('/rx')} />
         <ListRow icon="figure.stand" title="Whole-body scan & tests" subtitle="Blood panels, imaging, genetics — what to test next" onPress={() => router.push('/tests')} />
         <ListRow icon="figure.run" title="Exercise & training" subtitle="Every workout, its load and your training status" onPress={() => router.push('/training' as any)} />

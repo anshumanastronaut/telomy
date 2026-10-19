@@ -137,3 +137,24 @@ def _sleep_sessions(a: int, b: int):
         k, v = json.loads(r["key"]), json.loads(r["data"])
         out.append({"start": k["startTs"], "end": v.get("endTs") or k["startTs"]})
     return out
+
+
+
+def store_signals(days: int = 3) -> int:
+    """Finished WHOOP days → daily signals (strain, exercise minutes, active kcal when the phone has none) so the load
+    models (dynamics.banister), the effect engine and trackers can use them. Today is skipped until it is over."""
+    n = 0
+    today = datetime.now(IST).date()
+    for i in range(1, days + 1):
+        d = today - timedelta(days=i)
+        r = day(d.isoformat())
+        if not r.get("ok") or r.get("wornMin", 0) < 600:          # < 10 h worn: not a full day
+            continue
+        ex = sum(w.get("min", 0) for w in r.get("workouts", []))
+        rows = [("strain", r["strain"]), ("exercise_min", round(ex))]
+        for m, v in rows:
+            if m == "exercise_min" and db.one("SELECT 1 AS x FROM signals WHERE day = ? AND metric = ? AND source != 'WHOOP'", (d.isoformat(), m)):
+                continue                                             # Apple Health/phone value wins for exercise minutes
+            db.exec_("INSERT OR REPLACE INTO signals (day, metric, value, source) VALUES (?,?,?,?)", (d.isoformat(), m, v, "WHOOP"))
+            n += 1
+    return n

@@ -309,7 +309,12 @@ def act(parsed: dict, original: str) -> list[dict]:
 
 def command(text: str, features: dict | None = None, language: str | None = None, source: str = "typed") -> dict:
     parsed = understand(text)
-    actions = act(parsed, text)
+    from . import trackers
+    cap = trackers.capture(text, by="voice") if not any(i["intent"] == "question" for i in parsed["intents"]) else None
+    if cap:   # trackers own pain/symptoms/supplements/medicines now (baseline + plan); don't double-log them as events
+        parsed["intents"] = [i for i in parsed["intents"] if i["intent"] not in ("symptom", "medication", "note")]
+    actions = ([{"intent": "tracker", "message": cap["answer"], "trackers": [{"id": t["id"], "name": t["name"], "new": t["new"]} for t in cap["trackers"]]}]
+               if cap else []) + act(parsed, text)
     st = stress_score(features) if features else None
     db.exec_("INSERT INTO voice_samples (ts, language, text, features, stress, intents, source) VALUES (?,?,?,?,?,?,?)",
              (engine.now_iso(), language, text[:500], db.j(features or {}), st["score"] if st else None, db.j(parsed["intents"]), source))

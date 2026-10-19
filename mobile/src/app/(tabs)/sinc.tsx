@@ -13,6 +13,8 @@ import { ThinkingOrb, type OrbState } from '@/sinc/ThinkingOrb';
 type Msg = { role: 'user' | 'assistant'; content: string; meta?: any; id?: number; pending?: boolean };
 
 const STARTERS = [
+  'My lower back hurts, about 5/10',
+  'I started magnesium 200 mg before bed',
   'What correlations do you see across all my reports?',
   'Why is my HRV lower this month?',
   'What does my CT calcium score mean with my ApoB?',
@@ -43,6 +45,14 @@ export default function Sinc() {
     try {
       // On this iPhone first when chosen (quick answers only — deep research needs the citation library on the server).
       if (slm.on && mode === 'normal') {
+        // statements ("my knee hurts, 5", "started magnesium") set up trackers on the server first
+        const cap = await api('/sinc/capture', { body: { text: q } });
+        if (cap.captured) {
+          const r = await api('/sinc/log', { body: { question: q, answer: cap.answer, chat_id: chatId, model: 'telomy-trackers' } });
+          setChatId(r.chat_id);
+          setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: cap.answer, id: r.message_id, meta: { ...r, trackers: cap.trackers } }]);
+          return;
+        }
         let streamed = '';
         const d = await askOnDevice(q, (t) => {
           streamed += t;
@@ -220,6 +230,15 @@ function Bubble({ m, onDraft }: { m: Msg; onDraft: (id: number) => void }) {
     <View style={{ gap: 8, maxWidth: '96%' }}>
       <Md text={m.content} />
       {meta.notice ? <T v="small" color={p.warn}>{meta.notice}</T> : null}
+      {meta.trackers?.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {meta.trackers.map((t: any) => (
+            <Pressable key={t.id} onPress={() => router.push(`/tracker/${t.id}` as any)} accessibilityRole="link">
+              <Chip label={`${t.new ? 'New tracker' : 'Tracker'} · ${t.name}`} fg={p.teal} bg={p.tealSoft} icon="list.bullet.clipboard" />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
       {meta.chips?.length ? (
         <View style={{ gap: 6 }}>
           <T v="label">See evidence</T>
