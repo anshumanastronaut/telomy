@@ -104,7 +104,7 @@ def ensure(days: int = 120) -> dict:
     got = {}
     for pl in places:
         have = db.one("SELECT COUNT(*) AS n FROM exposure WHERE place = ? AND day BETWEEN ? AND ?", (pl, start.isoformat(), end.isoformat()))["n"]
-        key = (db.DB_PATH, pl, start.isoformat())
+        key = (db.db_path(), pl, start.isoformat())
         if have >= days * 0.8 or _time.time() - _LAST_FETCH.get(key, 0) < _TTL:
             got[pl] = have
         else:

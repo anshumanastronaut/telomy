@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from . import config  # noqa: F401  (loads backend/.env first)
 from . import whoop
 from . import cgm
+from . import accounts as acctmod  # noqa: E402  (module; /accounts route shadows the name)
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
@@ -27,6 +28,7 @@ async def lifespan(_app):
     therapy.init()
     rx.init()
     summaries.init()
+    acctmod.init()
     for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
@@ -84,7 +86,7 @@ def _token() -> str:
 
 @app.middleware("http")
 async def _require_password(request: _Req, call_next):
-    if not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith("/nightscout/"):
+    if acctmod.enabled() or not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith("/nightscout/"):
         return await call_next(request)
     auth = request.headers.get("authorization", "")
     if auth.startswith("Bearer ") and _hm.compare_digest(auth[7:], _token()):
@@ -109,6 +111,66 @@ def auth_password(body: _PwBody):
         _t.sleep(1.0)
         raise HTTPException(401, "That password isn't right.")
     return {"token": _token(), "password_required": True}
+
+# ---------------------------------------------------------------- multi-user (per-user database)
+# Turns on automatically once an account exists. A global dependency resolves the bearer token to a user and binds that
+# user's database for the request (db.set_db); it runs in the request context so every sync endpoint + db.* call uses
+# the right file. Open paths (auth, health, device push) don't require a user.
+from fastapi import Depends as _Dep, Header as _Hdr  # noqa: E402
+_USER_OPEN = {"/", "/health", "/auth/password", "/auth/status", "/auth/signup", "/auth/login", "/auth/logout",
+              "/docs", "/openapi.json", "/redoc", "/static/telomy_anatomy.glb", "/whoop/push"}
+
+
+async def _bind_user(request: _Req, authorization: str = _Hdr(default="")):
+    db.set_db(None)                                           # default; overridden below for an authenticated user
+    if not acctmod.enabled():
+        return                                                # single-user mode unchanged
+    path = request.url.path
+    if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith("/nightscout/"):
+        return
+    uid = acctmod.user_for_token(authorization[7:] if authorization.startswith("Bearer ") else "")
+    if not uid:
+        raise HTTPException(401, "Please sign in.")
+    db.set_db(acctmod.user_db_path(uid))
+    request.state.user_id = uid
+
+
+app.router.dependencies.append(_Dep(_bind_user))
+
+
+class _SignupBody(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+
+
+class _LoginBody(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/auth/signup")
+def auth_signup(body: _SignupBody):
+    try:
+        return acctmod.signup(body.email, body.password, body.name)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/auth/login")
+def auth_login(body: _LoginBody):
+    try:
+        return acctmod.login(body.email, body.password)
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+
+
+@app.post("/auth/logout")
+def auth_logout(authorization: str = _Hdr(default="")):
+    if authorization.startswith("Bearer "):
+        acctmod.logout(authorization[7:])
+    return {"ok": True}
+
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -917,7 +979,7 @@ def twin_projections(step_days: int = 10, horizon_days: int = 90):
     """Labelled lab projections every 10 days from your latest REAL measurements (never stored as reports).
     Cached 1 h per (inputs fingerprint): the twin simulation takes seconds on the 1-core server."""
     import time as _t
-    key = (db.DB_PATH, step_days, horizon_days, db.one("SELECT COUNT(*) AS n, MAX(id) AS m FROM results")["m"],
+    key = (db.db_path(), step_days, horizon_days, db.one("SELECT COUNT(*) AS n, MAX(id) AS m FROM results")["m"],
            db.one("SELECT COUNT(*) AS n FROM signals")["n"])
     hit = _PROJ_CACHE.get(key)
     if hit and _t.time() - hit[0] < 3600:

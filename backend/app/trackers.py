@@ -39,7 +39,7 @@ _READY: set = set()
 def init():
     with db.tx() as c:
         c.executescript(SCHEMA)
-    _READY.add(db.DB_PATH)
+    _READY.add(db.db_path())
 
 
 def _ensure_schema():

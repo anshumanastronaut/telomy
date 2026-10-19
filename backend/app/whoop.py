@@ -251,12 +251,12 @@ def nights(days: int = 30) -> list[dict]:
 def telomy_stages(start: int, end: int) -> dict | None:
     """Telomy's motion+HR stager on the WHOOP 1 Hz stream (app/stager_motion.py), as NOOP-style segments. Cached."""
     n = db.one("SELECT COUNT(*) AS n FROM whoop_rows WHERE stream IN ('hrSample','gravitySample') AND ts>=? AND ts<?", (start - 900, end + 900))["n"]
-    r = _telomy_stages(start, end, n)
+    r = _telomy_stages(start, end, n, db.db_path())   # db path in the key so users never share a cache entry
     return dict(r) if r else None
 
 
 @functools.lru_cache(maxsize=128)
-def _telomy_stages(start: int, end: int, _rows: int):
+def _telomy_stages(start: int, end: int, _rows: int, _dbkey: str):
     from . import stager_motion
     grav = [(json.loads(r["key"])["ts"], *(lambda d: (d["x"], d["y"], d["z"]))(json.loads(r["data"])))
             for r in db.rows("SELECT key, data FROM whoop_rows WHERE stream='gravitySample' AND ts>=? AND ts<?", (start - 900, end + 900))]

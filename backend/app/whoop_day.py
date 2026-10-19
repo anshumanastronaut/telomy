@@ -35,7 +35,7 @@ def day(day_iso: str | None = None) -> dict:
     server for a full day of 1 Hz rows)."""
     import time
     d = date.fromisoformat(day_iso) if day_iso else datetime.now(IST).date()
-    key = (db.DB_PATH, d.isoformat())
+    key = (db.db_path(), d.isoformat())
     today = d == datetime.now(IST).date()
     hit = _CACHE.get(key)
     if hit and (not today or time.time() - hit[0] < 600) and hit[1].get("ok"):
