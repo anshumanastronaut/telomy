@@ -911,6 +911,11 @@ def regenerate_insights() -> list[dict]:
     now = now_iso()
     from .routine_rules import routine_patterns
     produced = cross_panel_patterns() + routine_patterns() + event_effects() + lab_wearable_links() + signal_correlations() + trend_insights()
+    try:
+        from . import science            # new findings added as data (not code) fire here too
+        produced += science.dynamic_insights()
+    except Exception:  # noqa: BLE001
+        pass
     for ins in produced:
         existing = db.one("SELECT review_state, dismissed FROM insights WHERE id = ?", (ins["id"],))
         medical = 1 if ins.get("medical") else 0

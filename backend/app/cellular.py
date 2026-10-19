@@ -125,6 +125,16 @@ EFFECTS = [
 ]
 
 
+def _all_effects() -> list:
+    base = list(EFFECTS)
+    try:
+        from . import science
+        base += science.extra_cellular_effects()
+    except Exception:  # noqa: BLE001
+        pass
+    return base
+
+
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").lower())
 
@@ -133,7 +143,7 @@ def explain(name: str) -> list[dict]:
     """Every cellular mechanism that matches an intervention/food/stressor name."""
     q = _norm(name)
     out = []
-    for e in EFFECTS:
+    for e in _all_effects():
         if any(t in q for t in e["terms"]) or _norm(e["name"]) in q:
             out.append(_public(e))
     return out
@@ -141,7 +151,7 @@ def explain(name: str) -> list[dict]:
 
 def for_marker(marker_id: str) -> list[dict]:
     """What acts on the cell biology behind a given blood/signal marker."""
-    return [_public(e) for e in EFFECTS if marker_id in e["markers"]]
+    return [_public(e) for e in _all_effects() if marker_id in e["markers"]]
 
 
 def _public(e: dict) -> dict:
@@ -153,4 +163,4 @@ def cards() -> list[dict]:
     return [{"id": f"cell:{i}", "kind": "cellular", "title": f"Cellular effect — {e['name']}",
              "text": f"{e['name']} ({e['kind']}): acts on {e['cells']} at the {e['site']}. {e['mechanism']} "
                      f"Seen in: {', '.join(e['markers'])} ({e['direction']}). Evidence {e['evidence']}. {e['citation']}"}
-            for i, e in enumerate(EFFECTS)]
+            for i, e in enumerate(_all_effects())]

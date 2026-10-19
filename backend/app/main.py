@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from . import config  # noqa: F401  (loads backend/.env first)
 from . import whoop
 from . import cgm
+from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
 from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
@@ -26,7 +27,7 @@ async def lifespan(_app):
     therapy.init()
     rx.init()
     summaries.init()
-    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -1781,6 +1782,33 @@ def client_log(body: ClientLog):
     db.exec_("INSERT INTO client_log (ts, area, stage, message, data) VALUES (?,?,?,?,?)",
              (engine.now_iso(), body.area[:40], body.stage[:40], body.message[:500], db.j({"model": body.model, "free_bytes": body.free_bytes})))
     return {"ok": True}
+
+
+class Finding(BaseModel):
+    kind: str
+    payload: dict
+    citation: str
+    evidence: str = "C"
+    note: str = ""
+
+
+@app.get("/science")
+def science_list(include_inactive: bool = False):
+    return science.list_findings(include_inactive)
+
+
+@app.post("/science")
+def science_add(body: Finding):
+    """Add a new finding (a paper/guideline) as data — it takes effect on the next request. Clinician/admin use."""
+    try:
+        return science.add_finding(body.kind, body.payload, body.citation, body.evidence, "api", body.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/science/{fid}/active")
+def science_toggle(fid: int, active: bool = True):
+    return science.set_active(fid, active)
 
 
 @app.get("/cellular/explain")
