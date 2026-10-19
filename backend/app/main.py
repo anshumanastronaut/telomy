@@ -92,7 +92,7 @@ def _token() -> str:
 
 @app.middleware("http")
 async def _require_password(request: _Req, call_next):
-    if acctmod.enabled() or not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith("/nightscout/"):
+    if acctmod.enabled() or not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith(("/nightscout/", "/console")):
         return await call_next(request)
     auth = request.headers.get("authorization", "")
     if auth.startswith("Bearer ") and _hm.compare_digest(auth[7:], _token()):
@@ -133,7 +133,7 @@ async def _bind_user(request: _Req, authorization: str = _Hdr(default="")):
     if not acctmod.enabled():
         return                                                # single-user mode unchanged
     path = request.url.path
-    if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith("/nightscout/"):
+    if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith(("/nightscout/", "/console")):
         return
     uid = acctmod.user_for_token(authorization[7:] if authorization.startswith("Bearer ") else "")
     if not uid:
@@ -180,6 +180,13 @@ def auth_logout(authorization: str = _Hdr(default="")):
 
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# Serve the web console (centre + doctor) as static files at /console; it authenticates to the API itself.
+from fastapi.staticfiles import StaticFiles as _SF  # noqa: E402
+import os as _os3  # noqa: E402
+_console_dir = _os3.path.join(_os3.path.dirname(__file__), "..", "webconsole")
+if _os3.path.isdir(_console_dir):
+    app.mount("/console", _SF(directory=_console_dir, html=True), name="console")
 
 
 def now():
