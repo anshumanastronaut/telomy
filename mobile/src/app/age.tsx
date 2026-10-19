@@ -18,6 +18,7 @@ const ICON: Record<Clock['key'], any> = { fitness: 'figure.run', autonomic: 'bol
 export default function AgeScreen() {
   const p = usePalette();
   const prof = useApi<any>('/profile');
+  const bio = useApi<any>('/bioage');
   const twin = useApi<any>('/twin');
   const almi = twin.data?.systems?.flatMap((s: any) => s.variables).find((v: any) => v.key === 'almi')?.value ?? null;
   const d = useDevices();
@@ -44,6 +45,9 @@ export default function AgeScreen() {
       <Stack.Screen options={{ title: 'Biological age' }} />
       <T v="small">Estimated from your connected devices — fitness, heart-rate variability and resting heart rate — against population norms for your age and sex. These are physiological estimates, not a diagnosis, and sit alongside the blood-based PhenoAge on the Longevity screen.</T>
 
+      <ValidatedAges data={bio.data} deltaColor={deltaColor} deltaText={deltaText} />
+
+      <Section title="Wearable clocks">
       <Card style={{ alignItems: 'center', gap: space[2] }}>
         <Dial value={ac.overall?.years ?? null} chrono={ac.chrono} confidence={ac.overall ? (ac.overall.confidence === 'high' ? 1 : ac.overall.confidence === 'medium' ? 0.6 : 0.3) : 0} />
         {ac.overall ? (
@@ -55,6 +59,7 @@ export default function AgeScreen() {
           <T v="small">Connect the ring, patch or Apple Health to see your wearable biological age.</T>
         )}
       </Card>
+      </Section>
 
       <Section title="By system">
         {ac.clocks.map((c) => (
@@ -83,5 +88,37 @@ export default function AgeScreen() {
         <T v="small">A measured VO₂max from Apple Health makes Fitness age far more accurate than the resting-HR estimate. For Recovery age, wear the ECG patch or ring at rest or overnight so HRV is measured cleanly. Readings taken while moving are noisier and count less.</T>
       </Card>
     </Screen>
+  );
+}
+
+function ValidatedAges({ data, deltaColor, deltaText }: { data: any; deltaColor: (d: number | null) => string; deltaText: (d: number | null) => string }) {
+  const p = usePalette();
+  if (!data?.ok) return null;
+  const b = data.blood ?? {};
+  const rows: { label: string; value: number | null; delta: number | null; note: string }[] = [];
+  if (b.phenoage?.available) rows.push({ label: 'PhenoAge (blood)', value: b.phenoage.value, delta: b.phenoage.delta, note: 'Mortality-based · Levine 2018 · NHANES r 0.92' });
+  if (b.kdm?.available) rows.push({ label: 'KDM biological age', value: b.kdm.value, delta: b.kdm.delta, note: `Clinical biomarkers · ${b.kdm.markers_used} markers · NHANES-fitted` });
+  if (data.heart?.available) rows.push({ label: 'Heart / vascular age', value: data.heart.value, delta: data.heart.delta, note: `From 10-yr CVD risk ${data.heart.ten_year_cvd_risk_pct}%` });
+  if (data.muscle?.available) rows.push({ label: 'Muscle age', value: data.muscle.value, delta: data.muscle.delta, note: data.muscle.basis });
+  if (data.fitness?.available) rows.push({ label: 'Fitness age', value: data.fitness.value, delta: data.fitness.delta, note: `VO₂max ${data.fitness.vo2max}` });
+  if (!rows.length) return null;
+  return (
+    <Section title="Validated biological ages">
+      <T v="small" color={p.muted}>Blood, heart and body ages from your Vault — each a published method, validated on NHANES population data. You are {data.chronological_age}.</T>
+      {rows.map((r) => (
+        <Card key={r.label}>
+          <Row>
+            <View style={{ flex: 1 }}><T v="h3">{r.label}</T><T v="small" color={p.muted}>{r.note}</T></View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <T v="num" style={{ fontSize: 22 }} color={deltaColor(r.delta)}>{r.value != null ? Math.round(r.value) : '—'}</T>
+              <T v="small" color={deltaColor(r.delta)}>{deltaText(r.delta)}</T>
+            </View>
+          </Row>
+        </Card>
+      ))}
+      {data.blood?.homeostatic_dysregulation?.available ? (
+        <T v="small" color={p.muted}>Homeostatic dysregulation (how far your biomarkers sit from a young-healthy reference): {data.blood.homeostatic_dysregulation.log_mahalanobis} — lower is better.</T>
+      ) : null}
+    </Section>
   );
 }

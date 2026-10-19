@@ -12,6 +12,7 @@ from . import config  # noqa: F401  (loads backend/.env first)
 from . import whoop
 from . import cgm
 from . import accounts as acctmod  # noqa: E402  (module; /accounts route shadows the name)
+from . import bioage  # noqa: E402
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
@@ -1872,6 +1873,12 @@ def science_add(body: Finding):
 @app.post("/science/{fid}/active")
 def science_toggle(fid: int, active: bool = True):
     return science.set_active(fid, active)
+
+
+@app.get("/bioage")
+def bioage_all():
+    """Every kind of age from your data — blood (PhenoAge, KDM, dysregulation), fitness, muscle, heart, organs."""
+    return bioage.all_ages()
 
 
 @app.get("/cellular/explain")
