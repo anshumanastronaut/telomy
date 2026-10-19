@@ -732,3 +732,13 @@ def test_dynamics_load_recovers_planted_fatigue(client):
     assert r["useful"] == (r["skill"] > 0.05 and r["k_fatigue"] > 0)
     s = client.get("/dynamics/sleep-pressure").json()
     assert "ok" in s
+
+
+def test_daily_signals_from_devices_are_upserted_and_filtered(client):
+    r = client.post("/signals/daily", json={"items": [
+        {"day": "2026-10-18", "metric": "sleep_hours", "value": 7.1, "source": "Telomy (fused)"},
+        {"day": "2026-10-18", "metric": "sleep_hours", "value": 7.2, "source": "Telomy (fused)"},     # upsert
+        {"day": "2026-10-18", "metric": "not_a_metric", "value": 1, "source": "WHOOP"},               # rejected
+        {"day": "2026-10-18", "metric": "steps", "value": 9000, "source": "Somewhere else"},          # rejected
+        {"day": "bad-date", "metric": "steps", "value": 9000, "source": "Apple Health"}]}).json()        # rejected
+    assert r["accepted"] == 2

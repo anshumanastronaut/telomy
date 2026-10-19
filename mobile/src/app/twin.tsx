@@ -123,7 +123,7 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
       <Row style={{ flexWrap: 'wrap' }}>
         <Chip label={`PhenoAge ${d.risk_now.phenoage} at ${d.risk_now.age}`} fg={p.teal} bg={p.tealSoft} />
         <Chip label={`PREVENT 10-y ${d.risk_now.prevent_10y}% · 30-y ${d.risk_now.prevent_30y}%`} />
-        {mir.data ? <Chip label={`Twin fidelity ${Math.round(mir.data.fidelity * 100)}%`} fg={p.copper} bg={p.copperSoft} /> : null}
+        {mir.data && mir.data.ok !== false ? <Chip label={`Twin fidelity ${Math.round(mir.data.fidelity * 100)}%`} fg={p.copper} bg={p.copperSoft} /> : null}
       </Row>
       <Card tone="copper">
         <T v="label">What your twin learned about you</T>
@@ -206,7 +206,10 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
         </>
       ) : null}
 
-      {tab === 'mirror' && mir.data ? (
+      {tab === 'mirror' && mir.data?.ok === false ? (
+        <Card><T v="small">{mir.data.reason}</T></Card>
+      ) : null}
+      {tab === 'mirror' && mir.data && mir.data.ok !== false ? (
         <>
           <Card>
             <T v="label">Night HRV — your body vs your twin (last 45 nights)</T>

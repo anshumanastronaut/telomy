@@ -9,6 +9,7 @@ import { healthConnected } from './health';
 import { ringSamples, ringSleepRecords } from './ringhistory';
 import { fuseNights, healthNights, ringOwnNights, sleepNeed, sleepRegularity, whoopNights, type SleepNeed, type WhoopNightIn } from './sleepfuse';
 import { api } from './api';
+import { syncDaily } from './sync';
 import { illnessWatch, coachLine, fmtClock, fmtDur, isNight, knots, nightsFrom, recoveryScore, sleepScore, strainFromTrimp, stressFor, vo2max, zonesFor, type Contributor, type DayEvent, type MinuteRec, type Night, type Score, type UserEventRec, localDate } from './wellness-core';
 export * from './wellness-core';
 
@@ -66,6 +67,9 @@ export function useWellness(ageHint?: number | null): Wellness {
     const ro = ringOwnNights(await ringSleepRecords(Date.now() - 22 * 86400000, Date.now()).catch(() => []));
     const nights = fuseNights(nightsFrom(caps), healthNights(segs), ring, phone, wn, ro);
     const whoopDay = await api<WhoopDay>('/whoop/day').catch(() => undefined);
+    // real daily summaries → server (Vault, insights, twin, predictions run on them); throttled, queued offline
+    const hdays = await healthConnected().then((c) => (c && bandAvailable ? Band.healthDaily(14) : [])).catch(() => []);
+    syncDaily(nights, hdays);
     setState({ nights, minutes, age: age!, sessions, userEvents, whoopDay: whoopDay?.ok ? whoopDay : undefined });
   }, [ageHint]);
   useEffect(() => { reloaders.add(load); load(); return () => { reloaders.delete(load); }; }, [load]);

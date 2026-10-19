@@ -2,6 +2,7 @@
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 
+import math
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -1341,6 +1342,38 @@ def add_signal(body: ManualSignal):
     db.exec_("INSERT OR REPLACE INTO signals (day, metric, value, source) VALUES (?,?,?,?)",
              (body.day or today(), body.metric, body.value, "Manual entry"))
     return {"ok": True}
+
+class DailyItem(BaseModel):
+    day: str
+    metric: str
+    value: float
+    source: str
+
+
+class DailyBatch(BaseModel):
+    items: list[DailyItem]
+
+
+DEVICE_SOURCES = {"Telomy patch", "Telomy ring", "WHOOP", "Apple Health", "Apple Watch", "Telomy (fused)"}
+
+
+@app.post("/signals/daily")
+def add_daily(body: DailyBatch):
+    """Daily summaries computed on the phone from the user's real devices (fused nights, recovery inputs, Apple
+    Health activity). Idempotent upsert per (day, metric); only known metrics from labelled real sources."""
+    ok = 0
+    for it in body.items[:2000]:
+        if it.metric not in engine.SIGNALS or it.source not in DEVICE_SOURCES or not math.isfinite(it.value):
+            continue
+        try:
+            date.fromisoformat(it.day)
+        except ValueError:
+            continue
+        db.exec_("INSERT OR REPLACE INTO signals (day, metric, value, source) VALUES (?,?,?,?)", (it.day, it.metric, it.value, it.source))
+        ok += 1
+    if ok:
+        engine.regenerate_insights()
+    return {"ok": True, "accepted": ok}
 
 # ------------------------------------------------------------------ labs
 

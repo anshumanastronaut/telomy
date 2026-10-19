@@ -71,6 +71,7 @@ export default function Profile() {
         <ListRow icon="stethoscope" title="Clinicians & appointments" subtitle="Book, prepare a pre-clinic brief" onPress={() => router.push('/care')} />
         <ListRow icon="doc.richtext" title="Specialist pack" subtitle="PDF + FHIR for cardiology, endocrinology…" onPress={() => router.push('/brief')} />
         <ListRow icon="checkmark.seal" title="Review queue (Telomy Care)" subtitle="Sinc drafts awaiting sign-off" onPress={() => router.push('/queue')} />
+        <ListRow icon="person.text.rectangle" title="About you" subtitle="Date of birth, sex, height, weight" onPress={() => router.push('/about' as any)} />
         <ListRow icon="cross.case" title="Emergency card" subtitle="Blood type, allergies, contacts" onPress={() => router.push('/emergency')} />
         <ListRow icon="pills" title="Medications" subtitle="Schedule, adherence, interactions" onPress={() => router.push('/meds')} />
         <ListRow icon="fork.knife" title="Nutrition" subtitle="Trends and meal history" onPress={() => router.push('/nutrition')} />

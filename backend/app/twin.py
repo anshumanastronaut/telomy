@@ -138,7 +138,7 @@ def inputs_now() -> dict:
     p = engine.profile()
     r = routine.active()
     m = (r or {}).get("metrics", {})
-    day = date.fromisoformat(engine.last_signal_day())
+    day = date.fromisoformat(engine.last_signal_day() or date.today().isoformat())   # a new real profile has no signals yet
     since = (day - timedelta(days=30)).isoformat()
     ev = lambda k: len(db.rows("SELECT DISTINCT substr(ts,1,10) AS d FROM events WHERE kind = ? AND ts >= ?", (k, since)))  # noqa: E731
     meds = " ".join(x["name"].lower() + " " + (x["dose"] or "").lower() for x in db.rows("SELECT name, dose FROM medications WHERE active = 1"))
@@ -426,7 +426,10 @@ def mirror() -> dict:
     ev = {}
     for e in db.rows("SELECT ts, kind FROM events"):
         ev.setdefault(e["ts"][:10], set()).add(e["kind"])
-    base = engine.signal_baseline("hrv", days=120)["mean"]
+    b = engine.signal_baseline("hrv", days=120)
+    if not b or len(hrv) < 14:
+        return {"ok": False, "reason": f"The twin learns how you respond once 14 nights of HRV exist ({len(hrv)} so far)."}
+    base = b["mean"]
     pred, act = [], []
     for d, v in hrv:
         prev = (date.fromisoformat(d) - timedelta(days=1)).isoformat()

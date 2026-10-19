@@ -1,3 +1,4 @@
+import { missingAbout } from '../about';
 import { router } from 'expo-router';
 import { SFSymbol } from 'expo-symbols';
 import React, { useMemo, useState } from 'react';
@@ -69,6 +70,12 @@ export default function Home() {
       {!rewind ? <WellnessToday age={prof.data?.age} /> : null}
 
       {h.is_test_profile ? <Chip label="Test profile · dummy data" fg={p.copper} bg={p.copperSoft} icon="flask" /> : null}
+      {prof.data && missingAbout(prof.data).length ? (
+        <Card onPress={() => router.push('/about' as any)} accessibilityLabel="Complete about you">
+          <T v="h3">Tell Telomy about you</T>
+          <T v="small">Date of birth, sex and height unlock your heart, kidney and body-composition results. Nothing is assumed until then.</T>
+        </Card>
+      ) : null}
 
       <T v="label" style={{ marginTop: space[2] }}>Your Vault</T>
       <Card onPress={() => router.push('/longevity')} testID="dial" accessibilityLabel="Longevity age details">

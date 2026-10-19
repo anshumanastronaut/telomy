@@ -725,9 +725,9 @@ def cross_panel_patterns() -> list[dict]:
             f"DEXA says {dexa_bf}% and BCA says {bca_bf}%. BCA tends to read lower and shifts with hydration; DEXA is the reference. "
             f"Track each method against itself rather than mixing them.", ["body_fat_pct", "bca_body_fat"], medical=False, direction="neutral")
     cys, cr = _v(L, "cystatin_c"), _v(L, "creatinine")
-    if isinstance(cys, float) and isinstance(cr, float) and age:
+    if isinstance(cys, float) and isinstance(cr, float) and age and profile().get("sex"):
         from .derived import ckd_epi_2021, ckd_epi_cys_2012
-        e_cr, e_cy = ckd_epi_2021(cr, age, profile().get("sex", "male")), ckd_epi_cys_2012(cys, age, profile().get("sex", "male"))
+        e_cr, e_cy = ckd_epi_2021(cr, age, profile()["sex"]), ckd_epi_cys_2012(cys, age, profile()["sex"])
         if abs(e_cr - e_cy) > 15:
             add("egfr_discord", "Your two kidney-function estimates disagree",
                 f"eGFR from creatinine is {round(e_cr)} and from cystatin C {round(e_cy)} mL/min/1.73m². Creatinine depends on muscle "
