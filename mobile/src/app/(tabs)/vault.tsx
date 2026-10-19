@@ -429,7 +429,7 @@ function BiomarkerHero({ n, o, r, x, panels, onOut }: { n: number; o: number; r:
   const rows = [{ k: 'Optimal', v: o, c: '#4FD08F' }, { k: 'In range', v: r, c: '#F2B94B' }, { k: 'Out of range', v: x, c: data.heart }];
   return (
     <LinearGradient colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: onInk.hairline }}>
-      <T v="label" color={onInk.muted}>Biomarkers · {panels} panels</T>
+      <T v="label" color={onInk.muted}>Biomarkers · {panels} {panels === 1 ? 'panel' : 'panels'}</T>
       <Row gap={space[5]}>
         <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
           <Svg width={size} height={size} style={{ position: 'absolute' }}>

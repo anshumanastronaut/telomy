@@ -141,14 +141,14 @@ export function TodayHero({ w }: { w: Wellness }) {
         <Pressable onPress={() => router.push('/monitor')} accessibilityRole="button" accessibilityLabel="Live heart" hitSlop={8}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: onInk.hairline }}>
           {live ? <BeatHeart lastBeatAt={b.lastBeatAt} size={13} /> : <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: b.status?.state === 'connected' ? C.green : onInk.faint }} />}
-          <T v="small" color="#fff" style={{ fontWeight: '600', fontSize: type.micro + 1 }}>{live ? `${Math.round(b.metrics!.hr!)} bpm` : b.status?.state === 'connected' ? 'Band connected' : 'Band off'}</T>
+          <T v="small" color="#fff" style={{ fontWeight: '600', fontSize: type.micro + 1 }}>{live ? `${Math.round(b.metrics!.hr!)} bpm` : b.status?.state === 'connected' ? 'Patch on' : 'Patch off'}</T>
         </Pressable>
       </Row>
       <Pressable onPress={() => router.push('/wellness/recovery')} accessibilityRole="button" accessibilityLabel={`Recovery ${rec ?? 'not available'}`} style={{ alignItems: 'center', marginTop: -4 }}>
         <RecoveryDial value={rec} label={rec == null ? 'No night yet' : w.recovery.label} />
       </Pressable>
       <T v="body" color={onInk.primary} style={{ textAlign: 'center', marginTop: -16, paddingHorizontal: space[2] }}>
-        {rec == null ? 'Wear the ring or patch to bed. Telomy notices when you fall asleep and starts recording on its own.' : coachLine(w.recovery, w.sleep, w.last)}
+        {rec == null ? 'Wear the patch, ring or WHOOP to bed. Telomy notices when you fall asleep and starts recording on its own.' : coachLine(w.recovery, w.sleep, w.last)}
       </T>
       {w.recovery.calibrating && rec != null ? (
         <View style={{ alignSelf: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: onInk.hairline }}>
@@ -158,7 +158,7 @@ export function TodayHero({ w }: { w: Wellness }) {
       <Row gap={space[2]} style={{ marginTop: space[1] }}>
         <Doorway icon="moon.fill" color={C.sleep} title="Sleep" value={sl == null ? '—' : `${sl}`} sub={w.last ? `${fmtDur(w.last.tstMin)} asleep` : 'No night yet'}
           ring={sl} max={100} onPress={() => router.push('/wellness/sleep')} />
-        <Doorway icon="flame.fill" color={C.strain} title="Strain" value={st == null ? '—' : st.toFixed(1)} sub={st == null ? 'No band data today' : `${w.today.activeMin} active min`}
+        <Doorway icon="flame.fill" color={C.strain} title="Strain" value={st == null ? '—' : st.toFixed(1)} sub={st == null ? 'No wearable data today' : `${w.today.activeMin} active min`}
           ring={st} max={21} onPress={() => router.push('/wellness/strain')} />
       </Row>
     </LinearGradient>
@@ -266,7 +266,7 @@ function PhoneNight() {
         <T v="num" style={{ fontSize: type.h1 }}>{Math.floor(h)}h {String(Math.round((h % 1) * 60)).padStart(2, '0')}m</T>
         <T v="small">{fmtClock(win.start)} – {fmtClock(win.end)}</T>
       </Row>
-      <T v="small" color={p.muted}>Your phone was still this long overnight. Wear the ring or patch to bed for real sleep stages, heart rate and recovery.</T>
+      <T v="small" color={p.muted}>Your phone was still this long overnight. Wear the patch, ring or WHOOP to bed for real sleep stages, heart rate and recovery.</T>
     </View>
   );
 }

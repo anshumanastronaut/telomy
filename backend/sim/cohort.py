@@ -30,6 +30,11 @@ CONDITIONS = {  # prevalence, effect on physiology
     "hypertension": 0.22, "prediabetes": 0.18, "type2_diabetes": 0.08, "dyslipidaemia": 0.25, "hypothyroid": 0.08,
     "iron_deficiency": 0.10, "sleep_apnoea": 0.10, "anxiety": 0.12,
 }
+# Typical adult laboratory reference intervals (as printed on real reports; synthetic reports must carry them too,
+# otherwise nothing can be "out of range" — found 2026-10-19 when a vitamin-D-deficient person showed 0 flags).
+REF = {"glucose": (70, 99), "hba1c": (4.0, 5.6), "insulin": (2.6, 24.9), "chol_total": (0, 200), "ldl": (0, 100), "hdl": (40, 200),
+       "tg": (0, 150), "apob": (0, 100), "hscrp": (0, 3.0), "alt": (0, 41), "ast": (0, 40), "creatinine": (0.6, 1.3), "tsh": (0.27, 4.2),
+       "vitd": (30, 100), "b12": (200, 900), "ferritin": (20, 300), "hemoglobin": (12.0, 17.0), "uric_acid": (3.4, 7.0), "egfr": (60, 200)}
 HABITS = ["alcohol", "late_meal", "caffeine_late", "sauna", "cold_plunge", "workout_hard"]
 
 
@@ -152,8 +157,9 @@ def build_one(p: dict, db_path: str, days: int, today: date):
                        ("Synthetic blood panel", "blood", day, "sim", f"sim_{p['id']:03d}_{months_ago}.pdf", 1))
         for mid, v in vals.items():
             spec = catalog.MARKERS[mid]
-            db.exec_("""INSERT INTO results (report_id, marker_id, value_num, unit, status, note) VALUES (?,?,?,?,?,?)""",
-                     (rid, mid, v, spec[2], catalog.status_for(mid, v), "synthetic"))
+            lo, hi = REF.get(mid, (None, None))
+            db.exec_("""INSERT INTO results (report_id, marker_id, value_num, unit, ref_low, ref_high, status, note) VALUES (?,?,?,?,?,?,?,?)""",
+                     (rid, mid, v, spec[2], lo, hi, catalog.status_for(mid, v, lo, hi), "synthetic"))
     for name, dose, freq, times, why in p["meds"]:
         try:
             db.exec_("INSERT INTO medications (name, dose, frequency, times, reason, prescriber, start_day, active, source) VALUES (?,?,?,?,?,?,?,?,?)",
