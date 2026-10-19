@@ -182,7 +182,8 @@ export default function Sinc() {
             msgs.map((m, i) => <Bubble key={i} m={m} onDraft={draft} />)
           )}
         </ScrollView>
-        <Row style={{ paddingHorizontal: space[4], paddingBottom: 6 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingHorizontal: space[4], paddingBottom: 6, gap: space[2], alignItems: 'center' }}>
           {(['normal', 'deep'] as const).map((m) => (
             <Pressable key={m} onPress={() => setMode(m)} accessibilityRole="tab" accessibilityState={{ selected: mode === m }} testID={`mode-${m}`}>
               <Chip label={m === 'normal' ? 'Quick answer' : 'Deep research · with citations'} fg={mode === m ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={mode === m ? p.teal : p.surfaceAlt} icon={m === 'deep' ? 'books.vertical' : 'bolt'} />
@@ -194,7 +195,7 @@ export default function Sinc() {
               <Chip label={slm.on ? 'On this iPhone' : 'On-device'} fg={slm.on ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={slm.on ? p.copper : p.surfaceAlt} icon="iphone" />
             </Pressable>
           ) : null}
-        </Row>
+        </ScrollView>
         {slmCard && !slm.ready ? (
           <View style={{ marginHorizontal: space[4], marginBottom: 6, padding: 12, gap: 8, borderRadius: radius.md, backgroundColor: p.surface }}>
             <T v="body" style={{ fontWeight: '600' }}>Sinc on this iPhone</T>

@@ -23,7 +23,16 @@ export function Twin3D({ systems, selected, onSelect, height = 460, onInteract }
   const ref = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [slow, setSlow] = useState(false);
   const html = useMemo(() => sceneHtml(`${API}/static/telomy_anatomy.glb`), []);
+
+  // the 3D model (2.6 MB) loads over the network; if it hasn't rendered in 18 s, stop hiding the organ data behind
+  // "Building your twin…" and tell the person the systems below still work
+  useEffect(() => {
+    if (ready || err) return;
+    const t = setTimeout(() => setSlow(true), 18000);
+    return () => clearTimeout(t);
+  }, [ready, err]);
 
   const status = useMemo(() => {
     const s: Partial<Record<OrganId, OrganStatus>> = {};
@@ -48,14 +57,26 @@ export function Twin3D({ systems, selected, onSelect, height = 460, onInteract }
         onMessage={(e) => {
           try {
             const m = JSON.parse(e.nativeEvent.data);
-            if (m.type === 'ready') setReady(true);
+            if (m.type === 'ready') { setReady(true); setSlow(false); }
             else if (m.type === 'select') onSelect(m.organ ?? null);
             else if (m.type === 'error') setErr(m.message);
           } catch {}
         }}
+        onError={(e) => setErr(e.nativeEvent.description || 'could not load the 3D view')}
+        onHttpError={(e) => setErr(`model server returned ${e.nativeEvent.statusCode}`)}
+        onRenderProcessGone={() => setErr('the 3D view ran out of memory')}
       />
-      {err ? <View style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}><T v="small" color={p.danger}>3D view error: {err}</T></View> : null}
-      {!ready && !err ? <View style={{ position: 'absolute', top: '45%', left: 0, right: 0, alignItems: 'center' }}><T v="small" color={p.muted}>Building your twin…</T></View> : null}
+      {err ? (
+        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <T v="body" color={p.muted} style={{ textAlign: 'center' }}>The 3D body couldn't load ({err}).</T>
+          <T v="small" color={p.muted} style={{ textAlign: 'center', marginTop: 4 }}>Your organ systems and twin data below still work.</T>
+        </View>
+      ) : null}
+      {!ready && !err ? (
+        <View style={{ position: 'absolute', top: '45%', left: 0, right: 0, alignItems: 'center', paddingHorizontal: 24 }}>
+          <T v="small" color={p.muted} style={{ textAlign: 'center' }}>{slow ? 'Still loading the 3D body — the systems below are ready to use.' : 'Building your twin…'}</T>
+        </View>
+      ) : null}
     </View>
   );
 }
