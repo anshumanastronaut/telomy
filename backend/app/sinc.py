@@ -217,6 +217,60 @@ def _deep_refs(out: dict) -> list[dict]:
     return cite(keys)[:8]
 
 
+DEEP_WORDS = re.compile(r"\b(why|how|explain|compare|connect|research|mechanism|cellular|deep dive|root cause|what causes|"
+                       r"should i|is it serious|everything about|full picture|overall|across)\b", re.I)
+
+
+def looks_deep(question: str) -> bool:
+    toks = _tokens(question)
+    markers_hit = sum(1 for m in MARKERS if any(n in question.lower() for n in [MARKERS[m][0].lower()] + list(MARKERS[m][6] if isinstance(MARKERS[m][6], list) else [])))
+    return bool(DEEP_WORDS.search(question)) or len(question) > 90 or markers_hit >= 2 or len(toks) >= 12
+
+
+def _deep_compose(question: str) -> dict:
+    """RAG-first deep research without a cloud model: broad retrieval across the Vault, the cross-domain threads it
+    touches, the cellular mechanisms behind the markers involved, and the literature — structured and grounded. When a
+    provider (e.g. Anthropic) is configured, the wrapper handles deep mode instead and this is the fallback."""
+    from . import retrieval, cellular
+    cards = retrieval.retrieve(question, k=24)
+    by = {}
+    for c in cards:
+        by.setdefault(c["kind"], []).append(c)
+    parts, evidence, markers_used = [], [], []
+    # 1) what your data shows
+    labs = by.get("lab", [])[:8]; sigs = by.get("signal", [])[:6]
+    if labs or sigs:
+        parts.append("**What your data shows**")
+        for c in labs + sigs:
+            parts.append(f"- {c['text']}")
+            mid = c["id"].split(":", 1)[1]
+            if mid in MARKERS: markers_used.append(mid)
+            evidence.append(mid)
+    # 2) what connects (cross-domain threads touching this question)
+    qtok = _tokens(question)
+    threads = [t for t in retrieval.connect().get("threads", []) if _tokens(t["headline"]) & qtok or _tokens(t["theme"]) & qtok]
+    if not threads:
+        threads = retrieval.connect().get("threads", [])[:2]
+    if threads:
+        parts.append("\n**What connects**")
+        for t in threads[:3]:
+            parts.append(f"- _{t['theme']}_: {t['story']}")
+            evidence.append(t["insight_id"])
+    # 3) cellular level
+    cell = []
+    for m in dict.fromkeys(markers_used):
+        cell += cellular.for_marker(m)
+    seen=set(); cell=[e for e in cell if not (e["name"] in seen or seen.add(e["name"]))][:5]
+    if cell:
+        parts.append("\n**At the cellular level**")
+        for e in cell:
+            parts.append(f"- **{e['name']}** acts on {e['cells']} at the {e['site']}: {e['mechanism']} (evidence {e['evidence']})")
+    conf = 0.6 if (labs or sigs) else 0.4
+    return {"answer": "\n".join(parts) if parts else "I don't have enough in your Vault to research this yet — add the related tests or signals.",
+            "evidence_ids": list(dict.fromkeys(evidence))[:8], "confidence": conf, "medical": bool(MEDICAL_WORDS.search(question)),
+            "engine": "telomy-retrieval (deep RAG)"}
+
+
 def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict:
     now = engine.now_iso()
     if not chat_id:
@@ -233,19 +287,22 @@ def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict
         mid = db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)",
                        (chat_id, engine.now_iso(), "assistant", out["answer"], db.j(out)))
         return {"chat_id": chat_id, "message_id": mid, **out}
-    from . import telomy_llm
+    from . import telomy_llm, retrieval
     out = None
+    deep = mode == "deep"
     if telomy_llm.available():
-        from . import retrieval
-        ctx = retrieval.context(question)              # RAG: the cards that matter for THIS question, grounded
-        r = telomy_llm.ask(SYSTEM, ctx, question, history, SCHEMA)
+        # deep mode gets a broader grounding context and a be-thorough nudge; the wrapper picks the best provider
+        ctx = retrieval.context(question, k=26 if deep else 18)
+        sys_prompt = SYSTEM + ("\nThis is a DEEP RESEARCH request: be thorough, connect findings across labs, wearables, "
+                               "trackers and genetics, explain mechanisms, and cite the person's own numbers." if deep else "")
+        r = telomy_llm.ask(sys_prompt, ctx, question, history, SCHEMA, max_tokens=6000 if deep else 4000)
         if r and "_error" not in r:
             out = r
         elif r and "_error" in r:
-            out = _compose(question)
+            out = _deep_compose(question) if deep else _compose(question)
             out["notice"] = f"Answered from your Vault directly ({r['_error']})."
     if out is None:
-        out = _compose(question)
+        out = _deep_compose(question) if deep else _compose(question)
     out["medical"] = bool(out.get("medical") or MEDICAL_WORDS.search(question))
     out["mode"] = mode
     if mode == "deep":
