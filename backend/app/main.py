@@ -39,6 +39,7 @@ async def lifespan(_app):
             try:
                 if db.one("SELECT 1 AS x FROM whoop_rows LIMIT 1"):
                     whoop_day.day()
+                    whoop.nights(21)        # stages each new WHOOP night once (cached) so the app never waits
             except Exception:  # noqa: BLE001 — no WHOOP data / table yet
                 pass
             _t.sleep(540)

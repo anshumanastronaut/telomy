@@ -20,7 +20,7 @@ import type { Night } from './wellness-core';
 
 export type SleepSource = 'patch' | 'whoop' | 'watch' | 'ring' | 'health';
 export const SOURCE_LABEL: Record<SleepSource, string> = {
-  patch: 'Telomy patch · ECG stages', whoop: 'WHOOP · motion + heart rate (via NOOP)', watch: 'Apple Watch · stages', ring: 'Telomy ring · heart rate + phone motion', health: 'Apple Health · duration',
+  patch: 'Telomy patch · ECG stages', whoop: 'WHOOP · motion + heart rate, staged by Telomy', watch: 'Apple Watch · stages', ring: 'Telomy ring · heart rate + phone motion', health: 'Apple Health · duration',
 };
 
 const EPOCH = 30;

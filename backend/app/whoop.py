@@ -239,11 +239,44 @@ def nights(days: int = 30) -> list[dict]:
             st = None
         start, end = k["startTs"], d.get("endTs")
         hr = night_hr(start, end) if end else {}
+        tel = telomy_stages(start, end) if end else None
         out.append({"start": start, "end": end, "efficiency": d.get("efficiency"), "noopRestingHr": d.get("restingHr"),
-                    "stages": st, "userEdited": d.get("userEdited"), **hr})
+                    "noopStages": st, "stages": tel["segments"] if tel else st, "stager": tel["model"] if tel else "NOOP",
+                    "userEdited": d.get("userEdited"), **hr})
     # NOOP's avgHrv is deliberately NOT passed on: WHOOP 4.0 history R-R is re-delivered (~2.4x), so its HRV is
     # inflated vs ECG (~1.5x on a shared night, 2026-10-18). Telomy takes HRV from the patch or ring instead.
     return out[::-1]
+
+
+def telomy_stages(start: int, end: int) -> dict | None:
+    """Telomy's motion+HR stager on the WHOOP 1 Hz stream (app/stager_motion.py), as NOOP-style segments. Cached."""
+    n = db.one("SELECT COUNT(*) AS n FROM whoop_rows WHERE stream IN ('hrSample','gravitySample') AND ts>=? AND ts<?", (start - 900, end + 900))["n"]
+    r = _telomy_stages(start, end, n)
+    return dict(r) if r else None
+
+
+@functools.lru_cache(maxsize=128)
+def _telomy_stages(start: int, end: int, _rows: int):
+    from . import stager_motion
+    grav = [(json.loads(r["key"])["ts"], *(lambda d: (d["x"], d["y"], d["z"]))(json.loads(r["data"])))
+            for r in db.rows("SELECT key, data FROM whoop_rows WHERE stream='gravitySample' AND ts>=? AND ts<?", (start - 900, end + 900))]
+    hr = [(json.loads(r["key"])["ts"], json.loads(r["data"]).get("bpm")) for r in
+          db.rows("SELECT key, data FROM whoop_rows WHERE stream='hrSample' AND ts>=? AND ts<?", (start - 900, end + 900))]
+    hr = [(t, b) for t, b in hr if b and 25 <= b <= 220]
+    if len(grav) < 600 or len(hr) < 600:
+        return None
+    r = stager_motion.stage(start, end, grav, hr)
+    if not r.get("ok"):
+        return None
+    names = ["wake", "light", "deep", "rem"]
+    segs = []
+    for i, c in enumerate(r["stages"]):
+        t = start + i * 30
+        if segs and segs[-1]["stage"] == names[c] and segs[-1]["end"] == t:
+            segs[-1]["end"] = t + 30
+        else:
+            segs.append({"start": t, "end": t + 30, "stage": names[c]})
+    return tuple({"segments": segs, "model": r["model"]}.items())
 
 
 def night_hr(start: int, end: int) -> dict:
