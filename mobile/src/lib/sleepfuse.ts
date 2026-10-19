@@ -413,7 +413,16 @@ export type SleepNeed = {
 const strainAdd = (strain: number) => (strain <= 10 ? 0 : strain >= 21 ? 45 : strain <= 14 ? (strain - 10) * 3.75 : strain <= 18 ? 15 + (strain - 14) * 5 : 35 + (strain - 18) * 3.33);
 
 /** `strainByDate`: day strain (0–21) keyed by local date (the day before each night ends). */
-export function sleepNeed(nights: Night[], strainToday: number, strainByDate: Record<string, number> = {}): SleepNeed {
+export function sleepNeed(allNights: Night[], strainToday: number, strainByDate: Record<string, number> = {}): SleepNeed {
+  // ONE main night per calendar day for the debt recurrence: a nap or a split fragment must not count as its own
+  // under-slept night (that compounds the debt and blows the need up to 14 h+). Keep the longest sleep per date.
+  const byDate = new Map<string, Night>();
+  for (const n of allNights) {
+    const key = localDate(n.end);
+    const cur = byDate.get(key);
+    if (!cur || n.tstMin > cur.tstMin) byDate.set(key, n);
+  }
+  const nights = [...byDate.values()].sort((a, b) => a.end - b.end);
   const recent = nights.slice(-30);
   const personal = recent.length >= 14;
   const longer = [...recent].map((n) => n.tstMin).sort((a, b) => b - a).slice(0, Math.ceil(recent.length / 2));
@@ -431,8 +440,10 @@ export function sleepNeed(nights: Night[], strainToday: number, strainByDate: Re
   }
   const last = nights[nights.length - 1];
   const strainMin = strainAdd(strainToday);
-  const repayMin = debt;                            // the whole carried debt is added to tonight's target
-  const needMin = baselineMin + strainMin + repayMin;
+  // repay at most ~2 h of debt in one night (you can't usefully recover 8 h of debt tonight), and cap the night's
+  // target at 11 h — a sane upper bound so a run of poor nights never shows an impossible "need 14 h".
+  const repayMin = Math.min(debt, 120);
+  const needMin = Math.min(660, baselineMin + strainMin + repayMin);
   const wakes = nights.slice(-7).map((n) => { const d = new Date(n.end * 1000); return d.getHours() * 60 + d.getMinutes(); });
   let wake: number | null = null, bedtime: number | null = null;
   if (wakes.length >= 3) {
