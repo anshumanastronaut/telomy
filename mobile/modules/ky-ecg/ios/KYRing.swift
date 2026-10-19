@@ -186,7 +186,10 @@ final class KYRing: NSObject {
         let now = Date().timeIntervalSince1970
         switch code {
         case 0x0601: if let v = p.first, v > 0 { lastHR = Int(v) }
-        case 0x0602: if let v = p.first, v > 0 { lastSpO2 = Int(v); send(0x0309, [0x01, 0x01, 0x02]) }
+        // Overnight SpO₂: keep a bounded range so genuine sleep desaturation (apnea dips into the low 80s) is preserved,
+        // but drop the SDK's out-of-range garbage (54–146 seen). A sub-80 reflectance reading is indistinguishable from a
+        // failed measurement on this hardware, so it is not trusted.
+        case 0x0602: if let v = p.first, v >= 80, v <= 100 { lastSpO2 = Int(v); send(0x0309, [0x01, 0x01, 0x02]) }
         case 0x060A: if p.count > 13, p[12] >= 20, p[12] <= 45 { lastTemp = Double(p[12]) + Double(p[13]) / 10; send(0x0309, [0x01, 0x01, 0x02]) }
         case 0x0600:
             if noteSport(p), !moving { rawFile?.write(String(format: "%.3f event move-start\n", now).data(using: .utf8)!) }
@@ -373,8 +376,12 @@ final class KYRing: NSObject {
         switch code {
         case 0x0200:                                           // device info
             if payload.count > 5 { battery = Int(payload[5]); deviceName = "Ring" }
-        case 0x0602:                                           // SpO₂ real-time
-            if let v = payload.first, v > 0 { lastSpO2 = Int(v) }
+        case 0x0602:                                           // SpO₂ real-time (awake spot measurement)
+            // Awake, a single reflectance-ring reading below 90 % is overwhelmingly a poor-contact / motion artifact, not
+            // real hypoxemia — do not surface it as a number (it would be a false alarm). Keep the last good value; the
+            // user can re-measure holding still. Overnight readings take the bounded path in nightFrame instead.
+            if let v = payload.first, v >= 90, v <= 100 { lastSpO2 = Int(v) }
+            else if let v = payload.first, v > 0 { log("spo2 \(v) rejected (awake, <90 = low-confidence)") }
         case 0x0601:                                           // heart rate real-time
             if let v = payload.first, v > 0 { lastHR = Int(v) }
         case 0x060A:                                           // temperature real packet (value at [12],[13])
@@ -419,7 +426,7 @@ final class KYRing: NSObject {
             if t < 1_577_836_800_000 || t > latest { i += stride; continue }   // corrupt record (a year-2135 stamp was seen)
             switch histType {
             case 6:  if histBuf[i+5] >= 30, histBuf[i+5] <= 220 { samples.append(["t": t, "hr": Int(histBuf[i+5])]) }
-            case 26: if histBuf[i+5] >= 70, histBuf[i+5] <= 100 { samples.append(["t": t, "spo2": Int(histBuf[i+5])]) }   // 54–146 seen: out-of-range = failed reading
+            case 26: if histBuf[i+5] >= 80, histBuf[i+5] <= 100 { samples.append(["t": t, "spo2": Int(histBuf[i+5])]) }   // 54–146 seen: out-of-range = failed reading; <80 on this ring = artifact, not real desat
             case 30: let v = Double(histBuf[i+5]) + Double(histBuf[i+6]) / 10
                      if v >= 20, v <= 45 { samples.append(["t": t, "temp": v]) }
             case 9:  // paired HR + HRV at one timestamp — the record Telomy uses to cross-check against the patch
