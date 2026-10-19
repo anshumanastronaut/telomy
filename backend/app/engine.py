@@ -152,14 +152,26 @@ def phenoage(values: dict[str, float], chrono_age: float) -> dict:
             "mortality_10y": round(m, 4)}
 
 
+def _pheno_aliases(v: dict) -> dict:
+    """Map routine-report marker ids onto PhenoAge inputs: total WBC in cells/mm³ → 10³/µL; standard CRP (mg/L) stands in
+    for hs-CRP (Levine 2018 used CRP). Random glucose is NOT used for fasting glucose."""
+    v = dict(v)
+    if v.get("wbc") is None and v.get("wbc_total") is not None:
+        w = v["wbc_total"]
+        v["wbc"] = w / 1000 if w > 100 else w
+    if v.get("hscrp") is None and v.get("crp") is not None:
+        v["hscrp"] = v["crp"]
+    return v
+
+
 def longevity_age(as_of: str | None = None) -> dict:
     """Dial value. Default PhenoAge from the most recent blood panel; lab epigenetic clocks shown alongside."""
     reports = db.rows("SELECT * FROM reports WHERE panel = 'blood' AND (? IS NULL OR collected_on <= ?) "
                       "ORDER BY collected_on", (as_of, as_of))
     history = []
     for rep in reports:
-        vals = {r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?", (rep["id"],))
-                if r["value_num"] is not None}
+        vals = _pheno_aliases({r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?", (rep["id"],))
+                               if r["value_num"] is not None})
         age = age_on(rep["collected_on"])
         if age is None:
             continue
@@ -175,8 +187,16 @@ def longevity_age(as_of: str | None = None) -> dict:
                            "day": h[-1]["collected_on"]}
     chrono = age_on(as_of)
     if not history:
-        return {"value": None, "chronological": round(chrono, 1) if chrono else None, "clocks": clocks,
-                "confidence": 0, "reason": "Needs a blood panel with albumin, creatinine, glucose, hs-CRP, "
+        missing = []
+        if reports:   # say exactly which inputs the latest panel lacks, so the next test can add them
+            last_vals = _pheno_aliases({r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?",
+                                       (reports[-1]["id"],)) if r["value_num"] is not None})
+            names = {"albumin": "albumin", "creatinine": "creatinine", "glucose": "fasting glucose", "hscrp": "hs-CRP",
+                     "lymph_pct": "lymphocytes %", "mcv": "MCV", "rdw": "RDW", "alp": "ALP", "wbc": "WBC"}
+            missing = [names[k] for k in names if last_vals.get(k) is None]
+        return {"value": None, "chronological": round(chrono, 1) if chrono else None, "clocks": clocks, "missing": missing,
+                "confidence": 0, "reason": ("Your latest blood panel is missing " + " and ".join(missing) + " — add them to the next test "
+                "to get your blood age.") if missing else "Needs a blood panel with albumin, creatinine, glucose, hs-CRP, "
                 "lymphocytes, MCV, RDW, ALP and WBC.", "history": []}
     last = history[-1]
     days_old = (date.fromisoformat(as_of or date.today().isoformat()) - date.fromisoformat(last["day"])).days
