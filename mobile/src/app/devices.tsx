@@ -7,7 +7,7 @@ import { View } from 'react-native';
 import { connectHealth } from '@/lib/health';
 import { METRIC_SOURCES, SOURCE_LABEL, useDevices, type SourceId } from '@/lib/devices';
 import { hrHrvCorrelation, useRingHistory } from '@/lib/ringhistory';
-import { Ring } from '../../modules/ky-ecg';
+import { Band, Ring } from '../../modules/ky-ecg';
 import { space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, Icon, Row, Screen, Section, T, useToast } from '@/ui/core';
 
@@ -21,6 +21,7 @@ export default function Devices() {
   const d = useDevices();
   const rh = useRingHistory();
   const coupling = hrHrvCorrelation();
+  const [autoRec, setAutoRec] = React.useState(Band.autoRecord());
 
   const compareRows = Object.entries(d.live).filter(([, f]) => f.value != null && (METRIC_SOURCES[Object.keys(d.live).find((k) => d.live[k] === f)!] ?? []).length > 1);
 
@@ -108,6 +109,16 @@ export default function Devices() {
             </Card>
           </Section>
         ) : null}
+
+        <Card style={{ gap: space[2] }}>
+          <Row>
+            <View style={{ flex: 1 }}>
+              <T v="label">Record the patch continuously</T>
+              <T v="small">While the patch is on your skin, Telomy saves rolling 2-hour ECG records (not just the live view), hands over to the overnight recording when you fall asleep, and keeps raw records for 14 days. Per-minute summaries are kept for good.</T>
+            </View>
+            <Button kind={autoRec ? 'primary' : 'secondary'} title={autoRec ? 'On' : 'Off'} onPress={() => { Band.setAutoRecord(!autoRec); setAutoRec(!autoRec); }} />
+          </Row>
+        </Card>
 
         <Card>
           <T v="label">How sources are ranked</T>

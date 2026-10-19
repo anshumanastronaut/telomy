@@ -272,12 +272,63 @@ final class KYBand: NSObject {
     }
 
     private var lastAutoEval = 0.0
+
+    // MARK: continuous recording — the patch records whenever it is on the skin, not only when someone taps Live
+    // (2026-10-19: worn all night, connected, lead on — and nothing was recorded). Rolling 2-h "All-day ECG" captures;
+    // a capture the user started, or the overnight one, is never touched; sleep onset hands over to the overnight
+    // capture (KYSleepAuto); raw all-day bundles are kept 14 days (per-minute summaries go to the server for good).
+    static let autoRecordKey = "telomy.patch.autoRecord"
+    var autoRecordOn: Bool { UserDefaults.standard.object(forKey: Self.autoRecordKey) as? Bool ?? true }
+    private var leadOffSince: Double?, lastPrune = 0.0
+    var isContinuousCapture: Bool { (capture?.meta["therapyId"] as? String) == "continuous" }
+
+    private func autoRecordTick() {
+        guard autoRecordOn, state == .connected || state == .streaming, !liveBlockedByRecording, sync == nil else { return }
+        let now = Date().timeIntervalSince1970
+        if leadOn == true { leadOffSince = nil } else if leadOn == false { leadOffSince = leadOffSince ?? now }
+        if let c = capture {
+            guard isContinuousCapture else { return }
+            let t0 = c.meta["startedAt"] as? Double ?? now
+            if let off = leadOffSince, now - off > 300 {
+                _ = stopCapture(extra: ["autoStopped": true, "reason": "patch off"]); log("auto-record: patch off — record closed"); return
+            }
+            if now - t0 > 2 * 3600 {
+                _ = stopCapture(extra: ["autoStopped": true, "reason": "rolled"]); log("auto-record: rolled 2-h record")
+                startContinuous()
+            }
+        } else if leadOn == true {
+            startContinuous()
+        }
+        if now - lastPrune > 86400 { lastPrune = now; pruneContinuous(olderThanDays: 14) }
+    }
+
+    private func startContinuous() {
+        let r = startCapture(meta: ["therapy": "All-day ECG", "therapyId": "continuous", "settings": [:], "pre": [:],
+                                    "tz": TimeZone.current.identifier, "autoStarted": true])
+        log("auto-record: started \(r["id"] ?? r["error"] ?? "")")
+    }
+
+    /// Close a running all-day record (sleep onset hands over to the overnight capture).
+    func stopContinuousIfRunning() {
+        if isContinuousCapture { _ = stopCapture(extra: ["autoStopped": true, "reason": "sleep onset"]) }
+    }
+
+    private func pruneContinuous(olderThanDays d: Double) {
+        let cutoff = Date().timeIntervalSince1970 - d * 86400
+        for m in KYCapture.list() where (m["therapyId"] as? String) == "continuous" {
+            if let t = m["startedAt"] as? Double, t < cutoff, let id = m["id"] as? String { KYCapture.delete(id: id) }
+        }
+    }
+
     private func publish() {
         emit?("onStatus", status())
         // patch-only nights: status updates (lead-on/off, ~every 15 s) also drive auto-sleep, at most once a minute —
         // without the ring there is no other heartbeat while the patch is connected but not streaming
         let now = Date().timeIntervalSince1970
-        if now - lastAutoEval > 60 { lastAutoEval = now; DispatchQueue.main.async { KYSleepAuto.shared.evaluate() } }
+        if now - lastAutoEval > 60 {
+            lastAutoEval = now
+            DispatchQueue.main.async { KYSleepAuto.shared.evaluate(); self.autoRecordTick() }
+        }
         log("status \(state.rawValue) holter=\(holterState) blocked=\(liveBlockedByRecording) lead=\(leadOn.map { "\($0)" } ?? "?") batt=\(info?.battery ?? -1)")
     }
 

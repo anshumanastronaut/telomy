@@ -105,7 +105,7 @@ type Events = {
 type Native = {
   ringStatus(): RingStatus; ringScan(): void; ringAutoConnect(): void; ringSyncHistory(): void;
   ringStartRaw(ecg: boolean, imu: boolean, ppg: boolean): void; ringStopRaw(): void;
-  ringStartOvernight(): void; ringStopOvernight(): void; autoSleep(): boolean; setAutoSleep(on: boolean): void;
+  ringStartOvernight(): void; ringStopOvernight(): void; autoSleep(): boolean; setAutoSleep(on: boolean): void; autoRecord(): boolean; setAutoRecord(on: boolean): void;
   phoneActivity(hours: number): Promise<PhoneActivity[]>;
   ringConnect(id: string): void; ringDisconnect(): void;
   ringForget(): void; ringStartMeasure(type: number): void; ringStopMeasure(type: number): void; ringReadBattery(): void;
@@ -214,6 +214,9 @@ export const Band = {
   deleteCapture: (id: string) => native?.deleteCapture(id),
   /** Log a user event (meal, supplement, alcohol, custom…) into the running capture and the on-phone store. */
   /** Ask for read access to Apple Health (steps, energy, exercise, vitals, sleep, workouts). */
+  /** Record the patch's ECG continuously whenever it is on the skin (rolling 2-h All-day ECG records). Default on. */
+  autoRecord: (): boolean => native?.autoRecord?.() ?? false,
+  setAutoRecord: (on: boolean) => native?.setAutoRecord?.(on),
   healthAuthorize: async () => (native ? native.healthAuthorize() : { ok: false, error: 'Not available' }),
   /** Daily Apple Health summaries for the last `days` days, oldest first. */
   healthDaily: async (days: number): Promise<HealthDay[]> => (native ? native.healthDaily(days) : []),

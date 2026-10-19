@@ -47,6 +47,7 @@ public class KyEcgModule: Module {
         Function("startCapture") { (meta: [String: Any]) -> [String: Any] in
             // one tap captures both devices: an overnight patch session also puts the ring in overnight mode
             if isOvernightTherapy(meta["therapyId"]) { KYRing.shared.startOvernight() }
+            KYBand.shared.stopContinuousIfRunning()      // a session the user starts replaces the all-day record
             return KYBand.shared.startCapture(meta: meta)
         }
         Function("ringStartOvernight") { KYRing.shared.startOvernight() }
@@ -54,6 +55,8 @@ public class KyEcgModule: Module {
         AsyncFunction("phoneActivity") { (hours: Double, promise: Promise) in
             KYSleepAuto.phoneActivity(hours: hours) { promise.resolve($0) }
         }
+        Function("autoRecord") { KYBand.shared.autoRecordOn }
+        Function("setAutoRecord") { (on: Bool) in UserDefaults.standard.set(on, forKey: KYBand.autoRecordKey); if !on { KYBand.shared.stopContinuousIfRunning() } }
         Function("setAutoSleep") { (on: Bool) in UserDefaults.standard.set(on, forKey: KYSleepAuto.enabledKey) }
         Function("ringStopOvernight") { KYRing.shared.stopOvernight() }
         AsyncFunction("healthAuthorize") { (promise: Promise) in

@@ -626,6 +626,7 @@ final class KYSleepAuto {
             active = true; ours = true; startedAt = now
             ring.log("auto-sleep: onset detected (band=\(bandSays) patch=\(patchSays) ring=\(ringSays)) — starting the night")
             KYRing.shared.startOvernight()
+            KYBand.shared.stopContinuousIfRunning()      // all-day record hands over to the overnight capture
             if KYBand.shared.captureId == nil, KYBand.shared.status()["state"] as? String != "idle" {
                 _ = KYBand.shared.startCapture(meta: ["therapy": "Overnight sleep", "therapyId": "sleep", "settings": [:],
                     "pre": [:], "firstPhase": "baseline", "tz": TimeZone.current.identifier, "autoStarted": true])
