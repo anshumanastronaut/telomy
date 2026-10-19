@@ -473,3 +473,78 @@ def overview() -> dict:
             "risk_now": now_risk, "calibration": cal,
             "about": "Your twin runs your logged routine, meals, alcohol, cigarettes, supplements, medicines, therapies, sleep, training and city through "
                      "published physiology, calibrated to how your own body has responded."}
+
+
+# ------------------------------------------------------------------ lab projections (every 10 days, labelled)
+
+# twin state key → lab marker that anchors it (only markers measured in a REAL report are projected)
+_ANCHOR = {"ldl": "ldl", "apob": "apob", "hdl": "hdl", "tg": "tg", "hba1c": "hba1c", "glucose": "glucose", "vitd": "vitd",
+           "hscrp": "hscrp", "omega3": "omega3_index", "pdff": "liver_pdff"}
+_DEVICE = {"weight": "weight", "hrv": "hrv", "rhr": "rhr", "vo2": "vo2max", "sleep": "sleep_hours"}
+
+
+def _real_anchor(marker: str):
+    return db.one("""SELECT r.value_num AS v, rp.collected_on AS d FROM results r JOIN reports rp ON rp.id = r.report_id
+                     WHERE r.marker_id = ? AND rp.is_test_data = 0 AND r.value_num IS NOT NULL ORDER BY rp.collected_on DESC LIMIT 1""", (marker,))
+
+
+def projections(step_days: int = 10, horizon_days: int = 90) -> dict:
+    """What the twin expects each anchored marker to read every `step_days` days, from the latest REAL measurement and
+    your current real routine/signals. Labelled projections — never written as reports; stored so the next real
+    report can score them (mean absolute error per marker) and recalibrate."""
+    with db.tx() as c:
+        c.execute("""CREATE TABLE IF NOT EXISTS twin_projections (made_on TEXT, marker TEXT, day TEXT, value REAL, lo REAL, hi REAL,
+                     PRIMARY KEY (made_on, marker, day))""")
+    sim = simulate(None, years=horizon_days / 365)
+    unc = sim["uncertainty"]
+    today = date.fromisoformat(engine.last_signal_day() or date.today().isoformat())
+    out, needs, rows = [], [], []
+    for v in sim["variables"]:
+        k = v["key"]
+        anchor = None
+        if k in _ANCHOR:
+            a = _real_anchor(_ANCHOR[k])
+            if not a:
+                needs.append({"key": k, "label": v["label"], "test": _ANCHOR[k]}); continue
+            anchor = {"value": a["v"], "date": a["d"], "source": "lab report"}
+        elif k in _DEVICE:
+            s = engine.series(_DEVICE[k])
+            if not s:
+                continue
+            anchor = {"value": s[-1][1], "date": s[-1][0], "source": "your devices"}
+        else:
+            continue
+        traj = v["baseline"]
+        pts = []
+        for d in range(step_days, horizon_days + 1, step_days):
+            # interpolate the trajectory at day d
+            prev = max((p for p in traj if p[0] <= d), key=lambda p: p[0], default=traj[0])
+            nxt = min((p for p in traj if p[0] >= d), key=lambda p: p[0], default=traj[-1])
+            val = prev[1] if nxt[0] == prev[0] else prev[1] + (nxt[1] - prev[1]) * (d - prev[0]) / (nxt[0] - prev[0])
+            spread = max(abs(val - anchor["value"]) * unc, abs(anchor["value"]) * 0.03)   # model uncertainty + ~3 % assay noise
+            day = (today + timedelta(days=d)).isoformat()
+            pts.append({"day": day, "in_days": d, "value": round(val, 2), "lo": round(val - spread, 2), "hi": round(val + spread, 2)})
+            rows.append((today.isoformat(), k, day, round(val, 2), round(val - spread, 2), round(val + spread, 2)))
+        out.append({"key": k, "label": v["label"], "unit": v["unit"], "anchor": anchor, "points": pts, "why": v.get("why")})
+    with db.tx() as c:                                   # one write transaction for all points
+        c.executemany("INSERT OR REPLACE INTO twin_projections VALUES (?,?,?,?,?,?)", rows)
+    return {"projected": True, "made_on": today.isoformat(), "step_days": step_days, "markers": out, "needs_test": needs,
+            "note": "Projected by your twin from your latest real measurements and current routine — not lab results. "
+                    "Each new real report scores these projections and recalibrates the twin."}
+
+
+def projection_accuracy() -> list[dict]:
+    """Score past projections against real reports that arrived later (mean absolute error per marker)."""
+    try:
+        rows = db.rows("SELECT * FROM twin_projections")
+    except Exception:  # noqa: BLE001
+        return []
+    out = {}
+    for k, m in _ANCHOR.items():
+        reals = db.rows("""SELECT r.value_num AS v, rp.collected_on AS d FROM results r JOIN reports rp ON rp.id = r.report_id
+                           WHERE r.marker_id = ? AND rp.is_test_data = 0""", (m,))
+        for rv in reals:
+            near = [p for p in rows if p["marker"] == k and p["made_on"] < rv["d"] and abs((date.fromisoformat(p["day"]) - date.fromisoformat(rv["d"])).days) <= 5]
+            for p in near:
+                e = out.setdefault(k, []); e.append(abs(p["value"] - rv["v"]))
+    return [{"key": k, "n": len(v), "mae": round(sum(v) / len(v), 2)} for k, v in out.items()]

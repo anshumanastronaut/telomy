@@ -6,6 +6,7 @@ when present. Format: id: (name, panel, unit, optimal_low, optimal_high, better,
 """
 
 ROUTINE_MARKERS: dict[str, tuple] = {
+    "glucose_random": ("Glucose, random", "blood", "mg/dL", 70, 140, "low", ["glucose, random", "glucose random", "random blood sugar", "random glucose"], "2345-7"),
     "bilirubin_total": ("Bilirubin, total", "blood", "mg/dL", 0.2, 1.2, "mid", ["bilirubin, total", "total bilirubin", "bilirubin total"], "1975-2"),
     "bilirubin_direct": ("Bilirubin, direct", "blood", "mg/dL", 0.0, 0.3, "low", ["bilirubin, direct", "direct bilirubin", "bilirubin direct", "conjugated bilirubin"], "1968-7"),
     "bilirubin_indirect": ("Bilirubin, indirect", "blood", "mg/dL", 0.1, 1.0, "mid", ["bilirubin, indirect", "indirect bilirubin", "bilirubin indirect"], "1971-1"),
@@ -49,7 +50,7 @@ EXTRA_ALIASES: dict[str, list[str]] = {
     "alp": ["alkaline phosphatase (alp)"],
     "hemoglobin": ["hemoglobin (hb)", "hemoglobin", "haemoglobin (hb)"],
     "egfr": ["estimated glomerular filtration rate"],
-    "glucose": ["glucose, random", "glucose random", "random blood sugar", "glucose, fasting", "fasting blood sugar"],
+    "glucose": ["glucose, fasting", "fasting blood sugar", "fasting glucose"],
     "rdw": ["red cell distribution width"],
     "platelets": ["platelet count"],
     "mcv": ["mean corpuscular volume"],

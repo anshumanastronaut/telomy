@@ -92,6 +92,7 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
   const p = usePalette();
   const o = useApi<any>('/twin');
   const mir = useApi<any>('/twin/mirror');
+  const proj = useApi<any>('/twin/projections');
   const [preset, setPreset] = useState<string>('telomy_plan');
   const [years, setYears] = useState(5);
   const [sim, setSim] = useState<any>(null);
@@ -229,6 +230,25 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
         </>
       ) : null}
 
+      {proj.data ? (
+        <Section title="Projected labs · next 90 days">
+          <Card style={{ gap: space[2] }}>
+            <T v="small">Your twin's projection from your latest real measurements and current routine, every 10 days. These are projections, not lab results; your next real report scores them and recalibrates the twin.</T>
+            {proj.data.markers.map((m: any) => (
+              <View key={m.key} style={{ gap: 2 }}>
+                <Row>
+                  <T v="label" style={{ flex: 1 }}>{m.label}</T>
+                  <T v="small" color={p.faint}>now {m.anchor.value} {m.unit} · {m.anchor.source}, {m.anchor.date}</T>
+                </Row>
+                <T v="small">{m.points.filter((_: any, i: number) => i % 3 === 2).map((x: any) => `+${x.in_days} d: ${x.value} (${x.lo}–${x.hi})`).join('   ')}</T>
+              </View>
+            ))}
+            {proj.data.needs_test?.length ? (
+              <T v="small" color={p.faint}>Not projected until measured: {proj.data.needs_test.map((x: any) => x.label).join(', ')}.</T>
+            ) : null}
+          </Card>
+        </Section>
+      ) : null}
       <Section title={d.problem_count ? `Your body, system by system — ${d.problem_count} thing${d.problem_count === 1 ? '' : 's'} to watch` : 'Your body, system by system'}>
         <T v="small" color={p.muted}>Each system below is flagged against healthy reference ranges — green is in range, amber worth watching, red out of range. Wellness screening, not a diagnosis.</T>
         {d.systems.map((s: any) => {

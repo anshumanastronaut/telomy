@@ -62,9 +62,12 @@ CREATE TABLE IF NOT EXISTS documents (
 
 
 def connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    # 30 s busy timeout + WAL: device pushes (WHOOP 1 Hz streams) and API reads no longer collide
+    # (2026-10-19: "database is locked" on /twin/projections during a WHOOP upload)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
 
@@ -79,9 +82,12 @@ def tx():
 
 
 def init(reset: bool = False):
-    if reset and os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
+    if reset:
+        for f in (DB_PATH, DB_PATH + "-wal", DB_PATH + "-shm"):
+            if os.path.exists(f):
+                os.remove(f)
     with tx() as c:
+        c.execute("PRAGMA journal_mode=WAL")       # persistent: concurrent readers + one writer
         c.executescript(SCHEMA)
 
 

@@ -872,6 +872,24 @@ def twin_simulate(body: TwinIn):
     return twin.simulate(ch or None, max(0.25, min(10, body.years)))
 
 
+@app.get("/twin/projections")
+def twin_projections(step_days: int = 10, horizon_days: int = 90):
+    """Labelled lab projections every 10 days from your latest REAL measurements (never stored as reports).
+    Cached 1 h per (inputs fingerprint): the twin simulation takes seconds on the 1-core server."""
+    import time as _t
+    key = (db.DB_PATH, step_days, horizon_days, db.one("SELECT COUNT(*) AS n, MAX(id) AS m FROM results")["m"],
+           db.one("SELECT COUNT(*) AS n FROM signals")["n"])
+    hit = _PROJ_CACHE.get(key)
+    if hit and _t.time() - hit[0] < 3600:
+        return hit[1]
+    out = {**twin.projections(max(5, min(step_days, 30)), max(30, min(horizon_days, 365))), "accuracy": twin.projection_accuracy()}
+    _PROJ_CACHE.clear(); _PROJ_CACHE[key] = (_t.time(), out)
+    return out
+
+
+_PROJ_CACHE: dict = {}
+
+
 @app.get("/twin/day")
 def twin_day(drinking: bool = False, day: str | None = None):
     return twin.day(drinking, day)
