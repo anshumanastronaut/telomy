@@ -40,7 +40,7 @@ export default function Welcome() {
         );
       })}
       <Button title="Continue" disabled={!sel} testID="role-continue" onPress={async () => { await setRole(sel!); router.replace(ROLE_HOME[sel!] as any); }} />
-      <T v="small" style={{ textAlign: 'center' }}>Test build: each role opens a demo account with dummy data.</T>
+      <T v="small" style={{ textAlign: 'center' }}>Your health runs on your own devices and records. The doctor and centre views are demos for now.</T>
     </Screen>
   );
 }
