@@ -25,13 +25,19 @@ Legend: [ ] open · [~] in progress · [x] done (date) · [u] needs the user (ac
 - [ ] MiroFish-style 5 000-agent USP/niche simulation ([u] free provider keys in OmniRoute)
 
 ## Twin & labs
+- [x] 2026-10-19 Routine-panel insight rules (CBC/LFT/KFT) — real report now yields 5 insights (was 0)
+- [u] Ultrahuman Blood Vision holds the Telomy DEMO report (hs-CRP 3.4, LDL 148 …), not the real one — its "blood age 33"
+      is computed on synthetic values. User to replace it with the real report there (or delete it) — not done by Claude.
+- [ ] Blood age: keep PhenoAge (Levine 2018, NHANES-validated) as the headline; add a separate, clearly-labelled
+      "metabolic age" view using lipids/insulin/HbA1c/vitamin D only after it is validated on NHANES mortality
+      (Ultrahuman's 12-contributor model reads 33 vs PhenoAge 28.2 on the same demo values)
 - [x] Real report parsed (52/52), twin projections every 10 days from real anchors, labelled "projected"
 - [ ] Score projections when the next real report arrives ([u] next blood test)
 
 ## Nutrition, supplements, medicines (closed loop)
 - [x] Targets (Mifflin × measured PAL, protein, fibre, ICMR-NIN carb cap, WHO limits) + lab notes
 - [x] 2026-10-19 USDA FoodData Central SR Legacy (7 793 foods, micronutrients) behind the meal analyser
-- [ ] Daily intake signals from logged meals (kcal, protein, fibre, added sugar, late meals) → effect engine
+- [ ] (next) Daily intake signals from logged meals (kcal, protein, fibre, added sugar, late meals) → effect engine
 - [ ] Adherence vs targets + plan proposals (accept / drop) + 14-day review → recalibrate
 - [ ] Open Food Facts barcode lookup (ODbL attribution)
 - [ ] NIH DSLD supplement products + openFDA/DailyMed labels; interaction checks via rx.py
@@ -45,10 +51,12 @@ Legend: [ ] open · [~] in progress · [x] done (date) · [u] needs the user (ac
 - [ ] Download + try the on-device model on the iPhone (1.1 GB, Wi-Fi) and measure speed / guard pass rate
 - [ ] Evening check-in notification for today's trackers
 - [ ] Fine-tune a Telomy SLM (LoRA on Qwen3-1.7B) from grounded Q&A generated on the cohort — after the guard data shows where the base model fails
-- [ ] Voice screen → trackers (voice.command should call trackers.capture too)
+- [x] 2026-10-19 Voice screen → trackers (voice.command calls trackers.capture)
 
 ## App quality
-- [ ] Full end-to-end audit of every screen ↔ endpoint ↔ engine (scripted: tools/audit.py) — fix every break
+- [~] End-to-end audit (tools/audit.py): wiring 177/177 app calls have routes; 104 GET routes, 0 server errors.
+      Fixed: insights empty on real data, WHOOP strain never stored as a signal. Open: /whoop/status 5 s (cache it);
+      per-screen check on the phone of every feature with real data
 - [ ] Full UI design pass; slow tab switching (Twin WebView)
 
 ## Hygiene
