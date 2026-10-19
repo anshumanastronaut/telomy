@@ -104,6 +104,13 @@ def cards() -> list[dict]:
     for m in db.rows("SELECT fact FROM memories ORDER BY ts DESC LIMIT 10"):
         add(f"mem:{hash(m['fact']) & 0xffff}", "memory", "You told me", m["fact"], terms="preference remember")
 
+    try:
+        from . import cellular
+        for c in cellular.cards():
+            add(c["id"], "cellular", c["title"], c["text"], terms="cell cellular mechanism pathway mitochondria")
+    except Exception:  # noqa: BLE001
+        pass
+
     la = engine.longevity_age()
     if la.get("value") is not None:
         add("age:bio", "biomarker", "Biological age",

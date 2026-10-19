@@ -1783,6 +1783,19 @@ def client_log(body: ClientLog):
     return {"ok": True}
 
 
+@app.get("/cellular/explain")
+def cellular_explain(name: str):
+    """What a supplement/medicine/food/stressor does at the cellular level, and which markers it moves."""
+    from . import cellular
+    return cellular.explain(name)
+
+
+@app.get("/cellular/marker/{marker_id}")
+def cellular_marker(marker_id: str):
+    from . import cellular
+    return cellular.for_marker(marker_id)
+
+
 @app.get("/sinc/insights")
 def sinc_insights():
     """The connected story — Sinc links labs, wearables, trackers and genetics into themed threads with evidence."""
