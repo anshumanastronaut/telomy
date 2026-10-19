@@ -5,13 +5,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
 export type HomeWidget =
-  | 'recovery' | 'sleep' | 'vitals' | 'timeline' | 'bioage' | 'longevity' | 'strain' | 'stress' | 'fitness' | 'activity' | 'devices';
+  | 'recovery' | 'sleep' | 'vitals' | 'timeline' | 'bioage' | 'longevity' | 'strain' | 'stress' | 'fitness' | 'activity' | 'devices' | 'daytimeline';
 
 export const WIDGETS: { key: HomeWidget; label: string; desc: string }[] = [
   { key: 'recovery', label: 'Recovery dial', desc: 'The big readiness score for today' },
   { key: 'sleep', label: 'Last night', desc: 'Sleep stages, duration and score' },
   { key: 'vitals', label: 'Vitals grid', desc: 'HR, HRV, SpO₂, temperature, breathing, steps…' },
   { key: 'timeline', label: 'Day timeline', desc: 'Your day hour by hour' },
+  { key: 'daytimeline', label: 'Vitals timeline', desc: 'All-day heart rate and vitals with events on one clock (needs the patch/WHOOP)' },
   { key: 'strain', label: 'Effort / strain', desc: "Today's training load" },
   { key: 'stress', label: 'Stress', desc: 'Autonomic stress through the day' },
   { key: 'fitness', label: 'Fitness', desc: 'VO₂max and resting heart rate' },

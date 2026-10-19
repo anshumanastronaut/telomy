@@ -78,6 +78,10 @@ def day(day_iso: str | None = None) -> dict:
     end = start + 86400
     metrics = {m: series(m, start, end, 500) for m in ("hr", "hrv", "spo2", "skin_temp", "resp", "motion", "steps")}
     metrics = {m: s for m, s in metrics.items() if s["n"]}
+    if "hr" not in metrics:                               # until the patch/ring has synced, show WHOOP's 1 Hz HR so the day isn't empty
+        wh = _whoop_hr(start, end)
+        if wh["n"]:
+            metrics["hr"] = wh
     ev = db.rows("SELECT ts, kind, label FROM events WHERE ts >= ? AND ts <= ? ORDER BY ts",
                  (datetime.fromtimestamp(start, ist).isoformat(), datetime.fromtimestamp(end, ist).isoformat()))
     overlay = [{"ts": e["ts"], "kind": e["kind"], "label": e["label"]} for e in ev]
@@ -96,3 +100,24 @@ def coverage(days: int = 7) -> dict:
     return {"days": days, "by_source": [{"source": r["source"], "samples": r["n"], "hours": round((r["secs"] or 0) / 3600, 1),
                                          "from": r["lo"], "to": r["hi"]} for r in rows],
             "goal": "Continuous all-day capture from the patch, ring and WHOOP, synced smartly."}
+
+
+def _whoop_hr(start: int, end: int, max_points: int = 500) -> dict:
+    """WHOOP 1 Hz heart rate for the day (from whoop_rows), downsampled — a fallback so the timeline has data before
+    the patch/ring sync into vitals_ts."""
+    import json as _j
+    try:
+        rows = db.rows("SELECT ts, data FROM whoop_rows WHERE stream='hrSample' AND ts >= ? AND ts < ? ORDER BY ts", (start, end))
+    except Exception:  # noqa: BLE001
+        return {"metric": "hr", "points": [], "n": 0, "coverage_s": 0}
+    if not rows:
+        return {"metric": "hr", "points": [], "n": 0, "coverage_s": 0}
+    bucket = max(1, (end - start) // max_points)
+    agg: dict[int, list[float]] = {}
+    for r in rows:
+        b = _j.loads(r["data"]).get("bpm")
+        if b and 25 <= b <= 220:
+            agg.setdefault((r["ts"] // bucket) * bucket, []).append(b)
+    pts = [[b, round(sum(v) / len(v))] for b, v in sorted(agg.items())]
+    return {"metric": "hr", "label": "Heart rate", "points": pts, "n": len(rows), "bucket_s": bucket,
+            "coverage_s": len(rows), "sources": ["WHOOP"]}

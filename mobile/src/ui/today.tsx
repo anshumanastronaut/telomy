@@ -22,6 +22,7 @@ import { VitalsGrid } from '@/ui/vitals';
 import { useApi } from '@/lib/api';
 import { useHomeLayout, type HomeWidget } from '@/lib/homeprefs';
 import { DayTimeline } from '@/ui/trends';
+import { DayTimelineVitals } from '@/ui/daytimeline';
 
 const EASE_OUT = ReEasing.bezier(0.23, 1, 0.32, 1);
 
@@ -317,6 +318,7 @@ export function WellnessToday({ age }: { age?: number | null }) {
     sleep: w.last ? <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} /> : <PhoneNight />,
     vitals: <VitalsGrid />,
     timeline: <DayTimeline w={w} />,
+    daytimeline: <DayTimelineVitals />,
     strain: <BodyTile icon="flame.fill" color={data.heart} title="Effort / strain" value={w.today.worn >= 10 ? (Math.round(w.today.strain * 10) / 10).toFixed(1) : '—'}
       sub={`${w.today.activeMin} active min today`} onPress={() => router.push('/wellness/strain')} />,
     stress: <BodyTile icon="waveform.path" color={data.stress} title="Stress" value={s.score == null ? '—' : `${s.score}`} unit={s.score == null ? undefined : '/100'}
