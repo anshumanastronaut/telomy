@@ -742,3 +742,17 @@ def test_daily_signals_from_devices_are_upserted_and_filtered(client):
         {"day": "2026-10-18", "metric": "steps", "value": 9000, "source": "Somewhere else"},          # rejected
         {"day": "bad-date", "metric": "steps", "value": 9000, "source": "Apple Health"}]}).json()        # rejected
     assert r["accepted"] == 2
+
+
+def test_block_layout_lab_report_with_nul_dashes():
+    """Indian-lab block layout (name / method / 'value lo – hi' / unit) where the font extracts '–', '<', '≥' as NUL."""
+    from app.labparse import parse_blocks
+    lines = ["Bilirubin, Total", "Diazo Method", "1.18 0.2 \x00 1.3", "mg/dL",
+             "Alanine Transaminase \x00ALT\x00", "LDH, UV Kinetic", "42 \x00 50", "U/L",
+             "Aspartate Aminotransferase \x00AST\x00", "Multipoint-Rate/UV with Pyridoxal", "-5 Phosphate \x00P\x005\x00P\x00", "45 17 \x00 49", "U/L",
+             "Estimated Glomerular Filtration Rate", "\x00eGFR\x00", "105 Normal: \x00 90", "Platelet Count", "DC Impedance Method", "96 150 \x00 450", "10³/µL"]
+    m = {x["marker_id"]: x for x in parse_blocks(lines)}
+    assert m["bilirubin_total"]["value"] == 1.18 and m["bilirubin_total"]["ref_high"] == 1.3
+    assert m["alt"]["ref_high"] == 50 and m["ast"]["value"] == 45 and m["ast"]["ref_low"] == 17
+    assert m["egfr"]["ref_low"] == 90 and m["egfr"]["status"] != "out_of_range"
+    assert m["platelets"]["status"] == "out_of_range"
