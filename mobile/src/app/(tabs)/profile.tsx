@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Alert, View } from 'react-native';
 
-import { api, useApi } from '@/lib/api';
+import { api, authStatus, logout, useApi } from '@/lib/api';
 import { useRole } from '@/lib/role';
 import { setAppearance, useAppearance, usePalette } from '@/lib/theme';
 import { Ring } from '@/ui/charts';
@@ -111,8 +111,21 @@ export default function Profile() {
       <T v="small" style={{ textAlign: 'center' }}>
         Telomy 0.1.0 · {health.data?.engine ?? ''} · Sinc: {health.data?.sinc ?? ''}
       </T>
+      <SignOut />
       <T v="small" style={{ textAlign: 'center', fontStyle: 'italic' }}>Where human biology becomes intelligent.</T>
     </Screen>
+  );
+}
+
+function SignOut() {
+  const p = usePalette();
+  const [multi, setMulti] = React.useState(false);
+  React.useEffect(() => { authStatus().then((st) => setMulti(st.accounts_enabled)).catch(() => {}); }, []);
+  if (!multi) return null;   // only shown when the server is multi-user (there is an account to sign out of)
+  return (
+    <ListRow icon="rectangle.portrait.and.arrow.right" title="Sign out" subtitle="Lock this Telomy and switch accounts"
+      onPress={() => Alert.alert('Sign out?', 'You will need to sign in again.', [{ text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive', onPress: () => logout() }])} />
   );
 }
 

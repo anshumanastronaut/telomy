@@ -190,17 +190,26 @@ const zOf = (x: number, b: Baseline) => (x - b.center) / (1.253 * b.spread);
  * Confidence: calibrating (< 4 nights, compared with typical adults), building (4–13), solid (≥ 14).
  */
 export function recoveryScore(n: Night | undefined, history: Night[], sleep: Score | null, loads: number[]): Score {
-  if (!n || !n.sleepRmssd) return { score: null, label: 'Wear the patch or ring tonight', contributors: [], confidence: 'calibrating', calibrating: n ? 'Last night had no heart-rate variability (wear the patch or ring to bed)' : 'Needs one night with the patch or ring' };
+  // A night with no trustworthy overnight HRV (e.g. WHOOP-only — WHOOP 4.0 R-R is re-delivered and inflated, so it is
+  // not used for HRV) still gives a useful recovery from resting heart rate + sleep. Only when there is NO night, or a
+  // night with neither HRV nor resting HR nor a sleep score, do we say there is nothing to read.
+  if (!n) return { score: null, label: 'Wear the patch, ring or WHOOP tonight', contributors: [], confidence: 'calibrating', calibrating: 'Needs one night with a device' };
+  const hasHrv = !!n.sleepRmssd;
+  if (!hasHrv && !n.lowestHr && sleep?.score == null)
+    return { score: null, label: 'Not enough from last night', contributors: [], confidence: 'calibrating', calibrating: 'Last night had no heart rate or sleep detail — wear the patch, ring or WHOOP to bed' };
   const prev = history.filter((h) => h.end < n.end && (h.hrvSrc ?? 'ecg') === (n.hrvSrc ?? 'ecg')).slice(-30);
   const c: (Contributor & { w: number; z: number | null })[] = [];
-  const bH = robustBaseline(prev.map((h) => h.sleepRmssd).filter(Boolean).map((v) => Math.log(v!)), 0.05);
+  const bH = hasHrv ? robustBaseline(prev.map((h) => h.sleepRmssd).filter(Boolean).map((v) => Math.log(v!)), 0.05) : null;
   const usable = bH && bH.status !== 'calibrating';
-  const confidence: Confidence = !usable ? 'calibrating' : bH!.status === 'provisional' ? 'building' : 'solid';
-  const calibrating = !usable ? `Learning your normal: night ${(bH?.n ?? 0) + 1} of 4` : undefined;
-  // until a baseline exists, compare with healthy-adult references (RMSSD ≈ 42 ms, ln-SD ≈ 0.35, Nunan 2010; RHR 60 ± 8)
-  const zH = usable ? zOf(Math.log(n.sleepRmssd), bH!) : (Math.log(n.sleepRmssd) - Math.log(42)) / 0.35;
-  c.push({ key: 'hrv', label: 'HRV', w: 0.5, z: zH, value: `${Math.round(n.sleepRmssd)} ms`,
-    note: usable ? `Your normal ${Math.round(Math.exp(bH!.center))} ms` : 'Compared with typical adults until your normal is learnt', score: clamp(60 + 20 * zH) });
+  const confidence: Confidence = !hasHrv ? 'building' : !usable ? 'calibrating' : bH!.status === 'provisional' ? 'building' : 'solid';
+  const calibrating = !hasHrv ? 'Based on resting heart rate and sleep — wear the patch or ring for HRV-based recovery'
+    : !usable ? `Learning your normal: night ${(bH?.n ?? 0) + 1} of 4` : undefined;
+  if (hasHrv) {
+    // until a baseline exists, compare with healthy-adult references (RMSSD ≈ 42 ms, ln-SD ≈ 0.35, Nunan 2010; RHR 60 ± 8)
+    const zH = usable ? zOf(Math.log(n.sleepRmssd!), bH!) : (Math.log(n.sleepRmssd!) - Math.log(42)) / 0.35;
+    c.push({ key: 'hrv', label: 'HRV', w: 0.5, z: zH, value: `${Math.round(n.sleepRmssd!)} ms`,
+      note: usable ? `Your normal ${Math.round(Math.exp(bH!.center))} ms` : 'Compared with typical adults until your normal is learnt', score: clamp(60 + 20 * zH) });
+  }
   if (n.lowestHr) {
     const b = robustBaseline(prev.map((h) => h.lowestHr).filter(Boolean) as number[], 1.5);
     const ok = b && b.status !== 'calibrating';

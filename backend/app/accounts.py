@@ -99,11 +99,37 @@ def signup(email: str, password: str, name: str = "") -> dict:
     with _acc() as c:
         if c.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone():
             raise ValueError("An account with this email already exists.")
+        first = c.execute("SELECT COUNT(*) AS n FROM users").fetchone()["n"] == 0
         salt = secrets.token_hex(16)
         uid = c.execute("INSERT INTO users (email, name, pw_hash, salt, created_at) VALUES (?,?,?,?,?)",
                         (email, name.strip()[:80], _hash(password, salt), salt, __import__("datetime").datetime.now().isoformat())).lastrowid
-    _ensure_user_db(uid)
-    return {"user_id": uid, "token": _new_token(uid), "email": email, "name": name}
+    adopted = _adopt_legacy(uid) if first else False        # the first account inherits the existing single-user Vault
+    if not adopted:
+        _ensure_user_db(uid)
+    return {"user_id": uid, "token": _new_token(uid), "email": email, "name": name, "adopted_existing_data": adopted}
+
+
+def _adopt_legacy(user_id: int) -> bool:
+    """When the first account is created, copy the existing single-file Vault to it (if it has a profile), so turning
+    on multi-user never loses the current data. Returns True if data was adopted."""
+    import shutil
+    legacy = db.DB_PATH
+    if not os.path.exists(legacy):
+        return False
+    db.set_db(legacy)
+    try:
+        has = db.one("SELECT 1 AS x FROM profile LIMIT 1") is not None
+    except Exception:  # noqa: BLE001
+        has = False
+    finally:
+        db.set_db(None)
+    if not has:
+        return False
+    dest = user_db_path(user_id)
+    for suffix in ("", "-wal", "-shm"):
+        if os.path.exists(legacy + suffix):
+            shutil.copy2(legacy + suffix, dest + suffix)
+    return os.path.exists(dest)
 
 
 def login(email: str, password: str) -> dict:

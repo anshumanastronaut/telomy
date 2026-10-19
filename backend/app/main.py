@@ -100,7 +100,8 @@ class _PwBody(BaseModel):
 
 @app.get("/auth/status")
 def auth_status():
-    return {"password_required": bool(_PW)}
+    return {"password_required": bool(_PW) and not acctmod.enabled(), "accounts_enabled": acctmod.enabled(),
+            "accounts_available": True}
 
 
 @app.post("/auth/password")

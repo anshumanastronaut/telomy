@@ -46,6 +46,35 @@ export async function unlock(password: string): Promise<string | null> {
   } catch { return "Couldn't reach the Telomy server."; }
 }
 
+/** Multi-user: sign up (first account inherits any existing single-user Vault) and log in. Both store the token. */
+export async function signup(email: string, password: string, name: string): Promise<string | null> {
+  return _authExchange('/auth/signup', { email, password, name });
+}
+export async function login(email: string, password: string): Promise<string | null> {
+  return _authExchange('/auth/login', { email, password });
+}
+async function _authExchange(path: string, body: any): Promise<string | null> {
+  try {
+    const res = await reach(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) return j?.detail ?? 'That did not work.';
+    token = j.token || null;
+    if (token) await AsyncStorage.setItem(TOKEN_KEY, token); else await AsyncStorage.removeItem(TOKEN_KEY);
+    setLocked(false);
+    return null;
+  } catch { return "Couldn't reach the Telomy server."; }
+}
+export async function logout() {
+  try { await reach('/auth/logout', { method: 'POST' }); } catch {}
+  token = null;
+  await AsyncStorage.removeItem(TOKEN_KEY).catch(() => {});
+  setLocked(true);
+}
+export async function authStatus(): Promise<{ password_required: boolean; accounts_enabled: boolean; accounts_available: boolean }> {
+  try { const res = await reach('/auth/status', { method: 'GET' }); return await res.json(); }
+  catch { return { password_required: false, accounts_enabled: false, accounts_available: false }; }
+}
+
 /** Try the current server, then the others; remember the first that answers. Throws only if none do. */
 async function reach(path: string, init: RequestInit): Promise<Response> {
   await tokenReady;
