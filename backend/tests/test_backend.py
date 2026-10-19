@@ -756,3 +756,12 @@ def test_block_layout_lab_report_with_nul_dashes():
     assert m["alt"]["ref_high"] == 50 and m["ast"]["value"] == 45 and m["ast"]["ref_low"] == 17
     assert m["egfr"]["ref_low"] == 90 and m["egfr"]["status"] != "out_of_range"
     assert m["platelets"]["status"] == "out_of_range"
+
+
+def test_nutrition_targets_from_profile_and_labs(client):
+    r = client.get("/nutrition/targets").json()
+    t = r["targets"]
+    assert t["ok"] and 1500 < t["kcal"] < 4000 and t["protein_g"] > 0 and t["fibre_g"] >= 30
+    assert t["carbs_g"] * 4 / t["kcal"] <= 0.56 and "eaten" in r
+    lose = client.get("/nutrition/targets", params={"goal": "lose"}).json()["targets"]
+    assert lose["kcal"] < t["kcal"] and lose["kcal"] >= round(lose["bmr"] * 1.2) - 1

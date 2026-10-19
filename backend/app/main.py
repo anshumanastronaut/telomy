@@ -1572,6 +1572,15 @@ def delete_meal(mid: int):
     return {"ok": True}
 
 
+@app.get("/nutrition/targets")
+def nutrition_targets(goal: str = "maintain"):
+    """Personal daily targets from body, labs and measured activity; with today's logged meals against them."""
+    from . import nutrition
+    if goal not in ("maintain", "lose"):
+        raise HTTPException(400, "goal must be maintain or lose")
+    return nutrition.today_vs_targets(goal)
+
+
 @app.get("/nutrition/trends")
 def nutrition_trends(days: int = 7):
     end = date.fromisoformat(today())
