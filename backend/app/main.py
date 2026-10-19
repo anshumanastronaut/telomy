@@ -17,6 +17,7 @@ from . import bioage  # noqa: E402
 from . import platform as pform  # noqa: E402
 from . import centre as centremod  # noqa: E402
 from . import clinic as clinicmod  # noqa: E402
+from . import fulfillment, goals, interop  # noqa: E402
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
@@ -34,7 +35,7 @@ async def lifespan(_app):
     rx.init()
     summaries.init()
     acctmod.init()
-    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod, pform, centremod, clinicmod):
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod, pform, centremod, clinicmod, fulfillment, goals, interop):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
@@ -1903,6 +1904,135 @@ def vitals_series(metric: str, start: int, end: int, max_points: int = 1000):
 @app.get("/vitals/coverage")
 def vitals_coverage(days: int = 7):
     return vitalsmod.coverage(days)
+
+
+# ---- Fulfillment & logistics (pickups/deliveries) ----
+class OrderIn(BaseModel):
+    org: str = "default"
+    kind: str
+    items: list[dict]
+    member_id: int | None = None
+    patient_id: int | None = None
+    address: str = ""
+    slot: str | None = None
+    rx_plan_id: int | None = None
+    partner: str = ""
+
+
+@app.get("/mgmt/orders")
+def mgmt_orders(org: str = "default", status: str | None = None, kind: str | None = None):
+    return fulfillment.list_orders(org, status, kind)
+
+
+@app.post("/mgmt/orders")
+def mgmt_order_add(body: OrderIn):
+    try:
+        return fulfillment.create_order(body.org, body.kind, body.items, body.member_id, body.patient_id, body.address, body.slot, body.rx_plan_id, body.partner)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/orders/{oid}")
+def mgmt_order(oid: int):
+    o = fulfillment.order(oid)
+    if not o:
+        raise HTTPException(404, "no such order")
+    return o
+
+
+@app.post("/mgmt/orders/{oid}/advance")
+def mgmt_order_advance(oid: int, body: dict):
+    try:
+        return fulfillment.advance(oid, body.get("status", ""), body.get("note", ""), body.get("tracking"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/orders/from-rx/{plan_id}")
+def mgmt_order_from_rx(plan_id: int, body: dict):
+    try:
+        return fulfillment.from_rx_plan(body.get("org", "default"), plan_id, body.get("address", ""), body.get("slot"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/sample-pickup")
+def mgmt_sample_pickup(body: dict):
+    try:
+        return fulfillment.schedule_sample_pickup(body.get("org", "default"), int(body["patient_id"]), body.get("tests", []),
+                                                   body.get("address", ""), body.get("slot", ""), body.get("partner", ""))
+    except (ValueError, KeyError) as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- Goals ----
+class GoalIn(BaseModel):
+    org: str = "default"
+    title: str
+    owner_kind: str = "member"
+    owner_id: int | None = None
+    category: str = ""
+    metric: str | None = None
+    target: float | None = None
+    deadline: str | None = None
+    set_by: str = ""
+
+
+@app.get("/mgmt/goals")
+def mgmt_goals(org: str = "default", owner_kind: str | None = None, owner_id: int | None = None, status: str = "active"):
+    return goals.list_goals(org, owner_kind, owner_id, status)
+
+
+@app.post("/mgmt/goals")
+def mgmt_goal_add(body: GoalIn):
+    try:
+        return goals.add_goal(body.org, body.title, body.owner_kind, body.owner_id, body.category, body.metric, body.target, body.deadline, body.set_by)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/goals/{gid}")
+def mgmt_goal_update(gid: int, body: dict):
+    try:
+        return goals.update_goal(gid, body.get("status"), body.get("target"), body.get("deadline"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- Interoperability (open to hospital/EHR systems) ----
+@app.get("/interop/fhir/Patient")
+def interop_fhir_patient():
+    return interop.fhir_patient()
+
+
+@app.get("/interop/fhir/Bundle")
+def interop_fhir_bundle():
+    return interop.fhir_bundle()
+
+
+@app.get("/mgmt/api-keys")
+def mgmt_keys(org: str = "default"):
+    return interop.list_keys(org)
+
+
+@app.post("/mgmt/api-keys")
+def mgmt_key_add(body: dict):
+    return interop.create_key(body.get("org", "default"), body.get("name", "integration"), body.get("scopes", ["read"]))
+
+
+@app.delete("/mgmt/api-keys/{kid}")
+def mgmt_key_del(kid: int):
+    interop.revoke_key(kid); return {"ok": True}
+
+
+@app.get("/mgmt/webhooks")
+def mgmt_webhooks(org: str = "default"):
+    return interop.list_webhooks(org)
+
+
+@app.post("/mgmt/webhooks")
+def mgmt_webhook_add(body: dict):
+    return interop.add_webhook(body.get("org", "default"), body.get("url", ""), body.get("events", ["*"]))
 
 
 # ---- Platform: modular, customisable config for centres & clinics ----
