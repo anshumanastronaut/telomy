@@ -96,6 +96,14 @@ rsync -az --delete --itemize-changes "${RSYNC_EXCLUDES[@]}" \
   -e "ssh -i $SSH_KEY" \
   "$REPO_ROOT/backend/app/" "${TARGET}:${APP}/app/"
 
+# The web console (centre/doctor/super-admin SPA) is served from $APP/webconsole via StaticFiles.
+if [ -d "$REPO_ROOT/backend/webconsole" ]; then
+  echo "== syncing backend/webconsole -> ${APP}/webconsole"
+  rsync -az --delete --itemize-changes "${RSYNC_EXCLUDES[@]}" \
+    -e "ssh -i $SSH_KEY" \
+    "$REPO_ROOT/backend/webconsole/" "${TARGET}:${APP}/webconsole/"
+fi
+
 echo "== syncing requirements.txt -> ${APP}/"
 rsync -az --itemize-changes \
   -e "ssh -i $SSH_KEY" \
