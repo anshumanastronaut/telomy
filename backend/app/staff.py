@@ -105,11 +105,17 @@ def login(email: str, password: str) -> dict:
             "label": r["label"]}
 
 
+_TOKEN_TTL = 30 * 86400          # staff console sessions expire after 30 days (L1 — tokens no longer live forever)
+
+
 def whoami(token: str) -> dict | None:
     if not token:
         return None
     t = db.one("SELECT * FROM staff_tokens WHERE token = ?", (token,))
     if not t:
+        return None
+    if time.time() - (t["created_at"] or 0) > _TOKEN_TTL:        # expired — revoke and reject
+        db.exec_("DELETE FROM staff_tokens WHERE token = ?", (token,))
         return None
     u = db.one("SELECT * FROM staff WHERE id = ? AND active = 1", (t["staff_id"],))
     if not u:

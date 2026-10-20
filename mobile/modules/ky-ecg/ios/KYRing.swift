@@ -508,10 +508,19 @@ final class KYRing: NSObject {
     }
 
     // MARK: internals
+    // Connect options used everywhere: ask iOS to notify us on disconnect, and (iOS 17+) to auto-re-establish the link
+    // when the ring comes back into range — the OS handles the reconnect even while the app is suspended, so we never
+    // run an app-side timeout/rescan loop (the #1 cause of overnight connect/disconnect flapping). See the device
+    // reliability research (Apple CoreBluetooth docs).
+    private var connectOpts: [String: Any] {
+        var o: [String: Any] = [CBConnectPeripheralOptionNotifyOnDisconnectionKey: true]
+        if #available(iOS 17.0, *) { o[CBConnectPeripheralOptionEnableAutoReconnect] = true }
+        return o
+    }
     private func attach(_ p: CBPeripheral) {
         central.stopScan(); ring = p; p.delegate = self
         UserDefaults.standard.set(p.identifier.uuidString, forKey: Self.rememberKey)
-        set("connecting"); central.connect(p, options: nil)
+        set("connecting"); central.connect(p, options: connectOpts)
     }
     private func set(_ s: String) { state = s; publish() }
     private func publish() { emit?("onRingStatus", status()) }
@@ -679,7 +688,7 @@ extension KYRing: CBCentralManagerDelegate {
         if let p = ring {
             p.delegate = self; setupDone = false; writeC = nil
             if p.state == .connected { log("restored live link — rediscovering"); set("connecting"); p.discoverServices([Self.service]) }
-            else { log("restored peripheral — pending reconnect"); set("connecting"); central.connect(p, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey: true]) }
+            else { log("restored peripheral — pending reconnect"); set("connecting"); central.connect(p, options: connectOpts) }
         } else { autoConnect() }
     }
     func centralManager(_ c: CBCentralManager, willRestoreState dict: [String: Any]) {
@@ -705,7 +714,7 @@ extension KYRing: CBCentralManagerDelegate {
         // This is why the link no longer drops on screen-off; a delayed re-scan can't run while suspended.
         if ring === p || ring == nil {
             ring = p; p.delegate = self
-            central.connect(p, options: [CBConnectPeripheralOptionNotifyOnDisconnectionKey: true])
+            central.connect(p, options: connectOpts)
             set("connecting")
         } else {
             set("idle"); DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.autoConnect() }
