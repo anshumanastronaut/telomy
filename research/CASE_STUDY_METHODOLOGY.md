@@ -74,3 +74,17 @@ emerges from the case studies; it needs no proprietary data to start (priors) an
 3. **Layer-3 pooled mixed-effects recalibration** that updates `modalities.py` priors + flags responders.
 Diagnostics (BCA, DEXA, VO₂max) slot in as `diagnostic_event` outcomes feeding Layers 2–3 and the
 muscular-age / fitness clocks.
+
+## Status — built & validated (2026-10-21)
+Layers 1 & 2 are implemented and ground-truth-validated (no real centre data yet, so validated on
+simulation where truth is known):
+- **Layer 1** `telomy-slm/telomy_llx/signatures.py` — session-signature extractor (phases, peak/nadir,
+  response, recovery, AUC, safety flags; HBOT SpO₂ correctly ignored in-chamber). Sauna↑ / HBOT↓ match.
+- **Layer 2** `telomy-slm/telomy_llx/casestudy.py` — ITS segmented regression + CausalImpact-style
+  counterfactual (residual-bootstrap CI) + Tau-U/SMD + co-intervention covariates + design-aware verdict.
+- **Validation** (`benchmark_casestudy.py`, 400 sims/scenario): sensitivity 94% (strong) / 64% (weak);
+  **false-"helped" on null 0%**; **regression-to-mean flagged positive 2%** (was 100% before the
+  design-aware fix); effect recovery unbiased (−0.74 vs −0.75; −0.30 vs −0.30). A crossover design
+  correctly rescues a level-change to "helped" where ITS flags possible-RTM. Tests: 18/18 pass.
+- **Layer 3** (pooled mixed-effects recalibration of `modalities.py` priors) activates once centres log
+  real sessions — the engine is ready to consume them.
