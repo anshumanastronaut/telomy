@@ -128,14 +128,43 @@ _USER_OPEN = {"/", "/health", "/auth/password", "/auth/status", "/auth/signup", 
               "/docs", "/openapi.json", "/redoc", "/static/telomy_anatomy.glb", "/whoop/push"}
 
 
+# Management plane auth is independent of consumer multi-user mode. These are the only /mgmt paths without a staff token.
+_MGMT_OPEN = {"/mgmt/auth/login", "/mgmt/auth/signup", "/mgmt/auth/status"}
+
+
+def _bearer(authorization: str) -> str:
+    return authorization[7:] if authorization.startswith("Bearer ") else ""
+
+
 async def _bind_user(request: _Req, authorization: str = _Hdr(default="")):
     db.set_db(None)                                           # default; overridden below for an authenticated user
+    path = request.url.path
+    # ---- C1: the /mgmt management plane ALWAYS requires a valid staff token, in every mode. This runs as a global
+    # dependency (not the password middleware, which exits early in multi-user mode), so it can't be bypassed. ----
+    if path.startswith("/mgmt") and request.method != "OPTIONS" and path not in _MGMT_OPEN:
+        me = staffmod.whoami(_bearer(authorization))
+        if not me:
+            raise HTTPException(401, "Sign in to the console.")
+        request.state.staff = me
+        # ---- C2: a staff member is scoped to their own org (a super-admin may address any org). Reject any org the
+        # caller doesn't own, whether it arrives as a query param or in the JSON body. Starlette caches the body, so
+        # the endpoint's own parsing still works. This single global check covers every /mgmt route. ----
+        if me["role"] != "super_admin":
+            q_org = request.query_params.get("org")
+            if q_org and q_org != me["org"]:
+                raise HTTPException(403, "You can only access your own organisation.")
+            if request.method in ("POST", "PUT", "PATCH"):
+                try:
+                    body = await request.json()
+                except Exception:  # noqa: BLE001  (no/invalid JSON body — nothing to scope)
+                    body = None
+                if isinstance(body, dict) and body.get("org") and body["org"] != me["org"]:
+                    raise HTTPException(403, "You can only access your own organisation.")
     if not acctmod.enabled():
         return                                                # single-user mode unchanged
-    path = request.url.path
     if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith(("/nightscout/", "/console", "/mgmt", "/interop")):
         return
-    uid = acctmod.user_for_token(authorization[7:] if authorization.startswith("Bearer ") else "")
+    uid = acctmod.user_for_token(_bearer(authorization))
     if not uid:
         raise HTTPException(401, "Please sign in.")
     db.set_db(acctmod.user_db_path(uid))

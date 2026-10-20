@@ -32,3 +32,6 @@ share/
 
 mobile/ios/build-sim/
 web/dist/
+backend/.whoop-token
+backend/backups/
+backend/logs/

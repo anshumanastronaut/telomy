@@ -4,11 +4,19 @@ os.environ.setdefault("TELOMY_DB", os.path.join(tempfile.mkdtemp(), "test.db"))
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from app.main import app  # noqa: E402
+from app import staff as staffmod  # noqa: E402
 
 
 @pytest.fixture(scope="module")
 def client():
     with TestClient(app) as c:
+        # /mgmt now requires a staff token; a super-admin can address any org (C2-exempt).
+        try:
+            staffmod.create_staff("platform", "super_admin", "Root", "root.fgi@t.io", "superpw12345", by="t")
+        except Exception:
+            pass
+        tok = c.post("/mgmt/auth/login", json={"email": "root.fgi@t.io", "password": "superpw12345"}).json()["token"]
+        c.headers.update({"Authorization": "Bearer " + tok})
         yield c
 
 
