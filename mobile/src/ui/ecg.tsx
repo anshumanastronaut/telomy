@@ -197,7 +197,7 @@ export function LiveBandCard({ onPress }: { onPress: () => void }) {
     : s?.rememberedId ? `${s.rememberedName ?? 'ECG band'} · reconnects when you wear it` : 'Connect your ECG band for live ECG, HR and HRV';
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={live ? `Heart rate ${Math.round(b.metrics!.hr!)} bpm. Open live ECG` : 'Open live ECG'}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: p.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: p.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: p.surface, borderRadius: 14, padding: 14 }}>
         {live ? <BeatHeart lastBeatAt={b.lastBeatAt} /> : <Icon name="waveform.path.ecg" color={p.teal} size={24} />}
         <View style={{ flex: 1 }}>
           <T v="h3">{live ? `${Math.round(b.metrics!.hr!)} bpm` : 'Live ECG'}</T>

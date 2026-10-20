@@ -217,6 +217,60 @@ def _deep_refs(out: dict) -> list[dict]:
     return cite(keys)[:8]
 
 
+DEEP_WORDS = re.compile(r"\b(why|how|explain|compare|connect|research|mechanism|cellular|deep dive|root cause|what causes|"
+                       r"should i|is it serious|everything about|full picture|overall|across)\b", re.I)
+
+
+def looks_deep(question: str) -> bool:
+    toks = _tokens(question)
+    markers_hit = sum(1 for m in MARKERS if any(n in question.lower() for n in [MARKERS[m][0].lower()] + list(MARKERS[m][6] if isinstance(MARKERS[m][6], list) else [])))
+    return bool(DEEP_WORDS.search(question)) or len(question) > 90 or markers_hit >= 2 or len(toks) >= 12
+
+
+def _deep_compose(question: str) -> dict:
+    """RAG-first deep research without a cloud model: broad retrieval across the Vault, the cross-domain threads it
+    touches, the cellular mechanisms behind the markers involved, and the literature — structured and grounded. When a
+    provider (e.g. Anthropic) is configured, the wrapper handles deep mode instead and this is the fallback."""
+    from . import retrieval, cellular
+    cards = retrieval.retrieve(question, k=24)
+    by = {}
+    for c in cards:
+        by.setdefault(c["kind"], []).append(c)
+    parts, evidence, markers_used = [], [], []
+    # 1) what your data shows
+    labs = by.get("lab", [])[:8]; sigs = by.get("signal", [])[:6]
+    if labs or sigs:
+        parts.append("**What your data shows**")
+        for c in labs + sigs:
+            parts.append(f"- {c['text']}")
+            mid = c["id"].split(":", 1)[1]
+            if mid in MARKERS: markers_used.append(mid)
+            evidence.append(mid)
+    # 2) what connects (cross-domain threads touching this question)
+    qtok = _tokens(question)
+    threads = [t for t in retrieval.connect().get("threads", []) if _tokens(t["headline"]) & qtok or _tokens(t["theme"]) & qtok]
+    if not threads:
+        threads = retrieval.connect().get("threads", [])[:2]
+    if threads:
+        parts.append("\n**What connects**")
+        for t in threads[:3]:
+            parts.append(f"- _{t['theme']}_: {t['story']}")
+            evidence.append(t["insight_id"])
+    # 3) cellular level
+    cell = []
+    for m in dict.fromkeys(markers_used):
+        cell += cellular.for_marker(m)
+    seen=set(); cell=[e for e in cell if not (e["name"] in seen or seen.add(e["name"]))][:5]
+    if cell:
+        parts.append("\n**At the cellular level**")
+        for e in cell:
+            parts.append(f"- **{e['name']}** acts on {e['cells']} at the {e['site']}: {e['mechanism']} (evidence {e['evidence']})")
+    conf = 0.6 if (labs or sigs) else 0.4
+    return {"answer": "\n".join(parts) if parts else "I don't have enough in your Vault to research this yet — add the related tests or signals.",
+            "evidence_ids": list(dict.fromkeys(evidence))[:8], "confidence": conf, "medical": bool(MEDICAL_WORDS.search(question)),
+            "engine": "telomy-retrieval (deep RAG)"}
+
+
 def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict:
     now = engine.now_iso()
     if not chat_id:
@@ -224,11 +278,31 @@ def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict
     history = db.rows("SELECT role, content FROM messages WHERE chat_id = ? ORDER BY id", (chat_id,))
     db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)",
              (chat_id, now, "user", question, None))
-    try:
-        out = _ask_claude(question, history) if _claude_available() else _compose(question)
-    except Exception as exc:  # network/API problems must be visible, never silent
-        out = _compose(question)
-        out["notice"] = f"I couldn't reach the language model ({type(exc).__name__}); this answer comes from your Vault directly."
+    from . import trackers
+    cap = trackers.capture(question)              # anything said to Sinc can set up tracking, baselines and a plan
+    if cap:
+        out = {"answer": cap["answer"], "evidence_ids": [], "confidence": 0.9, "medical": cap["medical"], "engine": "telomy-trackers",
+               "trackers": [{"id": t["id"], "name": t["name"], "kind": t["kind"], "new": t["new"]} for t in cap["trackers"]],
+               "red_flag": cap["red_flag"], "mode": mode, "chips": [], "review_state": "none"}
+        mid = db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)",
+                       (chat_id, engine.now_iso(), "assistant", out["answer"], db.j(out)))
+        return {"chat_id": chat_id, "message_id": mid, **out}
+    from . import telomy_llm, retrieval
+    out = None
+    deep = mode == "deep"
+    if telomy_llm.available():
+        # deep mode gets a broader grounding context and a be-thorough nudge; the wrapper picks the best provider
+        ctx = retrieval.context(question, k=26 if deep else 18)
+        sys_prompt = SYSTEM + ("\nThis is a DEEP RESEARCH request: be thorough, connect findings across labs, wearables, "
+                               "trackers and genetics, explain mechanisms, and cite the person's own numbers." if deep else "")
+        r = telomy_llm.ask(sys_prompt, ctx, question, history, SCHEMA, max_tokens=6000 if deep else 4000)
+        if r and "_error" not in r:
+            out = r
+        elif r and "_error" in r:
+            out = _deep_compose(question) if deep else _compose(question)
+            out["notice"] = f"Answered from your Vault directly ({r['_error']})."
+    if out is None:
+        out = _deep_compose(question) if deep else _compose(question)
     out["medical"] = bool(out.get("medical") or MEDICAL_WORDS.search(question))
     out["mode"] = mode
     if mode == "deep":
@@ -253,3 +327,86 @@ def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict
     for m in MEMORY_PAT.findall(question):
         db.exec_("INSERT INTO memories (ts, fact, source) VALUES (?,?,?)", (now, m.strip().capitalize(), "Sinc chat"))
     return {"chat_id": chat_id, "message_id": mid, **out}
+
+
+# ------------------------------------------------------------------ on-device Sinc (small model on the iPhone)
+
+SLM_SYSTEM = """You are Sinc, the health companion in the Telomy app, running on the person's iPhone.
+Answer ONLY from the FACTS below: their own lab results, wearable signals, targets and the engine's findings.
+Rules: first person, warm, precise; no exclamation marks, no emoji; every number must be copied exactly from FACTS
+with its date or window; if FACTS lack the answer, say what is missing and how to get it; correlations are not
+causes; never diagnose or prescribe, never suggest a dose; for anything medical, suggest asking their doctor.
+Under 150 words. Plain English."""
+
+
+def slm_context(question: str = "") -> dict:
+    """Compact, line-per-fact context for a 1–2 B on-device model (it reads ~2 k tokens well, not a JSON dump).
+    The phone checks every number in the model's answer against this text and falls back to /sinc/ask if one is
+    not here — the grounding guard."""
+    q = question.lower()
+    p = engine.profile()
+    age = engine.age_on()
+    L = [f"Today: {engine.last_signal_day() or datetime.now().date().isoformat()}"]
+    L.append("Person: " + ", ".join(x for x in [p.get("sex"), f"{age:.0f} years" if age else None,
+                                                f"{p['height_cm']:.0f} cm" if p.get("height_cm") else None,
+                                                f"{p['weight_kg']:.0f} kg" if p.get("weight_kg") else None,
+                                                f"goal: {p['goal']}" if p.get("goal") else None] if x))
+    latest = engine.latest_values()
+    flagged, asked, rest = [], [], []
+    for k, v in latest.items():
+        spec = MARKERS.get(k)
+        if not spec:
+            continue
+        val = v["value_num"] if v["value_num"] is not None else v["value_text"]
+        line = f"Lab {spec[0]}: {val} {v['unit'] or ''}".rstrip() + f" on {v['collected_on']}"
+        if v.get("ref_text"):
+            line += f" (lab range {v['ref_text']})"
+        if v.get("status") in ("out_of_range", "variant", "detected", "absent"):
+            line += " — " + {"out_of_range": "outside the optimal range", "variant": "gene variant", "detected": "detected",
+                             "absent": "absent"}[v["status"]]
+        names = [spec[0].lower()] + [a for a in (spec[6] if isinstance(spec[6], list) else []) if isinstance(a, str)]
+        if any(re.search(rf"\b{re.escape(n.lower())}", q) for n in names if len(n) > 2) or re.search(rf"\b{re.escape(k)}\b", q):
+            asked.append(line)
+        elif v.get("status") == "out_of_range":
+            flagged.append(line)
+        else:
+            rest.append(line)
+    L += asked[:10] + flagged[:15] + rest[:max(0, 20 - len(asked) - len(flagged))]
+    for m, spec in engine.SIGNALS.items():
+        b = engine.signal_baseline(m, days=30)
+        if b:
+            L.append(f"Signal {spec[0]}: 30-day mean {round(b['mean'], spec[3]) if spec[3] else round(b['mean'])} {spec[1]} ({b['n']} days)".replace("  ", " "))
+    try:
+        from . import whoop_day
+        d = whoop_day.day()
+        if d.get("ok"):
+            L.append(f"WHOOP today: strain {d['strain']}, resting heart rate {d['restingHr']} bpm, {len(d['workouts'])} workouts detected")
+    except Exception:  # noqa: BLE001 — no WHOOP
+        pass
+    try:
+        from . import nutrition
+        t = nutrition.targets(p.get("goal") if p.get("goal") in ("maintain", "lose") else "maintain")
+        if t.get("ok"):
+            L.append(f"Daily targets: {t['kcal']} kcal, protein {t['protein_g']} g, fibre {t['fibre_g']} g, carbs {t['carbs_g']} g, fat {t['fat_g']} g")
+            L += [f"Lab note: {n['text']}" for n in t["labs"][:5]]
+    except Exception:  # noqa: BLE001
+        pass
+    for i in engine.list_insights()[:8]:
+        L.append(f"Finding [{i['id']}] {i['title']}: {re.sub(r'\s+', ' ', i['body'] or '')[:220]} (confidence {int(i['confidence'] * 100)}%)")
+    mem = [m["fact"] for m in db.rows("SELECT fact FROM memories ORDER BY ts DESC LIMIT 5")]
+    L += [f"They told me: {m}" for m in mem]
+    text = "\n".join(L)
+    return {"system": SLM_SYSTEM, "facts": text, "chars": len(text)}
+
+
+def log_on_device(question: str, answer: str, chat_id: int | None, model: str) -> dict:
+    """Keep on-device answers in the same chat history (text only; nothing else leaves the phone that wasn't already
+    on the user's own server)."""
+    now = engine.now_iso()
+    if not chat_id:
+        chat_id = db.exec_("INSERT INTO chats (ts, title) VALUES (?,?)", (now, question[:60]))
+    db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)", (chat_id, now, "user", question, None))
+    meta = {"engine": f"{model} (on this iPhone)", "medical": bool(MEDICAL_WORDS.search(question)), "evidence_ids": []}
+    meta["review_state"] = "awaiting" if meta["medical"] else "none"
+    mid = db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)", (chat_id, engine.now_iso(), "assistant", answer, db.j(meta)))
+    return {"chat_id": chat_id, "message_id": mid, **meta}

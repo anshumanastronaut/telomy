@@ -38,6 +38,13 @@ make docs    # regenerate docs/API.md and docs/DATA_MODEL.md after route/schema 
 - Every behaviour change gets a test in `backend/tests/test_backend.py`; tests run against the fixture world with planted effects.
 - Mobile: expo-router screens in `mobile/src/app`; components from `mobile/src/ui/core.tsx`; colours and fonts only via
   `mobile/src/lib/theme.ts` tokens; every screen handles loading, empty and error; data via `useApi(path)`.
+- Design rules (enforced by `node mobile/tools/design-lint.mjs` — counts may only go down):
+  - Colour: chrome from `usePalette()`; any signal (HR, SpO₂, sleep…) from `data.*` — never a hex literal.
+  - Type: sizes from `type.*` via `<T v=…>`; Fraunces only for display numbers/headlines, Inter for everything else.
+  - Space/shape: `space.*`, `radius.*` only. Group with proximity (gap inside a card < gap between cards).
+  - Motion: `motion.easeOut` for entering, `motion.spring` for press/toggle; no linear easing, nothing over 360 ms.
+  - Build progressively: get one widget right on its own, then compose; reuse an existing `ui/` component before
+    writing a new one.
 - Copy: plain and specific; sentence case; errors say what happened and what to do.
 
 ## Where things are

@@ -77,4 +77,4 @@ function Delta({ label, d }: { label: string; d: any }) {
   );
 }
 
-const stp = (p: any) => ({ width: 36, height: 36, borderRadius: radius.md, borderWidth: 1, borderColor: p.border, alignItems: 'center' as const, justifyContent: 'center' as const });
+const stp = (p: any) => ({ width: 36, height: 36, borderRadius: radius.md, alignItems: 'center' as const, justifyContent: 'center' as const });

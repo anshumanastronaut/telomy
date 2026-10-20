@@ -33,6 +33,7 @@ SIGNALS = {
     "sbp": ("Systolic blood pressure", "mmHg", "low", 0),
     "dbp": ("Diastolic blood pressure", "mmHg", "low", 0),
     "glucose_mean": ("Glucose (CGM mean)", "mg/dL", "low", 0),
+    "strain": ("Daily strain (WHOOP)", "", "mid", 1),
     "daylight_min": ("Time in daylight", "min", "high", 0),
     "mindful_min": ("Mindful minutes", "min", "high", 0),
 }
@@ -151,14 +152,26 @@ def phenoage(values: dict[str, float], chrono_age: float) -> dict:
             "mortality_10y": round(m, 4)}
 
 
+def _pheno_aliases(v: dict) -> dict:
+    """Map routine-report marker ids onto PhenoAge inputs: total WBC in cells/mm³ → 10³/µL; standard CRP (mg/L) stands in
+    for hs-CRP (Levine 2018 used CRP). Random glucose is NOT used for fasting glucose."""
+    v = dict(v)
+    if v.get("wbc") is None and v.get("wbc_total") is not None:
+        w = v["wbc_total"]
+        v["wbc"] = w / 1000 if w > 100 else w
+    if v.get("hscrp") is None and v.get("crp") is not None:
+        v["hscrp"] = v["crp"]
+    return v
+
+
 def longevity_age(as_of: str | None = None) -> dict:
     """Dial value. Default PhenoAge from the most recent blood panel; lab epigenetic clocks shown alongside."""
     reports = db.rows("SELECT * FROM reports WHERE panel = 'blood' AND (? IS NULL OR collected_on <= ?) "
                       "ORDER BY collected_on", (as_of, as_of))
     history = []
     for rep in reports:
-        vals = {r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?", (rep["id"],))
-                if r["value_num"] is not None}
+        vals = _pheno_aliases({r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?", (rep["id"],))
+                               if r["value_num"] is not None})
         age = age_on(rep["collected_on"])
         if age is None:
             continue
@@ -174,8 +187,16 @@ def longevity_age(as_of: str | None = None) -> dict:
                            "day": h[-1]["collected_on"]}
     chrono = age_on(as_of)
     if not history:
-        return {"value": None, "chronological": round(chrono, 1) if chrono else None, "clocks": clocks,
-                "confidence": 0, "reason": "Needs a blood panel with albumin, creatinine, glucose, hs-CRP, "
+        missing = []
+        if reports:   # say exactly which inputs the latest panel lacks, so the next test can add them
+            last_vals = _pheno_aliases({r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?",
+                                       (reports[-1]["id"],)) if r["value_num"] is not None})
+            names = {"albumin": "albumin", "creatinine": "creatinine", "glucose": "fasting glucose", "hscrp": "hs-CRP",
+                     "lymph_pct": "lymphocytes %", "mcv": "MCV", "rdw": "RDW", "alp": "ALP", "wbc": "WBC"}
+            missing = [names[k] for k in names if last_vals.get(k) is None]
+        return {"value": None, "chronological": round(chrono, 1) if chrono else None, "clocks": clocks, "missing": missing,
+                "confidence": 0, "reason": ("Your latest blood panel is missing " + " and ".join(missing) + " — add them to the next test "
+                "to get your blood age.") if missing else "Needs a blood panel with albumin, creatinine, glucose, hs-CRP, "
                 "lymphocytes, MCV, RDW, ALP and WBC.", "history": []}
     last = history[-1]
     days_old = (date.fromisoformat(as_of or date.today().isoformat()) - date.fromisoformat(last["day"])).days
@@ -725,9 +746,9 @@ def cross_panel_patterns() -> list[dict]:
             f"DEXA says {dexa_bf}% and BCA says {bca_bf}%. BCA tends to read lower and shifts with hydration; DEXA is the reference. "
             f"Track each method against itself rather than mixing them.", ["body_fat_pct", "bca_body_fat"], medical=False, direction="neutral")
     cys, cr = _v(L, "cystatin_c"), _v(L, "creatinine")
-    if isinstance(cys, float) and isinstance(cr, float) and age:
+    if isinstance(cys, float) and isinstance(cr, float) and age and profile().get("sex"):
         from .derived import ckd_epi_2021, ckd_epi_cys_2012
-        e_cr, e_cy = ckd_epi_2021(cr, age, profile().get("sex", "male")), ckd_epi_cys_2012(cys, age, profile().get("sex", "male"))
+        e_cr, e_cy = ckd_epi_2021(cr, age, profile()["sex"]), ckd_epi_cys_2012(cys, age, profile()["sex"])
         if abs(e_cr - e_cy) > 15:
             add("egfr_discord", "Your two kidney-function estimates disagree",
                 f"eGFR from creatinine is {round(e_cr)} and from cystatin C {round(e_cy)} mL/min/1.73m². Creatinine depends on muscle "
@@ -888,7 +909,13 @@ def trend_insights() -> list[dict]:
 def regenerate_insights() -> list[dict]:
     """Recompute all engine insights; review state and dismissals persist by stable id."""
     now = now_iso()
-    produced = cross_panel_patterns() + event_effects() + lab_wearable_links() + signal_correlations() + trend_insights()
+    from .routine_rules import routine_patterns
+    produced = cross_panel_patterns() + routine_patterns() + event_effects() + lab_wearable_links() + signal_correlations() + trend_insights()
+    try:
+        from . import science            # new findings added as data (not code) fire here too
+        produced += science.dynamic_insights()
+    except Exception:  # noqa: BLE001
+        pass
     for ins in produced:
         existing = db.one("SELECT review_state, dismissed FROM insights WHERE id = ?", (ins["id"],))
         medical = 1 if ins.get("medical") else 0

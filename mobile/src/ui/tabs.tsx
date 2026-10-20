@@ -8,8 +8,9 @@ import { StyleSheet, View } from 'react-native';
 import { ROLE_HOME, Role, useRole } from '@/lib/role';
 import { fonts, usePalette, useScheme } from '@/lib/theme';
 
-export const tabIcon = (name: SFSymbol) => ({ color, focused }: { color: any; focused: boolean }) => (
-  <SymbolView name={focused ? (`${name}.fill` as SFSymbol) : name} size={22} tintColor={color} />
+/** Selected tabs use the ".fill" symbol; pass `selected` for symbols that have no fill variant (it would render blank). */
+export const tabIcon = (name: SFSymbol, selected?: SFSymbol) => ({ color, focused }: { color: any; focused: boolean }) => (
+  <SymbolView name={focused ? (selected ?? (`${name}.fill` as SFSymbol)) : name} size={22} tintColor={color} />
 );
 
 /** Tabs for one role; redirects to welcome or the right role home when the stored role differs. */
@@ -28,7 +29,7 @@ export function RoleTabs({ role, children }: { role: Role; children: React.React
       tabBarItemStyle: { paddingTop: 2 },
       tabBarBackground: () => (
         <View style={[StyleSheet.absoluteFill, { borderRadius: 32, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: scheme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }]}>
-          <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" tintColor={scheme === 'dark' ? 'rgba(18,25,22,0.55)' : 'rgba(255,255,255,0.55)'} />
+          <GlassView style={StyleSheet.absoluteFill} glassEffectStyle="regular" tintColor={scheme === 'dark' ? 'rgba(18,25,22,0.84)' : 'rgba(255,255,255,0.86)'} />{/* glass, but text underneath must not compete with labels */}
         </View>
       ),
       tabBarLabelStyle: { fontSize: 11, fontFamily: fonts.bold, letterSpacing: 0.2 } }}>

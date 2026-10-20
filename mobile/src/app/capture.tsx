@@ -227,7 +227,7 @@ export default function Capture() {
           <Button kind="secondary" icon="plus.circle" title="Log event · meal, supplement, drink, smoke…" onPress={() => router.push('/event')} />
           <Row>
             <TextInput value={mark} onChangeText={setMark} placeholder="Quick note (e.g. felt dizzy, door opened)" placeholderTextColor={p.faint}
-              style={{ flex: 1, color: p.text, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10 }} />
+              style={{ flex: 1, color: p.text, borderRadius: radius.md, padding: 10 }} />
             <Button kind="secondary" title="Mark" onPress={addMark} />
           </Row>
         </Section>
@@ -238,7 +238,7 @@ export default function Capture() {
         <Section title="How do you feel after?">
           <Card style={{ gap: space[3] }}>{RATINGS.map((k) => <Scale key={k} label={k} value={post[k]} onChange={(v) => setPost({ ...post, [k]: v })} />)}</Card>
           <TextInput value={notes} onChangeText={setNotes} placeholder="Notes for the team" multiline placeholderTextColor={p.faint}
-            style={{ minHeight: 70, color: p.text, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10 }} />
+            style={{ minHeight: 70, color: p.text, borderRadius: radius.md, padding: 10 }} />
         </Section>
         <Button kind="danger" title={therapy?.id === 'sleep' ? 'Good morning — stop & analyse the night' : 'Stop & save session'} icon="stop.circle" onPress={finish} />
       </Screen>

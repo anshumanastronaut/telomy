@@ -146,7 +146,7 @@ export default function Sessions() {
 function Tile({ icon, title, sub, onPress }: { icon: any; title: string; sub: string; onPress: () => void }) {
   const p = usePalette();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => ({ flex: 1, backgroundColor: p.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: p.border, padding: space[4], gap: 6, opacity: pressed ? 0.8 : 1 })}>
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => ({ flex: 1, backgroundColor: p.surface, borderRadius: radius.lg, padding: space[4], gap: 6, opacity: pressed ? 0.8 : 1 })}>
       <Icon name={icon} size={22} color={p.teal} />
       <T v="h3">{title}</T>
       <T v="small">{sub}</T>

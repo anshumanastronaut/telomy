@@ -10,6 +10,8 @@ import { View } from 'react-native';
 import { RoleProvider } from '@/lib/role';
 import { fonts, usePalette, useScheme } from '@/lib/theme';
 import { Intro } from '@/ui/intro';
+import { LockScreen } from '@/ui/lock';
+import { onLockChange } from '@/lib/api';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -28,6 +30,8 @@ export default function RootLayout() {
     Fraunces_500Medium,
   });
   const [intro, setIntro] = useState(true);
+  const [locked, setLocked] = useState(false);
+  useEffect(() => onLockChange(setLocked), []);
   useEffect(() => {
     if (loaded) SplashScreen.hideAsync().catch(() => {});
   }, [loaded]);
@@ -49,6 +53,14 @@ export default function RootLayout() {
         <Stack.Screen name="domain/[key]" options={{ title: '' }} />
         <Stack.Screen name="report/[id]" options={{ title: 'Report' }} />
         <Stack.Screen name="longevity" options={{ title: 'Longevity age' }} />
+        <Stack.Screen name="age" options={{ title: 'Biological age' }} />
+        <Stack.Screen name="about" options={{ title: 'About you' }} />
+        <Stack.Screen name="trackers" options={{ title: 'Your trackers' }} />
+        <Stack.Screen name="home-settings" options={{ title: 'Home layout' }} />
+        <Stack.Screen name="tracker/[id]" options={{ title: 'Tracker' }} />
+        <Stack.Screen name="muscle" options={{ title: 'Muscle age test' }} />
+        <Stack.Screen name="insurance" options={{ title: 'Insurance' }} />
+        <Stack.Screen name="training" options={{ title: 'Exercise & training' }} />
         <Stack.Screen name="risks" options={{ title: "Risk map" }} />
         <Stack.Screen name="menu" options={{ title: 'Weekly menu' }} />
         <Stack.Screen name="studies" options={{ title: 'N-of-1 studies' }} />
@@ -102,6 +114,7 @@ export default function RootLayout() {
         <Stack.Screen name="activity/[id]" options={{ title: 'Activity' }} />
         <Stack.Screen name="environment" options={{ title: 'Environment' }} />
       </Stack>
+      {locked && !intro ? <LockScreen /> : null}
     </ThemeProvider>
     </RoleProvider>
   );

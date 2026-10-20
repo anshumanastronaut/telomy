@@ -4,13 +4,17 @@ import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable,
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, useApi } from '@/lib/api';
-import { radius, space, usePalette } from '@/lib/theme';
+import { askOnDevice, SLM_INFO, useSlm } from '@/lib/slm';
+import { radius, space, type, usePalette } from '@/lib/theme';
 import { Button, Chip, ConfBar, Icon, Row, Spacer, StatusChip, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
+import { ThinkingOrb, type OrbState } from '@/sinc/ThinkingOrb';
 
 type Msg = { role: 'user' | 'assistant'; content: string; meta?: any; id?: number; pending?: boolean };
 
 const STARTERS = [
+  'My lower back hurts, about 5/10',
+  'I started magnesium 200 mg before bed',
   'What correlations do you see across all my reports?',
   'Why is my HRV lower this month?',
   'What does my CT calcium score mean with my ApoB?',
@@ -30,6 +34,9 @@ export default function Sinc() {
   const scroll = useRef<ScrollView>(null);
   const chats = useApi<any[]>(history ? '/sinc/chats' : null, [history]);
   const health = useApi<any>('/health');
+  const insights = useApi<any>('/sinc/insights');
+  const slm = useSlm();
+  const [slmCard, setSlmCard] = useState(false);
 
   async function send(q: string) {
     if (!q.trim() || busy) return;
@@ -37,6 +44,36 @@ export default function Sinc() {
     setMsgs((m) => [...m, { role: 'user', content: q }, { role: 'assistant', content: '', pending: true }]);
     setBusy(true);
     try {
+      // On this iPhone first when chosen (quick answers only — deep research needs the citation library on the server).
+      if (slm.on && mode === 'normal') {
+        // statements ("my knee hurts, 5", "started magnesium") set up trackers on the server first
+        const cap = await api('/sinc/capture', { body: { text: q } });
+        if (cap.captured) {
+          const r = await api('/sinc/log', { body: { question: q, answer: cap.answer, chat_id: chatId, model: 'telomy-trackers' } });
+          setChatId(r.chat_id);
+          setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: cap.answer, id: r.message_id, meta: { ...r, trackers: cap.trackers } }]);
+          return;
+        }
+        let streamed = '';
+        const d = await askOnDevice(q, (t) => {
+          streamed += t;
+          const shown = streamed.replace(/<think>[\s\S]*?(<\/think>|$)/g, '');
+          setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: shown, pending: !shown.trim() }]);
+        });
+        if ('answer' in d) {
+          const r = await api('/sinc/log', { body: { question: q, answer: d.answer, chat_id: chatId, model: d.model } });
+          setChatId(r.chat_id);
+          setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: d.answer, id: r.message_id,
+            meta: { ...r, notice: `${d.model}${d.tps ? ` · ${Math.round(d.tps)} tokens/s` : ''} · every number checked against your data` } }]);
+          return;
+        }
+        setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: '', pending: true }]);
+        const r = await api('/sinc/ask', { body: { question: q, chat_id: chatId, mode } });
+        setChatId(r.chat_id);
+        setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: r.answer, id: r.message_id,
+          meta: { ...r, notice: `Answered from your Vault on your server — ${d.fallback}.` } }]);
+        return;
+      }
       const r = await api('/sinc/ask', { body: { question: q, chat_id: chatId, mode } });
       setChatId(r.chat_id);
       setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: r.answer, meta: r, id: r.message_id }]);
@@ -72,8 +109,9 @@ export default function Sinc() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: p.bg }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={60}>
         <Row style={{ paddingHorizontal: space[4], paddingVertical: space[2] }}>
-          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
-            <Logo kind="mark" width={28} tone="dark" />
+          {/* Sinc's face: the orb is always alive here — calm "shaping" at rest, "solving" while it works */}
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: p.surface, alignItems: 'center', justifyContent: 'center' }}>
+            <ThinkingOrb state={busy ? 'solving' : 'shaping'} size={20} />
           </View>
           <View style={{ flex: 1 }}>
             <T v="h3">Sinc</T>
@@ -97,7 +135,7 @@ export default function Sinc() {
             <View style={{ gap: 8 }}>
               <T v="label">History</T>
               {(chats.data ?? []).map((c) => (
-                <Pressable key={c.id} onPress={() => openChat(c.id)} style={{ backgroundColor: p.surface, borderRadius: radius.lg, padding: space[3], borderWidth: 1, borderColor: p.border }}>
+                <Pressable key={c.id} onPress={() => openChat(c.id)} style={{ backgroundColor: p.surface, borderRadius: radius.lg, padding: space[3] }}>
                   <T v="body" style={{ fontWeight: '600' }}>{c.title}</T>
                   <T v="small" numberOfLines={2}>{c.preview}</T>
                 </Pressable>
@@ -105,35 +143,76 @@ export default function Sinc() {
               {chats.data && !chats.data.length ? <T v="small">No conversations yet.</T> : null}
             </View>
           ) : msgs.length === 0 ? (
-            <View style={{ gap: space[3] }}>
-              <T v="h1">I read your whole Vault before I answer.</T>
-              <T v="body" color={p.muted}>
-                Labs, imaging, wearables and what you log. I'll show you the evidence behind every answer, and tell you when I don't have enough to say.
-              </T>
-              {STARTERS.map((s) => (
-                <Pressable key={s} onPress={() => send(s)} style={{ backgroundColor: p.surface, borderRadius: radius.lg, padding: space[3], borderWidth: 1, borderColor: p.border }} accessibilityRole="button">
-                  <T v="body">{s}</T>
-                </Pressable>
-              ))}
+            // First impression: Sinc's presence, two words, nothing else competing. Everything Sinc can do stays one
+            // tap away — the starters become quiet chips, the "how it works" line sits small under the orb.
+            <View style={{ alignItems: 'center', gap: space[5], paddingTop: space[8] }}>
+              <ThinkingOrb state="listening" size={64} scale={2.6} />
+              <View style={{ alignItems: 'center', gap: space[2] }}>
+                <T v="display" style={{ textAlign: 'center' }}>Always watching.</T>
+                <T v="small" color={p.muted} style={{ textAlign: 'center' }}>Sinc knows your whole Vault — and shows its evidence.</T>
+              </View>
+              {insights.data?.threads?.length ? (
+                <View style={{ width: '100%', gap: space[2] }}>
+                  <T v="label">What Sinc connects across your data</T>
+                  {insights.data.threads.map((t: any) => (
+                    <Pressable key={t.insight_id} onPress={() => send(`Tell me more about: ${t.headline}`)}
+                      style={{ backgroundColor: p.surface, borderRadius: radius.lg, padding: space[3], gap: 4 }}>
+                      <Row>
+                        <Chip label={t.theme} fg={p.teal} bg={p.tealSoft} />
+                        <View style={{ flex: 1 }} />
+                        <T v="small" color={p.muted}>{Math.round((t.confidence ?? 0) * 100)}%</T>
+                      </Row>
+                      <T v="body" style={{ fontWeight: '600' }}>{t.headline}</T>
+                      <T v="small" color={p.muted} numberOfLines={3}>{t.story}</T>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+              {/* all starters kept, as one quiet scrollable row of small pills */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space[2], paddingHorizontal: space[1] }}>
+                {STARTERS.map((s) => (
+                  <Pressable key={s} onPress={() => send(s)} accessibilityRole="button"
+                    style={({ pressed }) => ({ backgroundColor: p.surface, borderRadius: radius.pill, paddingHorizontal: space[3], paddingVertical: 6, opacity: pressed ? 0.7 : 1 })}>
+                    <T v="small" color={p.muted} style={{ fontSize: type.caption - 1 }} numberOfLines={1}>{s}</T>
+                  </Pressable>
+                ))}
+              </ScrollView>
             </View>
           ) : (
             msgs.map((m, i) => <Bubble key={i} m={m} onDraft={draft} />)
           )}
         </ScrollView>
-        <Row style={{ paddingHorizontal: space[4], paddingBottom: 6 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingHorizontal: space[4], paddingBottom: 6, gap: space[2], alignItems: 'center' }}>
           {(['normal', 'deep'] as const).map((m) => (
             <Pressable key={m} onPress={() => setMode(m)} accessibilityRole="tab" accessibilityState={{ selected: mode === m }} testID={`mode-${m}`}>
               <Chip label={m === 'normal' ? 'Quick answer' : 'Deep research · with citations'} fg={mode === m ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={mode === m ? p.teal : p.surfaceAlt} icon={m === 'deep' ? 'books.vertical' : 'bolt'} />
             </Pressable>
           ))}
-        </Row>
+          {slm.available ? (
+            <Pressable onPress={() => (slm.ready ? slm.setOn(!slm.on) : setSlmCard(!slmCard))} accessibilityRole="switch"
+              accessibilityState={{ checked: slm.on }} testID="mode-device">
+              <Chip label={slm.on ? 'On this iPhone' : 'On-device'} fg={slm.on ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={slm.on ? p.copper : p.surfaceAlt} icon="iphone" />
+            </Pressable>
+          ) : null}
+        </ScrollView>
+        {slmCard && !slm.ready ? (
+          <View style={{ marginHorizontal: space[4], marginBottom: 6, padding: 12, gap: 8, borderRadius: radius.md, backgroundColor: p.surface }}>
+            <T v="body" style={{ fontWeight: '600' }}>Sinc on this iPhone</T>
+            <T v="small">{SLM_INFO.label} ({SLM_INFO.note}) answers quick questions without your question leaving the phone. Every number it writes is checked against your data; if one doesn't match, your server answers instead. One-time download about {(SLM_INFO.mb / 1000).toFixed(1)} GB — use Wi-Fi.</T>
+            {slm.error ? <T v="small" color={p.warn}>{slm.error}</T> : null}
+            <Button kind="secondary" icon="arrow.down.circle" disabled={slm.progress != null}
+              title={slm.progress != null ? `Downloading… ${Math.round(slm.progress * 100)}%` : 'Download the model'}
+              onPress={async () => { await slm.download(); slm.setOn(true); }} />
+          </View>
+        ) : null}
         {notice ? (
           <View style={{ marginHorizontal: space[4], marginBottom: 6, padding: 12, borderRadius: radius.md, backgroundColor: p.successSoft }}>
             <T v="small" color={p.success}>{notice}</T>
           </View>
         ) : null}
         {/* composer floats above the glass tab bar; drops to the keyboard when typing */}
-        <Row style={{ marginHorizontal: space[3], marginBottom: kbd ? 8 : 98, padding: 6, paddingLeft: 4, borderRadius: 28, backgroundColor: p.surface, borderWidth: 1, borderColor: p.border }}>
+        <Row style={{ marginHorizontal: space[3], marginBottom: kbd ? 8 : 98, padding: 6, paddingLeft: 4, borderRadius: 28, backgroundColor: p.surface }}>
           <TextInput
             value={text}
             onChangeText={setText}
@@ -164,18 +243,21 @@ function Bubble({ m, onDraft }: { m: Msg; onDraft: (id: number) => void }) {
         <T v="body" color={p.onAccent}>{m.content}</T>
       </View>
     );
-  if (m.pending)
-    return (
-      <Row>
-        <ActivityIndicator color={p.teal} />
-        <T v="small">Reading your Vault and checking the evidence…</T>
-      </Row>
-    );
+  if (m.pending) return <SincThinking />;
   const meta = m.meta ?? {};
   return (
     <View style={{ gap: 8, maxWidth: '96%' }}>
       <Md text={m.content} />
       {meta.notice ? <T v="small" color={p.warn}>{meta.notice}</T> : null}
+      {meta.trackers?.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {meta.trackers.map((t: any) => (
+            <Pressable key={t.id} onPress={() => router.push(`/tracker/${t.id}` as any)} accessibilityRole="link">
+              <Chip label={`${t.new ? 'New tracker' : 'Tracker'} · ${t.name}`} fg={p.teal} bg={p.tealSoft} icon="list.bullet.clipboard" />
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
       {meta.chips?.length ? (
         <View style={{ gap: 6 }}>
           <T v="label">See evidence</T>
@@ -229,5 +311,27 @@ function Md({ text }: { text: string }) {
         );
       })}
     </View>
+  );
+}
+
+/** While Sinc works: the thinking orb morphs through timed stages (the answer arrives in one response, so these are
+ *  paced stages of a typical answer, not live progress). */
+function SincThinking() {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const a = setTimeout(() => setPhase(1), 2200), b = setTimeout(() => setPhase(2), 5500);
+    return () => { clearTimeout(a); clearTimeout(b); };
+  }, []);
+  const stages: { state: OrbState; text: string }[] = [
+    { state: 'searching', text: 'Reading your Vault…' },
+    { state: 'solving', text: 'Checking the evidence…' },
+    { state: 'composing', text: 'Writing your answer…' },
+  ];
+  const s = stages[phase];
+  return (
+    <Row gap={space[3]}>
+      <ThinkingOrb state={s.state} size={64} />
+      <T v="small">{s.text}</T>
+    </Row>
   );
 }

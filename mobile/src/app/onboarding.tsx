@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Pressable, Switch, TextInput, View } from 'react-native';
 
 import { api, useApi } from '@/lib/api';
+import { connectHealth } from '@/lib/health';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Button, Card, Icon, Row, Screen, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
@@ -16,6 +17,7 @@ export default function Onboarding() {
   const [phone, setPhone] = useState('');
   const [sent, setSent] = useState<string | null>(null);
   const [code, setCode] = useState('');
+  const [healthOk, setHealthOk] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const consents = useApi<any[]>(step === 2 ? '/consents' : null, [step]);
@@ -80,16 +82,22 @@ export default function Onboarding() {
         <>
           <T v="h1">Connect a wearable</T>
           <T v="body" color={p.muted}>Heart rate, HRV, sleep and activity make Sinc's reads much sharper. You can skip and connect later.</T>
-          {['Apple Health', 'Google Health Connect', 'Telomy Band', 'Oura / WHOOP / Ultrahuman (via Terra)'].map((w) => (
-            <Card key={w}>
+          {[
+            { t: 'Apple Health', d: 'Steps, workouts, Apple Watch sleep stages and vitals', icon: 'heart.fill' as const, go: async () => { const r = await connectHealth(); setHealthOk(r.ok); } },
+            { t: 'Telomy patch & ring', d: 'ECG, HRV and sleep: pair them on the Devices screen', icon: 'waveform.path.ecg' as const, go: () => router.push('/devices') },
+            { t: 'WHOOP (via NOOP)', d: 'All-day heart rate and motion, pushed to your Telomy server', icon: 'figure.run' as const, go: () => router.push('/devices') },
+          ].map((w) => (
+            <Card key={w.t} onPress={w.go}>
               <Row>
-                <Icon name="applewatch" color={p.teal} />
-                <T v="body" style={{ flex: 1 }}>{w}</T>
-                <T v="small" color={p.teal}>Connect</T>
+                <Icon name={w.icon} color={p.teal} />
+                <View style={{ flex: 1 }}>
+                  <T v="body">{w.t}</T>
+                  <T v="small">{w.d}</T>
+                </View>
+                <T v="small" color={p.teal}>{w.t === 'Apple Health' && healthOk ? 'Connected' : 'Connect'}</T>
               </Row>
             </Card>
           ))}
-          <T v="small">Device connections need the full app build; this test build uses the dummy wearable data.</T>
           <Button title="Continue" onPress={next} />
           <Button kind="ghost" title="Skip for now" onPress={next} />
         </>
@@ -142,5 +150,5 @@ export default function Onboarding() {
 }
 
 function inp(p: any) {
-  return { borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 14, fontSize: 16, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface };
+  return { borderRadius: radius.md, padding: 14, fontSize: 16, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface };
 }

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Telomy backend keepalive (macOS launchd LaunchAgent)
+  ====================================================
+  Keeps the dev/study backend (uvicorn app.main:app on :8787) running and
+  restarts it if it crashes or the Mac reboots. Replaces the manual nohup.
+
+  WHOOP token: launchd env vars are static, so TELOMY_WHOOP_TOKEN is read at
+  launch from a file by a tiny /bin/sh wrapper (ProgramArguments below). Put the
+  token (one line, no quotes) in:
+      /Users/anshuman/telomy-app/backend/.whoop-token
+  and lock it down:
+      chmod 600 /Users/anshuman/telomy-app/backend/.whoop-token
+  If that file is absent the backend still starts; WHOOP ingest is just disabled
+  (whoop.py treats an empty token as "not configured").
+
+  Install
+  -------
+    mkdir -p /Users/anshuman/telomy-app/backend/logs
+    cp deploy/mac/com.telomy.backend.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.telomy.backend.plist
+    # status / logs:
+    launchctl list | grep com.telomy.backend
+    tail -f /Users/anshuman/telomy-app/backend/logs/backend.err.log
+
+  Uninstall
+  ---------
+    launchctl unload -w ~/Library/LaunchAgents/com.telomy.backend.plist
+    rm ~/Library/LaunchAgents/com.telomy.backend.plist
+
+  After editing this file: unload then load again for changes to take effect.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.telomy.backend</string>
+
+    <!-- Read the WHOOP token from a file (if present), then exec uvicorn.
+         exec keeps uvicorn as the supervised process so KeepAlive works. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>TOKEN_FILE=/Users/anshuman/telomy-app/backend/.whoop-token; [ -r "$TOKEN_FILE" ] &amp;&amp; export TELOMY_WHOOP_TOKEN="$(cat "$TOKEN_FILE")"; exec /Users/anshuman/telomy-app/backend/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8787</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/anshuman/telomy-app/backend</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TELOMY_DB</key>
+        <string>/Users/anshuman/telomy-app/backend/telomy-live.db</string>
+    </dict>
+
+    <!-- Keep it alive across crashes and reboots. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Don't hammer restarts if it fails immediately. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/anshuman/telomy-app/backend/logs/backend.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/anshuman/telomy-app/backend/logs/backend.err.log</string>
+</dict>
+</plist>

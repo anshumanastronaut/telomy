@@ -57,5 +57,5 @@ export default function Meds() {
 }
 
 function inp(p: any) {
-  return { borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface };
+  return { borderRadius: radius.md, padding: 12, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface };
 }

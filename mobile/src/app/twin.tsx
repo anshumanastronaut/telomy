@@ -5,7 +5,9 @@ import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { api, useApi } from '@/lib/api';
 import { radius, space, usePalette } from '@/lib/theme';
-import { Button, Card, Chip, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
+import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
+import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
+import type { OrganId } from '@/twin3d/scene';
 
 function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'], xLabel = (x: number) => `${Math.round(x / 365 * 10) / 10}y` }:
   { a: [number, number][]; b?: [number, number][]; unit: string; height?: number; labels?: string[]; xLabel?: (x: number) => string }) {
@@ -41,16 +43,64 @@ function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'],
   );
 }
 
-export default function Twin() {
+/** Under the 3D body: what the tapped organ's system shows — status, each problem in plain language, its markers. */
+function OrganPanel({ systems, organ, onClear }: { systems: any[]; organ: OrganId | null; onClear: () => void }) {
+  const p = usePalette();
+  if (!organ) {
+    const flagged = systems.filter((s) => s.status !== 'ok');
+    return (
+      <Row style={{ flexWrap: 'wrap' }} gap={6}>
+        <T v="small" color={p.muted}>Tap an organ.</T>
+        {flagged.map((s) => <Chip key={s.name} label={s.name} fg={s.status === 'high' ? p.danger : p.warn} bg={s.status === 'high' ? p.dangerSoft : p.warnSoft} />)}
+      </Row>
+    );
+  }
+  const sysName = systemOfOrgan(organ);
+  const sys = systems.find((s) => s.name === sysName);
+  const sc = !sys ? p.muted : sys.status === 'high' ? p.danger : sys.status === 'watch' ? p.warn : p.success;
+  return (
+    <Card style={{ gap: space[2] }}>
+      <Row>
+        <View style={{ flex: 1 }}>
+          <T v="h2">{ORGAN_LABEL[organ]}</T>
+          <T v="small">{sys ? `${sys.name} · ${sys.status === 'high' ? 'out of range' : sys.status === 'watch' ? 'worth watching' : 'in range'}` : 'No markers for this organ in your Vault yet'}</T>
+        </View>
+        <Button kind="ghost" title="Whole body" onPress={onClear} />
+      </Row>
+      {sys?.problems?.map((pr: any) => (
+        <Row key={pr.key} style={{ alignItems: 'flex-start' }} gap={8}>
+          <Icon name={pr.severity === 'high' ? 'exclamationmark.triangle.fill' : 'eye.fill'} size={13} color={pr.severity === 'high' ? p.danger : p.warn} />
+          <View style={{ flex: 1 }}>
+            <T v="body" style={{ fontWeight: '600' }}>{pr.label} {pr.direction} · {Math.round(pr.value * 10) / 10} {pr.unit}</T>
+            <T v="small">{pr.detail}</T>
+          </View>
+        </Row>
+      ))}
+      {sys && !sys.problems?.length ? <T v="small" color={sc}>All markers for this system are in range.</T> : null}
+      {sys ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
+          {sys.variables.map((v: any) => (
+            <View key={v.key} style={{ width: '50%' }}><T v="small">{v.label}</T><T v="body" style={{ fontWeight: '600' }}>{Math.round(v.value * 10) / 10} <T v="small">{v.unit}</T></T></View>
+          ))}
+        </View>
+      ) : <T v="small" color={p.muted}>Add a kidney panel (creatinine, eGFR, urine ACR) to your Vault and the twin will map it here.</T>}
+    </Card>
+  );
+}
+
+export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
   const p = usePalette();
   const o = useApi<any>('/twin');
   const mir = useApi<any>('/twin/mirror');
+  const proj = useApi<any>('/twin/projections');
   const [preset, setPreset] = useState<string>('telomy_plan');
   const [years, setYears] = useState(5);
   const [sim, setSim] = useState<any>(null);
   const [drinking, setDrinking] = useState(false);
   const [dayT, setDayT] = useState<any>(null);
   const [tab, setTab] = useState<'future' | 'today' | 'mirror'>('future');
+  const [organSel, setOrganSel] = useState<OrganId | null>(null);
+  const [touching3d, setTouching3d] = useState(false);
 
   useEffect(() => {
     setSim(null);
@@ -58,21 +108,23 @@ export default function Twin() {
   }, [preset, years]);
   useEffect(() => { api(`/twin/day?drinking=${drinking}`).then(setDayT).catch(() => setDayT(null)); }, [drinking]);
 
-  if (!o.data) return <Screen edges={[]}><Loading what="Waking your twin…" /></Screen>;
+  if (!o.data) return <Screen edges={inTab ? ['top'] : []}><Loading what="Waking your twin…" /></Screen>;
   const d = o.data;
   const rb = sim?.risk_baseline?.at(-1)?.[1], rs = sim?.risk_scenario?.at(-1)?.[1];
   const moved = (sim?.variables ?? []).filter((v: any) => Math.abs(v.difference) / (Math.abs(v.baseline_end) + 1e-6) > 0.015)
     .sort((x: any, y: any) => Math.abs(y.difference) / (Math.abs(y.baseline_end) + 1e-6) - Math.abs(x.difference) / (Math.abs(x.baseline_end) + 1e-6));
 
   return (
-    <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'Digital twin' }} />
-      <T v="h1">Your digital twin</T>
+    <Screen edges={inTab ? ['top'] : []} scrollEnabled={!touching3d}>
+      {inTab ? null : <Stack.Screen options={{ title: 'Digital twin' }} />}
+      <T v="h1">{inTab ? 'Your twin' : 'Your digital twin'}</T>
+      <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} onInteract={setTouching3d} />
+      <OrganPanel systems={d.systems} organ={organSel} onClear={() => setOrganSel(null)} />
       <T v="small">{d.about}</T>
       <Row style={{ flexWrap: 'wrap' }}>
         <Chip label={`PhenoAge ${d.risk_now.phenoage} at ${d.risk_now.age}`} fg={p.teal} bg={p.tealSoft} />
         <Chip label={`PREVENT 10-y ${d.risk_now.prevent_10y}% · 30-y ${d.risk_now.prevent_30y}%`} />
-        {mir.data ? <Chip label={`Twin fidelity ${Math.round(mir.data.fidelity * 100)}%`} fg={p.copper} bg={p.copperSoft} /> : null}
+        {mir.data && mir.data.ok !== false ? <Chip label={`Twin fidelity ${Math.round(mir.data.fidelity * 100)}%`} fg={p.copper} bg={p.copperSoft} /> : null}
       </Row>
       <Card tone="copper">
         <T v="label">What your twin learned about you</T>
@@ -95,7 +147,7 @@ export default function Twin() {
           <Row>
             {[1, 5, 10].map((y) => (
               <Pressable key={y} onPress={() => setYears(y)} accessibilityRole="button"
-                style={{ flex: 1, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: years === y ? p.teal : p.surface, borderWidth: 1, borderColor: p.border }}>
+                style={{ flex: 1, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: years === y ? p.teal : p.surface }}>
                 <T v="body" color={years === y ? p.onAccent : p.text}>{y} year{y > 1 ? 's' : ''}</T>
               </Pressable>
             ))}
@@ -155,7 +207,10 @@ export default function Twin() {
         </>
       ) : null}
 
-      {tab === 'mirror' && mir.data ? (
+      {tab === 'mirror' && mir.data?.ok === false ? (
+        <Card><T v="small">{mir.data.reason}</T></Card>
+      ) : null}
+      {tab === 'mirror' && mir.data && mir.data.ok !== false ? (
         <>
           <Card>
             <T v="label">Night HRV — your body vs your twin (last 45 nights)</T>
@@ -175,20 +230,58 @@ export default function Twin() {
         </>
       ) : null}
 
-      <Section title="Your body, as the twin holds it">
-        {d.systems.map((s: any) => (
-          <Card key={s.name}>
-            <T v="label">{s.name}</T>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
-              {s.variables.map((v: any) => (
-                <View key={v.key} style={{ width: '50%' }}>
-                  <T v="small">{v.label}</T>
-                  <T v="body" style={{ fontWeight: '600' }}>{Math.round(v.value * 10) / 10} <T v="small">{v.unit}</T></T>
-                </View>
-              ))}
-            </View>
+      {proj.data ? (
+        <Section title="Projected labs · next 90 days">
+          <Card style={{ gap: space[2] }}>
+            <T v="small">Your twin's projection from your latest real measurements and current routine, every 10 days. These are projections, not lab results; your next real report scores them and recalibrates the twin.</T>
+            {proj.data.markers.map((m: any) => (
+              <View key={m.key} style={{ gap: 2 }}>
+                <Row>
+                  <T v="label" style={{ flex: 1 }}>{m.label}</T>
+                  <T v="small" color={p.faint}>now {m.anchor.value} {m.unit} · {m.anchor.source}, {m.anchor.date}</T>
+                </Row>
+                <T v="small">{m.points.filter((_: any, i: number) => i % 3 === 2).map((x: any) => `+${x.in_days} d: ${x.value} (${x.lo}–${x.hi})`).join('   ')}</T>
+              </View>
+            ))}
+            {proj.data.needs_test?.length ? (
+              <T v="small" color={p.faint}>Not projected until measured: {proj.data.needs_test.map((x: any) => x.label).join(', ')}.</T>
+            ) : null}
           </Card>
-        ))}
+        </Section>
+      ) : null}
+      <Section title={d.problem_count ? `Your body, system by system — ${d.problem_count} thing${d.problem_count === 1 ? '' : 's'} to watch` : 'Your body, system by system'}>
+        <T v="small" color={p.muted}>Each system below is flagged against healthy reference ranges — green is in range, amber worth watching, red out of range. Wellness screening, not a diagnosis.</T>
+        {d.systems.map((s: any) => {
+          const sc = s.status === 'high' ? p.danger : s.status === 'watch' ? p.warn : p.success;
+          const sbg = s.status === 'high' ? p.dangerSoft : s.status === 'watch' ? p.warnSoft : p.successSoft;
+          const slabel = s.status === 'high' ? 'Out of range' : s.status === 'watch' ? 'Watch' : 'In range';
+          return (
+            <Card key={s.name} tone={s.status === 'high' ? 'copper' : undefined} style={{ gap: space[2] }}>
+              <Row>
+                <Icon name={s.icon ?? 'circle'} color={sc} />
+                <T v="h3" style={{ flex: 1 }}>{s.name}</T>
+                <Chip label={slabel} fg={sc} bg={sbg} />
+              </Row>
+              {s.problems.map((pr: any) => (
+                <Row key={pr.key} style={{ alignItems: 'flex-start' }} gap={6}>
+                  <Icon name={pr.severity === 'high' ? 'exclamationmark.triangle.fill' : 'eye.fill'} size={13} color={pr.severity === 'high' ? p.danger : p.warn} />
+                  <View style={{ flex: 1 }}>
+                    <T v="body" style={{ fontWeight: '600' }}>{pr.label} {pr.direction === 'low' ? 'low' : 'high'} · {Math.round(pr.value * 10) / 10} {pr.unit}</T>
+                    <T v="small" color={p.muted}>{pr.detail}</T>
+                  </View>
+                </Row>
+              ))}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: 8 }}>
+                {s.variables.map((v: any) => (
+                  <View key={v.key} style={{ width: '50%' }}>
+                    <T v="small">{v.label}</T>
+                    <T v="body" style={{ fontWeight: '600' }}>{Math.round(v.value * 10) / 10} <T v="small">{v.unit}</T></T>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          );
+        })}
       </Section>
       <View style={{ height: space[2] }} />
     </Screen>

@@ -19,7 +19,7 @@ PCE = {
 
 
 def ascvd_pce(age, sex, tc, hdl, sbp, bp_treated=False, smoker=False, diabetic=False) -> dict:
-    need = {"age": age, "total cholesterol": tc, "HDL": hdl, "systolic BP": sbp}
+    need = {"age": age, "sex": sex, "total cholesterol": tc, "HDL": hdl, "systolic BP": sbp}
     missing = [k for k, v in need.items() if v is None]
     base = {"model": "Pooled Cohort Equations (ACC/AHA 2013)", "outcome": "10-year risk of heart attack or stroke",
             "citation": "Goff DC et al. Circulation 2014;129(25 Suppl 2):S49-S73."}
@@ -82,8 +82,8 @@ def fib4(age, ast, alt, platelets) -> dict:
 def kfre(age, sex, egfr, uacr) -> dict:
     base = {"model": "Kidney Failure Risk Equation (4-variable)", "outcome": "5-year risk of kidney failure",
             "citation": "Tangri N et al. JAMA 2016;315:164-74."}
-    if None in (age, egfr, uacr):
-        return {**base, "risk": None, "missing": [k for k, v in {"eGFR": egfr, "UACR": uacr}.items() if v is None]}
+    if None in (age, sex, egfr, uacr):
+        return {**base, "risk": None, "missing": [k for k, v in {"age": age, "sex": sex, "eGFR": egfr, "UACR": uacr}.items() if v is None]}
     if egfr >= 60:
         return {**base, "risk": None, "missing": [], "band": "not applicable — kidney function is above the CKD range (eGFR ≥ 60)"}
     acr_mg_mmol = max(uacr, 0.1) * 0.113
@@ -102,7 +102,8 @@ def inputs_from_vault() -> dict:
     sbp = engine.signal_baseline("sbp", days=60)
     w = (engine.series("weight") or [(None, None)])[-1][1]
     h = (p.get("height_cm") or 0) / 100
-    return {"age": engine.age_on(), "sex": p.get("sex", "male"), "tc": n("chol_total"), "hdl": n("hdl"), "ldl": n("ldl"),
+    # sex: unknown stays unknown — never assume one
+    return {"age": engine.age_on(), "sex": p.get("sex"), "tc": n("chol_total"), "hdl": n("hdl"), "ldl": n("ldl"),
             "apob": n("apob"), "sbp": sbp["mean"] if sbp else None, "bp_treated": p.get("bp_treated", False),
             "smoker": p.get("smoker", False), "diabetic": False, "statin": p.get("statin", False), "hba1c": n("hba1c"), "glucose": n("glucose"),
             "bmi": round(w / (h * h), 1) if w and h else None, "family_history_dm": p.get("family_history_dm", False),
@@ -174,7 +175,7 @@ _OUTCOMES = {"total_cvd": "Total cardiovascular disease", "ascvd": "Heart attack
 
 def prevent(age, sex, tc, hdl, sbp, bp_treated=False, statin=False, diabetic=False, smoker=False, egfr=None, bmi=None) -> dict:
     base = {"model": "AHA PREVENT (2024), base model", "citation": "Khan SS et al. Circulation 2024;149:430-49."}
-    need = {"age": age, "total cholesterol": tc, "HDL": hdl, "systolic BP": sbp, "eGFR": egfr, "BMI": bmi}
+    need = {"age": age, "sex": sex, "total cholesterol": tc, "HDL": hdl, "systolic BP": sbp, "eGFR": egfr, "BMI": bmi}
     missing = [k for k, v in need.items() if v is None]
     if missing:
         return {**base, "missing": missing, "ten_year": None, "thirty_year": None}

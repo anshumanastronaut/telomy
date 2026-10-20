@@ -510,6 +510,16 @@ def test_doctor_sees_every_report_with_ai_summary(client):
 
 # ---------------------------------------------------------------- voice, routine, activities, environment
 
+def test_voice_ondevice_features_give_stress_without_audio(client):
+    f = {"voiced_s": 6.2, "duration_s": 9.0, "f0_mean": 182.0, "f0_sd": 21.0, "f0_cv": 0.115, "jitter_pct": 1.4,
+         "shimmer_pct": 6.1, "hnr_db": 14.2, "rate_per_s": 3.6, "pause_ratio": 0.31, "energy_db": -24.0}
+    r = client.post("/voice/command", json={"text": "black coffee at 4", "features": f, "source": "voice-ondevice",
+                                            "language": "en", "model": "whisper-base (on this iPhone, Cactus)"}).json()
+    assert r["stress"]["score"] is not None and r["transcription"]["model"].startswith("whisper-base")
+    c = client.post("/voice/command", json={"text": "", "features": f, "source": "checkin"}).json()
+    assert c["stress"]["score"] is not None and c["actions"] == []
+
+
 def test_voice_text_any_sentence_becomes_actions(client):
     r = client.post("/voice/command", json={"text": "Had 2 boiled eggs and dal for lunch, then 2 cigarettes, feeling stressed"}).json()
     kinds = {i["intent"] for i in r["intents"]}
@@ -712,3 +722,46 @@ def test_band_capture_upload(client):
     assert lst[0]["therapy"] == "Finnish sauna" and lst[0]["settings"]["temperature_c"] == "85"
     assert client.get("/band/captures/20261012-180000-sauna").json()["format"] == "telomy.capture/1"
     assert client.post("/band/captures", json={"format": "other"}).status_code == 400
+
+
+def test_dynamics_load_recovers_planted_fatigue(client):
+    """Banister model: fits, reports held-out skill vs a naive baseline, and only claims usefulness when it beats it
+    (on the 100-person synthetic cohort it recovers planted fatigue with τ ≈ 1 d; see backend/sim)."""
+    r = client.get("/dynamics/load").json()
+    assert r["ok"] and "skill" in r and r["naive_mae"] > 0
+    assert r["useful"] == (r["skill"] > 0.05 and r["k_fatigue"] > 0)
+    s = client.get("/dynamics/sleep-pressure").json()
+    assert "ok" in s
+
+
+def test_daily_signals_from_devices_are_upserted_and_filtered(client):
+    r = client.post("/signals/daily", json={"items": [
+        {"day": "2026-10-18", "metric": "sleep_hours", "value": 7.1, "source": "Telomy (fused)"},
+        {"day": "2026-10-18", "metric": "sleep_hours", "value": 7.2, "source": "Telomy (fused)"},     # upsert
+        {"day": "2026-10-18", "metric": "not_a_metric", "value": 1, "source": "WHOOP"},               # rejected
+        {"day": "2026-10-18", "metric": "steps", "value": 9000, "source": "Somewhere else"},          # rejected
+        {"day": "bad-date", "metric": "steps", "value": 9000, "source": "Apple Health"}]}).json()        # rejected
+    assert r["accepted"] == 2
+
+
+def test_block_layout_lab_report_with_nul_dashes():
+    """Indian-lab block layout (name / method / 'value lo – hi' / unit) where the font extracts '–', '<', '≥' as NUL."""
+    from app.labparse import parse_blocks
+    lines = ["Bilirubin, Total", "Diazo Method", "1.18 0.2 \x00 1.3", "mg/dL",
+             "Alanine Transaminase \x00ALT\x00", "LDH, UV Kinetic", "42 \x00 50", "U/L",
+             "Aspartate Aminotransferase \x00AST\x00", "Multipoint-Rate/UV with Pyridoxal", "-5 Phosphate \x00P\x005\x00P\x00", "45 17 \x00 49", "U/L",
+             "Estimated Glomerular Filtration Rate", "\x00eGFR\x00", "105 Normal: \x00 90", "Platelet Count", "DC Impedance Method", "96 150 \x00 450", "10³/µL"]
+    m = {x["marker_id"]: x for x in parse_blocks(lines)}
+    assert m["bilirubin_total"]["value"] == 1.18 and m["bilirubin_total"]["ref_high"] == 1.3
+    assert m["alt"]["ref_high"] == 50 and m["ast"]["value"] == 45 and m["ast"]["ref_low"] == 17
+    assert m["egfr"]["ref_low"] == 90 and m["egfr"]["status"] != "out_of_range"
+    assert m["platelets"]["status"] == "out_of_range"
+
+
+def test_nutrition_targets_from_profile_and_labs(client):
+    r = client.get("/nutrition/targets").json()
+    t = r["targets"]
+    assert t["ok"] and 1500 < t["kcal"] < 4000 and t["protein_g"] > 0 and t["fibre_g"] >= 30
+    assert t["carbs_g"] * 4 / t["kcal"] <= 0.56 and "eaten" in r
+    lose = client.get("/nutrition/targets", params={"goal": "lose"}).json()["targets"]
+    assert lose["kcal"] < t["kcal"] and lose["kcal"] >= round(lose["bmr"] * 1.2) - 1
