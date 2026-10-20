@@ -1,8 +1,13 @@
+import { router } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
+import { useEffect } from 'react';
 
+import { staffSync } from '@/lib/staff';
 import { RoleTabs, tabIcon } from '@/ui/tabs';
 
 export default function DoctorLayout() {
+  // Require a signed-in staff session for the doctor console; otherwise send them to sign in.
+  useEffect(() => { if (!staffSync()) router.replace('/welcome' as any); }, []);
   return (
     <RoleTabs role="doctor">
       <Tabs.Screen name="index" options={{ title: 'Today', tabBarIcon: tabIcon('sun.max') }} />

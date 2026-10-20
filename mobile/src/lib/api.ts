@@ -75,10 +75,24 @@ export async function authStatus(): Promise<{ password_required: boolean; accoun
   catch { return { password_required: false, accounts_enabled: false, accounts_available: false }; }
 }
 
+// ---------------------------------------------------------------- staff session (doctor / centre / super-admin)
+// The management plane (/mgmt/*) uses a SEPARATE staff token from the consumer Vault token, so a consumer login can
+// never reach management and vice-versa. Set on staff login; sent only on /mgmt requests.
+const STAFF_KEY = 'telomy.staffToken';
+let staffToken: string | null = null;
+const staffReady = AsyncStorage.getItem(STAFF_KEY).then((t) => { staffToken = t; }).catch(() => {});
+export async function setStaffToken(t: string | null) {
+  staffToken = t;
+  try { if (t) await AsyncStorage.setItem(STAFF_KEY, t); else await AsyncStorage.removeItem(STAFF_KEY); } catch {}
+}
+export function hasStaffToken() { return !!staffToken; }
+
 /** Try the current server, then the others; remember the first that answers. Throws only if none do. */
 async function reach(path: string, init: RequestInit): Promise<Response> {
-  await tokenReady;
-  if (token) init = { ...init, headers: { ...(init.headers as any), Authorization: `Bearer ${token}` } };
+  await tokenReady; await staffReady;
+  const isMgmt = path.startsWith('/mgmt');
+  const authTok = isMgmt ? staffToken : token;             // /mgmt uses the staff token; everything else the Vault token
+  if (authTok) init = { ...init, headers: { ...(init.headers as any), Authorization: `Bearer ${authTok}` } };
   const order = [API, ...CANDIDATES.filter((c) => c !== API)];
   for (const base of order) {
     try {
@@ -155,7 +169,7 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
     }
     throw new ApiError(0, "We couldn't reach the Telomy server. Check your connection; we'll retry when you pull to refresh.");
   }
-  if (res.status === 401 && path !== '/auth/password') setLocked(true);   // locked server → show the unlock screen
+  if (res.status === 401 && path !== '/auth/password' && !path.startsWith('/mgmt')) setLocked(true);   // locked Vault → unlock screen (a /mgmt 401 is a staff-session issue, handled by the staff flow)
   if (res.ok) flushOutbox();                                // the server is reachable — deliver anything waiting
   if (!res.ok) {
     let msg = `Something on our side failed (${res.status}). Try again in a moment.`;

@@ -1,8 +1,12 @@
+import { router } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
+import { useEffect } from 'react';
 
+import { staffSync } from '@/lib/staff';
 import { RoleTabs, tabIcon } from '@/ui/tabs';
 
 export default function CentreLayout() {
+  useEffect(() => { if (!staffSync()) router.replace('/welcome' as any); }, []);
   return (
     <RoleTabs role="centre">
       <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: tabIcon('chart.bar') }} />
