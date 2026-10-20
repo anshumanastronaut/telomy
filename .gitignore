@@ -47,3 +47,8 @@ research/.Telomy-installed.app/
 research/ageclock/nhanes_bloodpanel.csv
 research/diseasemodel/disease_dataset.csv
 research/*/nhanes_*.csv
+
+# local multi-user data (contains real PHI) — never commit
+backend/data_local/
+backend/telomy.db
+backend/_setup_accounts.py

@@ -15,16 +15,23 @@ router = APIRouter(prefix="/me", tags=["telomy-ml"])
 
 # engine panel key  <-  app catalogue marker_id aliases (first match wins). HGB handles anything missing.
 _ALIAS = {
-    "crp_mgL": ["hs_crp", "crp", "hscrp"], "lymph_pct": ["lymphocytes_pct", "lymphocytes"],
-    "neut_pct": ["neutrophils_pct", "neutrophils"], "mono_pct": ["monocytes_pct"],
-    "eos_pct": ["eosinophils_pct"], "baso_pct": ["basophils_pct"], "hgb": ["hemoglobin", "haemoglobin"],
-    "hct": ["hematocrit"], "total_chol": ["cholesterol", "total_cholesterol"], "trig": ["triglycerides"],
-    "wbc": ["wbc", "white_cells"], "rbc": ["rbc"], "alp": ["alp", "alkaline_phosphatase"],
+    "crp_mgL": ["hs_crp", "crp", "hscrp", "crp_hs"], "lymph_pct": ["lymph_pct", "lymphocytes_pct", "lymphocytes"],
+    "neut_pct": ["neutrophil_pct", "neutrophils_pct", "neutrophils"], "mono_pct": ["monocyte_pct", "monocytes_pct"],
+    "eos_pct": ["eos_pct", "eosinophils_pct"], "baso_pct": ["baso_pct", "basophils_pct"],
+    "hgb": ["hemoglobin", "haemoglobin", "hgb"], "hct": ["hct", "hematocrit"],
+    "total_chol": ["chol_total", "cholesterol", "total_cholesterol"], "trig": ["triglycerides", "trig"],
+    "wbc": ["wbc_total", "wbc", "white_cells"], "rbc": ["rbc"], "alp": ["alp", "alkaline_phosphatase"],
+    "glucose": ["glucose", "glucose_fasting", "fasting_glucose", "glucose_random"],
+    "bilirubin": ["bilirubin", "bilirubin_total"], "bun": ["bun", "urea_nitrogen"],
     "vitamin_d_25oh": ["vitamin_d", "vit_d_25oh", "vitamin_d_25"], "b12": ["b12", "vitamin_b12"],
     "ferritin": ["ferritin"], "homocysteine": ["homocysteine"], "magnesium": ["magnesium"],
+    # body composition -> muscular-age clock
+    "almi": ["almi"], "bmi": ["bmi"], "waist": ["waist", "waist_circumference"], "weight": ["weight", "bmxwt"],
+    "height": ["height", "bmxht"], "total_fat_pct": ["bca_body_fat", "body_fat_pct", "total_fat_pct"],
+    "arm_circ": ["arm_circ", "arm_circumference"],
 }
-_IDENTITY = ["albumin", "creatinine", "glucose", "hba1c", "alt", "ast", "ggt", "bun", "uric_acid",
-             "calcium", "phosphorus", "sodium", "potassium", "bicarb", "bilirubin", "total_protein",
+_IDENTITY = ["albumin", "creatinine", "hba1c", "alt", "ast", "ggt", "uric_acid",
+             "calcium", "phosphorus", "sodium", "potassium", "bicarb", "total_protein",
              "globulin", "iron", "hdl", "mcv", "rdw", "platelets", "mpv"]
 
 def _latest_results() -> dict:
