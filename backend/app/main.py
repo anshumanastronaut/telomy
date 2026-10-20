@@ -174,7 +174,9 @@ async def _bind_user(request: _Req, authorization: str = _Hdr(default="")):
 app.router.dependencies.append(_Dep(_bind_user))
 
 from . import telomy_ml as _telomy_ml  # noqa: E402  trained-ML engines (additive /me/* routes, per-user)
-app.include_router(_telomy_ml.router)
+# starlette 1.7's include_router doesn't transfer routes here; add them directly (reliable).
+for _r in _telomy_ml.router.routes:
+    app.add_api_route(_r.path, _r.endpoint, methods=list(_r.methods), tags=["telomy-ml"])
 
 
 class _SignupBody(BaseModel):

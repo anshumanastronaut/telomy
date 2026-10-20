@@ -33,7 +33,7 @@ def _latest_results() -> dict:
         rows = db.rows("""SELECT r.marker_id AS m, r.value_num AS v
                           FROM results r LEFT JOIN reports rp ON r.report_id = rp.id
                           WHERE r.value_num IS NOT NULL
-                          ORDER BY COALESCE(rp.date, '') ASC""")
+                          ORDER BY COALESCE(rp.collected_on, rp.created_at, '') ASC""")
     except Exception:
         return {}
     return {row["m"]: row["v"] for row in rows}   # later rows overwrite earlier -> most recent wins
@@ -83,7 +83,7 @@ def me_supplements(panel: dict = Body(...), profile: dict | None = Body(None)):
     return _s.recommend(panel, profile or {})
 
 @router.post("/foodscore")
-def me_foodscore(nutrients_per_100g: dict = Body(...)):
+def me_foodscore(nutrients_per_100g: dict = Body(..., embed=True)):
     from .llx import food_quality as _f
     return _f.score(nutrients_per_100g)
 
