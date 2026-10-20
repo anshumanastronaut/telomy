@@ -97,6 +97,15 @@ export default function Home() {
         <Prov source={la.method ? 'PhenoAge · blood panel' : undefined} when={la.as_of ? fmtDate(la.as_of, true) : null} confidence={la.confidence} />
       </Card>
 
+      <Card onPress={() => router.push('/report' as any)} accessibilityLabel="Telomy Report">
+        <Row>
+          <T v="label">Telomy Report</T>
+          <Spacer />
+          <T v="small" color={p.teal} style={{ fontWeight: '600' }}>Open →</T>
+        </Row>
+        <T v="small">Your trained-model picture — blood age, biological &amp; muscular age, disease screen and 10-year risk, shown beside your clinical age.</T>
+      </Card>
+
       <Row gap={space[3]}>
         {h.cards.filter((c: any) => !(hasBandNight && rewind === 0 && (c.id === 'hrv' || c.id === 'sleep_score'))).map((c: any) => (
           <DataCard key={c.id} c={c} asOf={h.as_of} />
