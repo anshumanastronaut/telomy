@@ -125,14 +125,20 @@ echo "== restarting telomy service"
 $SSH 'sudo systemctl restart telomy'
 
 # --- 5. health check -------------------------------------------------------
-echo "== waiting for service to come up"
-sleep 4
-echo "== health check: $HEALTH_URL"
-if curl -fsS --max-time 15 "$HEALTH_URL" >/dev/null; then
-  curl -fsS --max-time 15 "$HEALTH_URL"; echo
-  echo "== deploy OK"
+# The new code seeds/warms on startup, so give it time; and a password-locked server returns 401 (that's healthy —
+# the service is up and answering), so accept 200 OR 401. Only a 000 (unreachable) or 5xx means it's actually down.
+echo "== waiting for service to come up (seeds on first boot)"
+ok=""
+for i in $(seq 1 20); do
+  sleep 6
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 "$HEALTH_URL" || echo 000)
+  echo "   [$i] $HEALTH_URL -> $code"
+  case "$code" in 200|401) ok=1; break;; esac
+done
+if [ -n "$ok" ]; then
+  echo "== deploy OK (service answering: $code)"
 else
-  echo "error: health check FAILED — service may be down." >&2
+  echo "error: health check FAILED — service may be down (last: $code)." >&2
   echo "       inspect:  $SSH 'sudo journalctl -u telomy -n 100 --no-pager'" >&2
   echo "       rollback: see deploy/README.md" >&2
   exit 1
