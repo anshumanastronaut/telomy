@@ -35,3 +35,15 @@ web/dist/
 backend/.whoop-token
 backend/backups/
 backend/logs/
+
+# research artifacts (regenerable via the download/train scripts) — keep code+docs+results+models, skip raw/venv
+research/*/raw/
+research/*/.venv/
+research/.Telomy-installed.app/
+**/__pycache__/
+*.xpt
+*.tsv
+*.csv.gz
+research/ageclock/nhanes_bloodpanel.csv
+research/diseasemodel/disease_dataset.csv
+research/*/nhanes_*.csv

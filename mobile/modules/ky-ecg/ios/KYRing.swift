@@ -513,14 +513,38 @@ final class KYRing: NSObject {
     // run an app-side timeout/rescan loop (the #1 cause of overnight connect/disconnect flapping). See the device
     // reliability research (Apple CoreBluetooth docs).
     private var connectOpts: [String: Any] {
-        var o: [String: Any] = [CBConnectPeripheralOptionNotifyOnDisconnectionKey: true]
-        if #available(iOS 17.0, *) { o[CBConnectPeripheralOptionEnableAutoReconnect] = true }
-        return o
+        // Plain notify-on-disconnect — the exact options that streamed cleanly before. CBConnectPeripheralOption-
+        // EnableAutoReconnect was tried (iOS 17+) to harden the overnight link, but on this ring iOS rejects it with
+        // "One or more parameters were invalid.", so EVERY connect() failed. Overnight resilience does not need it:
+        // the didDisconnect handler issues a no-timeout pending connect() that iOS honours even while suspended, so
+        // the link re-establishes on its own when the ring is back in range.
+        return [CBConnectPeripheralOptionNotifyOnDisconnectionKey: true]
     }
     private func attach(_ p: CBPeripheral) {
         central.stopScan(); ring = p; p.delegate = self
+        setupDone = false; writeC = nil                        // clean setup for every (re)attach
         UserDefaults.standard.set(p.identifier.uuidString, forKey: Self.rememberKey)
-        set("connecting"); central.connect(p, options: connectOpts)
+        set("connecting")
+        // A ring from retrieveConnectedPeripherals is ALREADY connected at the system level. Calling connect() on an
+        // already-.connected peripheral does not reliably re-fire didConnect, so discoverServices never runs and no
+        // frames arrive (the "found system-connected, 0 frames" stuck state). Discover directly on a live link —
+        // same pattern the state-restoration path uses — and only issue a real connect() for a disconnected ring.
+        if p.state == .connected {
+            log("attach: already system-connected — discovering services directly")
+            p.discoverServices([Self.service])
+        } else {
+            log("attach: state=\(p.state.rawValue) — issuing connect()")
+            central.connect(p, options: connectOpts)
+            // Watchdog: if iOS still hasn't given us a live link in 6 s, the ring's single GATT slot is held elsewhere
+            // (a stale iOS bond). Cancel the pending request and retry a clean connect so it can't wedge forever.
+            let target = p
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
+                guard let self, self.ring === target, self.state == "connecting", target.state != .connected else { return }
+                self.log("connect pending >6s (state=\(target.state.rawValue)) — cancelling + retrying")
+                self.central.cancelPeripheralConnection(target)
+                self.central.connect(target, options: self.connectOpts)
+            }
+        }
     }
     private func set(_ s: String) { state = s; publish() }
     private func publish() { emit?("onRingStatus", status()) }
@@ -705,7 +729,14 @@ extension KYRing: CBCentralManagerDelegate {
         emit?("onRingDevice", ["id": p.identifier.uuidString, "name": deviceName, "rssi": rssi.intValue])
         attach(p)                                              // connect the first ring we recognise
     }
-    func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) { p.discoverServices([Self.service]) }
+    func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) { log("didConnect — discovering services"); p.discoverServices([Self.service]) }
+    func centralManager(_ c: CBCentralManager, didFailToConnect p: CBPeripheral, error: Error?) {
+        log("didFailToConnect err=\(error?.localizedDescription ?? "none") — retrying in 2s")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in                 // back off: never spin
+            guard let self, self.ring === p, p.state != .connected else { return }
+            self.central.connect(p, options: self.connectOpts)
+        }
+    }
     func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) {
         writeC = nil; stopAutoSync()
         log("disconnected err=\(error?.localizedDescription ?? "none") — issuing pending reconnect")
@@ -724,6 +755,7 @@ extension KYRing: CBCentralManagerDelegate {
 
 extension KYRing: CBPeripheralDelegate {
     func peripheral(_ p: CBPeripheral, didDiscoverServices error: Error?) {
+        log("didDiscoverServices err=\(error?.localizedDescription ?? "none") svcs=\((p.services ?? []).map { $0.uuid.uuidString.prefix(8) }.joined(separator: ","))")
         for s in p.services ?? [] where s.uuid == Self.service { p.discoverCharacteristics(nil, for: s) }
     }
     func peripheral(_ p: CBPeripheral, didDiscoverCharacteristicsFor s: CBService, error: Error?) {

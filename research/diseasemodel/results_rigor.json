@@ -1,0 +1,94 @@
+{
+  "per_disease": {
+    "diabetes": {
+      "PR_AUC": 0.616,
+      "brier": 0.1213,
+      "calibration_err": 0.169,
+      "prevalence": 0.131,
+      "n_test": 5922
+    },
+    "hypertension": {
+      "PR_AUC": 0.707,
+      "brier": 0.1717,
+      "calibration_err": 0.096,
+      "prevalence": 0.35,
+      "n_test": 6062
+    },
+    "high_cholesterol": {
+      "PR_AUC": 0.605,
+      "brier": 0.1958,
+      "calibration_err": 0.112,
+      "prevalence": 0.348,
+      "n_test": 5538
+    },
+    "kidney_disease": {
+      "PR_AUC": 0.29,
+      "brier": 0.1157,
+      "calibration_err": 0.261,
+      "prevalence": 0.035,
+      "n_test": 5759
+    },
+    "heart_failure": {
+      "PR_AUC": 0.224,
+      "brier": 0.1157,
+      "calibration_err": 0.222,
+      "prevalence": 0.033,
+      "n_test": 5753
+    },
+    "coronary_hd": {
+      "PR_AUC": 0.217,
+      "brier": 0.1201,
+      "calibration_err": 0.207,
+      "prevalence": 0.041,
+      "n_test": 5745
+    },
+    "angina": {
+      "PR_AUC": 0.079,
+      "brier": 0.1342,
+      "calibration_err": 0.28,
+      "prevalence": 0.025,
+      "n_test": 5749
+    },
+    "heart_attack": {
+      "PR_AUC": 0.193,
+      "brier": 0.1352,
+      "calibration_err": 0.251,
+      "prevalence": 0.042,
+      "n_test": 5758
+    },
+    "stroke": {
+      "PR_AUC": 0.121,
+      "brier": 0.1494,
+      "calibration_err": 0.281,
+      "prevalence": 0.04,
+      "n_test": 5761
+    },
+    "liver_disease": {
+      "PR_AUC": 0.142,
+      "brier": 0.1412,
+      "calibration_err": 0.282,
+      "prevalence": 0.042,
+      "n_test": 5755
+    },
+    "cancer": {
+      "PR_AUC": 0.317,
+      "brier": 0.1613,
+      "calibration_err": 0.25,
+      "prevalence": 0.097,
+      "n_test": 5763
+    },
+    "copd": {
+      "PR_AUC": 0.179,
+      "brier": 0.1183,
+      "calibration_err": 0.229,
+      "prevalence": 0.04,
+      "n_test": 3408
+    }
+  },
+  "guess_the_disease": {
+    "n_patients_with_a_condition": 9299,
+    "top1_recall": 0.709,
+    "top3_recall": 0.923,
+    "note": "of patients with >=1 diagnosed condition, how often a true one is the top (or top-3) ranked"
+  }
+}

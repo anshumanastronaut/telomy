@@ -67,3 +67,16 @@ make docs    # regenerate docs/API.md and docs/DATA_MODEL.md after route/schema 
 The member Vault is single-user today (only 5 of 48 tables have `patient_id`) and there is no auth. Phase 1 of the production plan adds
 `user_id`/`org_id` ownership, JWT auth, per-route policies and Postgres RLS. New tables and queries must already carry an owner column
 and filter by it.
+
+## Org, sibling repos & the engineering team
+
+Telomy spans several repos; read `ENGINEERING.md` (this repo root) for the full map, operating cadence
+and definition-of-done. Sibling repos under `/Users/anshuman/`:
+- `telomy-slm` — Telomy-LLX tool-grounded longevity SLM (Qwen2.5; calls the clocks, never guesses numbers).
+- `telomy-vision` — meal-photo→nutrition (USDA + IFCT 2017 India), medical-image/report ingestion, genomics annotation.
+- `telomy-lab` — ECG/PPG/sleep signal R&D and validation.
+- `research/ageclock` & `research/muscleclock` — trained aging-clock families (blood, muscle) + the DPR.
+
+The virtual engineering team lives in `.claude/agents/` (ml-research, data-engineering, backend-eng,
+mobile-eng, devops-sre, clinical-regulatory, qa-security) — invoke a specialist by name for scoped work.
+Operate with the enabled **Engineering** and **Data** plugin skills; deep reviews via `/code-review ultra`.

@@ -1,0 +1,98 @@
+{
+  "diabetes": {
+    "brier_before": 0.1213,
+    "brier_after": 0.0749,
+    "calib_err_before": 0.169,
+    "calib_err_after": 0.008,
+    "auc_before": 0.887,
+    "auc_after": 0.887
+  },
+  "hypertension": {
+    "brier_before": 0.1717,
+    "brier_after": 0.1601,
+    "calib_err_before": 0.096,
+    "calib_err_after": 0.01,
+    "auc_before": 0.823,
+    "auc_after": 0.824
+  },
+  "high_cholesterol": {
+    "brier_before": 0.1958,
+    "brier_after": 0.1817,
+    "calib_err_before": 0.112,
+    "calib_err_after": 0.015,
+    "auc_before": 0.77,
+    "auc_after": 0.77
+  },
+  "kidney_disease": {
+    "brier_before": 0.1157,
+    "brier_after": 0.0285,
+    "calib_err_before": 0.261,
+    "calib_err_after": 0.006,
+    "auc_before": 0.803,
+    "auc_after": 0.801
+  },
+  "heart_failure": {
+    "brier_before": 0.1157,
+    "brier_after": 0.0285,
+    "calib_err_before": 0.222,
+    "calib_err_after": 0.005,
+    "auc_before": 0.858,
+    "auc_after": 0.866
+  },
+  "coronary_hd": {
+    "brier_before": 0.1201,
+    "brier_after": 0.0357,
+    "calib_err_before": 0.207,
+    "calib_err_after": 0.004,
+    "auc_before": 0.849,
+    "auc_after": 0.85
+  },
+  "angina": {
+    "brier_before": 0.1342,
+    "brier_after": 0.0233,
+    "calib_err_before": 0.28,
+    "calib_err_after": 0.002,
+    "auc_before": 0.793,
+    "auc_after": 0.794
+  },
+  "heart_attack": {
+    "brier_before": 0.1352,
+    "brier_after": 0.037,
+    "calib_err_before": 0.251,
+    "calib_err_after": 0.005,
+    "auc_before": 0.842,
+    "auc_after": 0.842
+  },
+  "stroke": {
+    "brier_before": 0.1494,
+    "brier_after": 0.0362,
+    "calib_err_before": 0.281,
+    "calib_err_after": 0.006,
+    "auc_before": 0.792,
+    "auc_after": 0.79
+  },
+  "liver_disease": {
+    "brier_before": 0.1412,
+    "brier_after": 0.0381,
+    "calib_err_before": 0.282,
+    "calib_err_after": 0.007,
+    "auc_before": 0.731,
+    "auc_after": 0.733
+  },
+  "cancer": {
+    "brier_before": 0.1613,
+    "brier_after": 0.0751,
+    "calib_err_before": 0.25,
+    "calib_err_after": 0.008,
+    "auc_before": 0.811,
+    "auc_after": 0.814
+  },
+  "copd": {
+    "brier_before": 0.1183,
+    "brier_after": 0.0356,
+    "calib_err_before": 0.229,
+    "calib_err_after": 0.007,
+    "auc_before": 0.826,
+    "auc_after": 0.838
+  }
+}
