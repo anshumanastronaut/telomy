@@ -1,0 +1,36 @@
+{
+  "muscle_full": {
+    "n": 21610,
+    "n_features": 19,
+    "test_MAE_years": 9.052,
+    "test_R2": 0.606,
+    "test_pearson_r": 0.779,
+    "cv5_MAE": 9.029
+  },
+  "muscle_dxa": {
+    "n": 21668,
+    "n_features": 15,
+    "test_MAE_years": 9.508,
+    "test_R2": 0.553,
+    "test_pearson_r": 0.745,
+    "cv5_MAE": 9.398
+  },
+  "muscle_anthro": {
+    "n": 22533,
+    "n_features": 8,
+    "test_MAE_years": 11.934,
+    "test_R2": 0.385,
+    "test_pearson_r": 0.62,
+    "cv5_MAE": 11.742
+  },
+  "marker_corr_with_age": {
+    "almi": -0.624,
+    "alm_kg": -0.608,
+    "grip_kg": -0.318,
+    "total_fat_pct": NaN,
+    "lean_fat_ratio": NaN,
+    "bmd_total": NaN,
+    "waist": NaN,
+    "arm_circ": NaN
+  }
+}

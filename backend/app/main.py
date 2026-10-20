@@ -173,6 +173,9 @@ async def _bind_user(request: _Req, authorization: str = _Hdr(default="")):
 
 app.router.dependencies.append(_Dep(_bind_user))
 
+from . import telomy_ml as _telomy_ml  # noqa: E402  trained-ML engines (additive /me/* routes, per-user)
+app.include_router(_telomy_ml.router)
+
 
 class _SignupBody(BaseModel):
     email: str
