@@ -777,10 +777,23 @@ def _push_err(e: "whoop.PushError"):
     return _JR({"type": "error", "protocolVersion": whoop.VERSION, "code": e.code}, status_code=e.status)
 
 
+def _bind_whoop_user():
+    """NOOP's WHOOP push authenticates with its own token, not a user login, so in multi-user mode it would write to the
+    default (legacy) DB and the signed-in member would never see their WHOOP data. Bind the configured owner's Vault
+    (TELOMY_WHOOP_USER_ID) so the push lands where the app reads it. Single-user mode is unchanged (no-op)."""
+    uid = _os3.environ.get("TELOMY_WHOOP_USER_ID")
+    if uid and acctmod.enabled():
+        try:
+            db.set_db(acctmod.user_db_path(int(uid)))
+        except Exception:  # noqa: BLE001
+            pass
+
+
 @app.get("/whoop/push")
 def whoop_caps(request: _Req):
     if not whoop.token_ok(request.headers.get("authorization")):
         return _push_err(whoop.PushError(401, "unauthorized"))
+    _bind_whoop_user()
     try:
         return whoop.capabilities(request.headers.get("noop-push-accept-version"))
     except whoop.PushError as e:
@@ -791,6 +804,7 @@ def whoop_caps(request: _Req):
 async def whoop_push(request: _Req):
     if not whoop.token_ok(request.headers.get("authorization")):
         return _push_err(whoop.PushError(401, "unauthorized"))
+    _bind_whoop_user()
     body = await request.body()
     if len(body) > whoop.MAX_NDJSON + 64 * 1024:
         return _push_err(whoop.PushError(413, "too_large"))
