@@ -81,8 +81,8 @@ def _ensure_user_db(user_id: int):
     try:
         if not os.path.exists(path):
             db.init()
-        from . import roles, plans, therapy, rx, summaries, voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science
-        for mod in (roles, plans, therapy, rx, summaries, voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science):
+        from . import roles, plans, therapy, rx, summaries, voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitals, goals
+        for mod in (roles, plans, therapy, rx, summaries, voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitals, goals):
             try:
                 mod.init()
             except Exception:  # noqa: BLE001

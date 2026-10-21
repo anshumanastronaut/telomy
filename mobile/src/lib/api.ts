@@ -88,7 +88,7 @@ export async function setStaffToken(t: string | null) {
 export function hasStaffToken() { return !!staffToken; }
 
 /** Try the current server, then the others; remember the first that answers. Throws only if none do. */
-async function reach(path: string, init: RequestInit): Promise<Response> {
+async function reach(path: string, init: RequestInit, primaryMs = 12000): Promise<Response> {
   await tokenReady; await staffReady;
   const isMgmt = path.startsWith('/mgmt');
   const authTok = isMgmt ? staffToken : token;             // /mgmt uses the staff token; everything else the Vault token
@@ -96,7 +96,8 @@ async function reach(path: string, init: RequestInit): Promise<Response> {
   const order = [API, ...CANDIDATES.filter((c) => c !== API)];
   for (const base of order) {
     try {
-      const res = await fetchWithTimeout(base + path, init, base === API ? 12000 : 4000);
+      // the primary gets the full budget; fallbacks are probed briefly, but never below a file upload's needs
+      const res = await fetchWithTimeout(base + path, init, base === API ? primaryMs : Math.min(primaryMs, 4000));
       if (base !== API) API = base;
       return res;
     } catch {}
@@ -161,7 +162,7 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
       method,
       headers: opts.form ? undefined : { 'Content-Type': 'application/json' },
       body: opts.form ?? (opts.body ? JSON.stringify(opts.body) : undefined),
-    });
+    }, opts.form ? 60000 : 12000);                          // file uploads (lab PDFs) need a much longer budget than JSON calls
   } catch {
     if (opts.queue && opts.body && !opts.form) {           // keep it on the phone; it goes up when the server is back
       await enqueue({ path, method, body: opts.body, t: Date.now() });
