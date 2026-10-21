@@ -864,7 +864,9 @@ def whoop_day(day: str | None = None):
 
 @app.get("/whoop/nights")
 def whoop_nights(days: int = 30):
-    return {"nights": whoop.nights(days), "daily": whoop.daily(days)}
+    from . import sleep_fusion
+    fused = sleep_fusion.fuse(whoop.nights(days))   # split real overnight nights from daytime naps; flag/reject false ones
+    return {**fused, "daily": whoop.daily(days)}
 
 
 # ------------------------------------------------------------------ Sinc voice (any language, say anything)
