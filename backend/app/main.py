@@ -821,6 +821,21 @@ def cal_whoop_latest():
     return cal.whoop_latest()
 
 
+@app.get("/cal/status")
+def cal_status(session: str | None = None):
+    """Live capture health per source.channel (count, last value, seconds since the server last received it)."""
+    _bind_whoop_user()
+    from . import cal
+    return cal.status(session)
+
+
+@app.get("/cal/monitor", response_class=Response)
+def cal_monitor():
+    """A self-contained live dashboard (same-origin) for watching the overnight capture."""
+    from . import cal
+    return Response(content=cal.monitor_html(), media_type="text/html")
+
+
 @app.post("/whoop/push")
 async def whoop_push(request: _Req):
     if not whoop.token_ok(request.headers.get("authorization")):
