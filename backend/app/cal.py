@@ -129,6 +129,20 @@ def whoop_latest(window_sec: int = 15 * 60) -> dict:
     if tp:
         live["temp_raw"] = round(st.mean(tp), 1)
 
+    # IMU (wrist motion) from the gravity vector — for motion correlation + artifact rejection in SpO2/HRV/sleep
+    vecs = []
+    for r in _win_rows("gravitySample", t0, t1):
+        x = json.loads(r["data"])
+        if x.get("z") is not None:
+            vecs.append((x.get("x", 0.0), x.get("y", 0.0), x["z"]))
+    if vecs:
+        mags = [math.sqrt(a * a + b * b + c * c) for a, b, c in vecs]
+        zang = [math.degrees(math.atan2(c, math.sqrt(a * a + b * b))) for a, b, c in vecs]
+        motion = [abs(mags[i + 1] - mags[i]) for i in range(len(mags) - 1)]
+        live["g_mag"] = round(st.mean(mags), 3)
+        live["z_angle"] = round(st.mean(zang), 1)
+        live["motion_mg"] = round(st.mean(motion) * 1000, 1) if motion else 0.0
+
     rr = []
     for r in _win_rows("rrInterval", t0, t1):
         try:
