@@ -20,7 +20,7 @@ export type WhoopDay = { ok: boolean; day: string; wornMin: number; restingHr: n
   stress: { avg: number | null; minutes: number; highMin: number } };
 
 export type Wellness = {
-  loading: boolean; nights: Night[]; last?: Night; sleep: Score | null; recovery: Score; age: number;
+  loading: boolean; nights: Night[]; naps: Night[]; last?: Night; sleep: Score | null; recovery: Score; age: number;
   today: { minutes: MinuteRec[]; zones: number[]; trimp: number; strain: number; stress: ReturnType<typeof stressFor>; worn: number; activeMin: number; source: 'patch' | 'whoop'; whoop?: WhoopDay };
   yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void; sessionsToday: DayEvent[]; userEvents: UserEventRec[];
   need: SleepNeed; sri: number | null; illness: ReturnType<typeof illnessWatch>;
@@ -78,16 +78,21 @@ export function useWellness(ageHint?: number | null): Wellness {
 
   const nights = state?.nights ?? [];
   const age = state?.age ?? 35;
-  const last = nights[nights.length - 1];
+  // A short daytime session is a NAP, not "last night" — showing it as the night was the bug. The headline is the most
+  // recent real overnight night; naps are kept separately (they stay unconfirmed — the user is the ground truth).
+  const isNapNight = (n: Night) => { const mid = new Date(((n.start + n.end) / 2) * 1000).getHours(); return mid >= 10 && mid < 20 && n.tstMin < 240; };
+  const realNights = nights.filter((n) => !isNapNight(n));
+  const naps = nights.filter(isNapNight);
+  const last = realNights[realNights.length - 1];
   const fresh = last && Date.now() / 1000 - last.end < 20 * 3600 ? last : undefined;  // today's night
   const mins = state?.minutes ?? [];
   const todayKey = localDate(Date.now() / 1000), yKey = localDate(Date.now() / 1000 - 86400);
   const byDay = (k: string) => mins.filter((m) => m.ts.startsWith(k));
   const strainByDate: Record<string, number> = {};
   for (let i = 1; i <= 14; i++) { const k = localDate(Date.now() / 1000 - i * 86400), d = byDay(k); if (d.length >= 60) strainByDate[k] = strainFromTrimp(zonesFor(d, age).trimp); }
-  const before = fresh ? nights.slice(0, -1) : nights;
+  const before = fresh ? realNights.slice(0, -1) : realNights;
   const needLast = sleepNeed(before, fresh ? strainByDate[localDate(fresh.start - 6 * 3600)] ?? 0 : 0, strainByDate);
-  const sri = sleepRegularity(nights);
+  const sri = sleepRegularity(realNights);
   const sleep = fresh ? sleepScore(fresh, nights, needLast.needMin, sri) : null;
   const dayTrimps = Array.from({ length: 8 }, (_, i) => localDate(Date.now() / 1000 - (7 - i) * 86400))
     .map((k) => byDay(k)).filter((d) => d.length >= 60).map((d) => zonesFor(d, age).trimp);
@@ -110,7 +115,7 @@ export function useWellness(ageHint?: number | null): Wellness {
     : { minutes: tm, zones, trimp, strain: strainFromTrimp(trimp), stress, worn: tm.length, source: 'patch' as const,
         activeMin: tm.filter((m) => m.activity === 'active').length };
   return {
-    loading: !state, nights, last: fresh, sleep, recovery, age,
+    loading: !state, nights, naps, last: fresh, sleep, recovery, age,
     today,
     yesterdayTrimp: byDay(yKey).length >= 60 ? zonesFor(byDay(yKey), age).trimp : null,
     restingHr, vo2: restingHr ? vo2max(age, restingHr) : null, reload: load, sessionsToday: state?.sessions ?? [], userEvents: state?.userEvents ?? [],

@@ -87,6 +87,20 @@ export default function WellnessDetail() {
                 : 'HRV usually rises through the night as recovery takes over.'}</T>
             </Card> : null}
             {w.sleep ? <Section title="Contributors"><ContributorList items={w.sleep.contributors} /></Section> : null}
+            {w.naps?.filter((n) => Date.now() / 1000 - n.end < 20 * 3600).length ? (
+              <Section title="Possible naps today">
+                <Card style={{ gap: space[2] }}>
+                  <T v="small">Detected from a heart-rate dip + stillness — but resting awake looks the same, so you're the judge. Naps don't count toward your night's sleep.</T>
+                  {w.naps.filter((n) => Date.now() / 1000 - n.end < 20 * 3600).map((n) => (
+                    <Row key={n.id}>
+                      <T v="body" style={{ flex: 1 }}>{fmtClock(n.start)} – {fmtClock(n.end)}</T>
+                      <T v="small" color={p.faint}>{fmtDur(n.tstMin)}</T>
+                      <T v="small" color={p.teal}>possible</T>
+                    </Row>
+                  ))}
+                </Card>
+              </Section>
+            ) : null}
             <Trends w={w} kind="sleep" />
             {w.last.source === 'patch' ? <Button kind="secondary" title="Open the full session" icon="folder" onPress={() => router.push('/captures')} /> : null}
           </>
