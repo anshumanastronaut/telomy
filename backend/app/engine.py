@@ -187,6 +187,24 @@ def longevity_age(as_of: str | None = None) -> dict:
                            "day": h[-1]["collected_on"]}
     chrono = age_on(as_of)
     if not history:
+        # Fallback: guideline PhenoAge needs the full Levine panel (albumin, creatinine, FASTING glucose, hs-CRP, …).
+        # The NHANES-trained clock handles a partial panel, so show the trained blood age (clearly labelled) rather
+        # than a blank dial. The clinical model still takes over automatically once the missing markers are added.
+        try:
+            from .telomy_ml import _panel as _ml_panel
+            from .llx import tools as _ml_tools
+            panel = _ml_panel()
+            if len([k for k in panel if k not in ("age", "sex")]) >= 3:
+                tr = _ml_tools.predict_age(panel)
+                ba = tr.get("predicted_age_years")
+                if ba is not None:
+                    err = round(tr.get("typical_error_years", 9))
+                    return {"value": round(ba, 1), "chronological": round(chrono, 1) if chrono else None,
+                            "delta": round(ba - chrono, 1) if chrono else None, "clocks": clocks, "history": [],
+                            "method": f"Trained blood clock (NHANES, ±{err}y)", "confidence": 0.5, "trained_fallback": True,
+                            "reason": "From the trained blood clock. Add fasting glucose + hs-CRP next time for the clinical PhenoAge too."}
+        except Exception:  # noqa: BLE001
+            pass
         missing = []
         if reports:   # say exactly which inputs the latest panel lacks, so the next test can add them
             last_vals = _pheno_aliases({r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?",
