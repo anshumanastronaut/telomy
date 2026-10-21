@@ -33,10 +33,13 @@ def save_report(parsed: dict, source: str, filename: str) -> int:
                     1 if parsed.get("is_test_data") else 0))
     for m in parsed["markers"]:
         num = m["value"] if isinstance(m["value"], (int, float)) else None
+        # ref_low/ref_high/status may be absent when markers come straight from the client (/labs/save accepts a
+        # free-form marker list); default them instead of KeyError-ing into a 500. The PDF parser always sets them.
         db.exec_("""INSERT INTO results (report_id, marker_id, value_num, value_text, unit, ref_low, ref_high, ref_text,
                     flag, status, note) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                 (rid, m["marker_id"], num, None if num is not None else str(m["value"]), m["unit"], m["ref_low"],
-                  m["ref_high"], m.get("ref_text"), m.get("flag"), m["status"], m.get("note")))
+                 (rid, m["marker_id"], num, None if num is not None else str(m["value"]), m.get("unit"),
+                  m.get("ref_low"), m.get("ref_high"), m.get("ref_text"), m.get("flag"),
+                  m.get("status", "unknown"), m.get("note")))
     return rid
 
 
