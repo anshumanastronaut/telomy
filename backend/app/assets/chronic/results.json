@@ -1,0 +1,102 @@
+{
+  "_meta": {
+    "source": "BRFSS 2021-2023",
+    "n_total": 1317148,
+    "features": [
+      "age",
+      "sex",
+      "bmi",
+      "smoker",
+      "phys_act",
+      "gen_health",
+      "ment_days",
+      "phys_days",
+      "sleep_hrs",
+      "hi_bp_flag",
+      "hi_chol",
+      "heavy_drink",
+      "income",
+      "educ",
+      "race",
+      "has_insur"
+    ],
+    "note": "self-reported outcomes; risk-stratification screen, decision-support only"
+  },
+  "diabetes": {
+    "n": 1314092,
+    "n_pos": 178560,
+    "prevalence": 0.1359,
+    "test_AUC": 0.822,
+    "test_AP": 0.404
+  },
+  "heart_attack": {
+    "n": 1308860,
+    "n_pos": 71390,
+    "prevalence": 0.0545,
+    "test_AUC": 0.83,
+    "test_AP": 0.222
+  },
+  "coronary_hd": {
+    "n": 1304237,
+    "n_pos": 72896,
+    "prevalence": 0.0559,
+    "test_AUC": 0.847,
+    "test_AP": 0.244
+  },
+  "stroke": {
+    "n": 1312688,
+    "n_pos": 54802,
+    "prevalence": 0.0417,
+    "test_AUC": 0.806,
+    "test_AP": 0.144
+  },
+  "copd": {
+    "n": 1310756,
+    "n_pos": 102922,
+    "prevalence": 0.0785,
+    "test_AUC": 0.843,
+    "test_AP": 0.367
+  },
+  "asthma_current": {
+    "n": 1306088,
+    "n_pos": 132268,
+    "prevalence": 0.1013,
+    "test_AUC": 0.701,
+    "test_AP": 0.228
+  },
+  "kidney_disease": {
+    "n": 1311517,
+    "n_pos": 57971,
+    "prevalence": 0.0442,
+    "test_AUC": 0.804,
+    "test_AP": 0.165
+  },
+  "skin_cancer": {
+    "n": 1309634,
+    "n_pos": 113164,
+    "prevalence": 0.0864,
+    "test_AUC": 0.807,
+    "test_AP": 0.256
+  },
+  "other_cancer": {
+    "n": 1311026,
+    "n_pos": 143173,
+    "prevalence": 0.1092,
+    "test_AUC": 0.773,
+    "test_AP": 0.266
+  },
+  "arthritis": {
+    "n": 1309059,
+    "n_pos": 436453,
+    "prevalence": 0.3334,
+    "test_AUC": 0.805,
+    "test_AP": 0.649
+  },
+  "depression": {
+    "n": 1309232,
+    "n_pos": 264957,
+    "prevalence": 0.2024,
+    "test_AUC": 0.823,
+    "test_AP": 0.575
+  }
+}

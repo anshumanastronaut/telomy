@@ -2285,6 +2285,39 @@ def _require_org_admin(authorization: str, org: str) -> dict:
     return me
 
 
+class _ClinicAssess(BaseModel):
+    panel: dict | None = None          # blood markers (preferred) → trained NHANES disease models
+    features: dict | None = None       # non-invasive questionnaire/wearable features → lab-free chronic model
+    profile: dict | None = None        # meds / conditions / goals (for the supplement safety screen)
+    wearable: dict | None = None       # resting_hr / sdnn / spo2 → fusion overlay
+    risk_threshold: float = 0.2
+
+
+@app.post("/mgmt/clinic/assess")
+def mgmt_clinic_assess(body: _ClinicAssess, authorization: str = _Hdr(default="")):
+    """Doctor-side: one grounded assessment (diagnostics + treatments + therapies + supplements + retest),
+    pending clinician validation. Uses the blood-panel models when bloods exist, else the lab-free chronic model."""
+    _require_staff(authorization)
+    from .llx import clinic_engine
+    return clinic_engine.assess(panel=body.panel, profile=body.profile, features=body.features,
+                                wearable=body.wearable, risk_threshold=body.risk_threshold)
+
+
+class _ClinicValidate(BaseModel):
+    assessment: dict
+    approved: list | None = None
+    note: str = ""
+
+
+@app.post("/mgmt/clinic/validate")
+def mgmt_clinic_validate(body: _ClinicValidate, authorization: str = _Hdr(default="")):
+    """The clinician sign-off gate: records which treatment/therapy/supplement items the doctor approved."""
+    me = _require_staff(authorization)
+    from .llx import clinic_engine
+    return clinic_engine.validate(body.assessment, approved_items=body.approved,
+                                  doctor=me.get("name", ""), note=body.note)
+
+
 @app.post("/mgmt/staff/{sid}/profile")
 def mgmt_staff_profile(sid: int, body: dict, authorization: str = _Hdr(default="")):
     me = _require_staff(authorization)
