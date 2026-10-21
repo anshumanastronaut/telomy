@@ -1,4 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
@@ -28,9 +29,10 @@ export default function Upload() {
     setStep(0);
     const tick = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 450);
     try {
-      const form = new FormData();
-      form.append('file', { uri: f.uri, name: f.name, type: 'application/pdf' } as any);
-      const r = await api('/labs/parse', { form });
+      // Read the PDF as base64 and send it in a JSON body. React Native's multipart file upload was failing to reach
+      // the server over HTTPS; JSON POSTs are reliable, so this is the robust path.
+      const pdf_base64 = await FileSystem.readAsStringAsync(f.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const r = await api('/labs/parse_b64', { body: { filename: f.name, pdf_base64 } });
       setParsed(r);
       setStage('verify');
     } catch (e: any) {

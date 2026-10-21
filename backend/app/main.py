@@ -1560,22 +1560,42 @@ def add_daily(body: DailyBatch):
 
 # ------------------------------------------------------------------ labs
 
-@app.post("/labs/parse")
-async def labs_parse(file: UploadFile = File(...)):
-    data = await file.read()
+def _parse_pdf_payload(data: bytes, filename: str) -> dict:
     if not data[:5] == b"%PDF-":
         raise HTTPException(400, "That file isn't a PDF. Upload the PDF your lab sent you.")
     try:
-        parsed = parse_pdf(data, file.filename or "")
+        parsed = parse_pdf(data, filename or "")
     except Exception as exc:
         raise HTTPException(422, f"I couldn't read that PDF ({type(exc).__name__}). If it's a scan, a photo upload is coming next.")
     if not parsed["markers"]:
         raise HTTPException(422, "I didn't find any biomarkers I recognise in that PDF.")
     dup = db.one("SELECT id FROM reports WHERE panel = ? AND collected_on = ?", (parsed["panel"], parsed["collected_on"]))
     parsed["duplicate_of"] = dup["id"] if dup else None
-    parsed["filename"] = file.filename
+    parsed["filename"] = filename
     parsed["panel_title"] = PANELS[parsed["panel"]]
     return parsed
+
+
+@app.post("/labs/parse")
+async def labs_parse(file: UploadFile = File(...)):
+    return _parse_pdf_payload(await file.read(), file.filename or "")
+
+
+class LabB64(BaseModel):
+    filename: str | None = None
+    pdf_base64: str
+
+
+@app.post("/labs/parse_b64")
+def labs_parse_b64(body: LabB64):
+    """JSON upload path: the phone sends the PDF base64-encoded in a JSON body. Multipart file upload from React
+    Native over HTTPS was failing to reach the server; JSON POSTs are reliable, so this is the robust ingestion path."""
+    import base64 as _b64
+    try:
+        data = _b64.b64decode(body.pdf_base64, validate=False)
+    except Exception:
+        raise HTTPException(400, "Could not read the uploaded file. Please try the PDF again.")
+    return _parse_pdf_payload(data, body.filename or "")
 
 
 class SaveReport(BaseModel):
