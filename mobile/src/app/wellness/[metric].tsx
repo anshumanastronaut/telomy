@@ -74,7 +74,15 @@ export default function WellnessDetail() {
       {metric === 'sleep' ? (
         w.last ? (
           <>
-            <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
+            <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start + (w.last.onsetMin ?? 0) * 60)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
+            {w.last.onsetMin != null && w.last.onsetMin >= 15 ? (
+              <Card style={{ gap: 2 }}>
+                <Row><T v="small" style={{ flex: 1 }}>In bed</T><T v="num" style={{ fontSize: 16 }}>{fmtClock(w.last.start)}</T></Row>
+                <Row><T v="small" style={{ flex: 1 }}>Fell asleep</T><T v="num" style={{ fontSize: 16 }}>{fmtClock(w.last.start + w.last.onsetMin * 60)}</T></Row>
+                <Row><T v="small" style={{ flex: 1 }}>Time to fall asleep</T><T v="num" style={{ fontSize: 16 }}>{fmtDur(w.last.onsetMin)}</T></Row>
+                <T v="small" color={p.faint}>We mark sleep from the first real heart-rate drop, not from when you lay down — resting in bed isn't sleep.</T>
+              </Card>
+            ) : null}
             <T v="small" color={p.faint}>From {SOURCE_LABEL[w.last.source ?? 'patch']}{w.last.sourceName && w.last.source === 'health' ? ` (${w.last.sourceName})` : ''}</T>
             <SleepNeedCard w={w} />
             <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} embedded />

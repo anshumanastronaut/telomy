@@ -135,6 +135,23 @@ const WSTAGE: Record<string, number> = { wake: 0, light: 1, deep: 2, rem: 3 };
  *  mean HR is within 5 bpm of the night-time sleeping HR — a still sofa afternoon is not sleep (seen 2026-10-18:
  * daytime HR ~15 % above the overnight sleeping HR).
  */
+/** HR-led sleep onset. WHOOP/motion mark lying-still-awake as asleep (wake specificity <60% on all wearables), so
+ * onset reads too early. The discriminator is heart rate: true sleep begins at the first SUSTAINED HR drop into the
+ * person's sleeping band (resting + max(10 bpm, 15%)), held ≥15 min. We re-mark grid epochs before that as wake, so
+ * the in-bed start is kept but "asleep" (and TST/efficiency/latency) reflect when you actually fell asleep. */
+function applyHrOnset(grid: number[], start: number, hr5: [number, number, number][] | undefined, restingHr?: number): number[] {
+  if (!hr5?.length || restingHr == null) return grid;
+  const floor = restingHr + Math.max(10, 0.15 * restingHr);
+  let onsetTs: number | null = null, run = 0;
+  for (const [ts, hr] of hr5) {
+    if (hr <= floor) { run++; if (run >= 3 && onsetTs == null) onsetTs = ts - 2 * 300; } else run = 0;
+  }
+  if (onsetTs == null) return grid;
+  const onsetEpoch = Math.min(grid.length, Math.max(0, Math.floor((onsetTs - start) / EPOCH)));
+  for (let i = 0; i < onsetEpoch; i++) if (grid[i] > 0) grid[i] = 0;   // pre-onset "sleep" → wake (in bed, not asleep)
+  return grid;
+}
+
 export function whoopNights(list: WhoopNightIn[]): Night[] {
   const nightHr = list.filter((w) => { const h = new Date(((w.start + w.end) / 2) * 1000).getHours(); return h < 10 || h >= 19; })
     .map((w) => w.sleepHr).filter((x): x is number => x != null);
@@ -151,6 +168,7 @@ export function whoopNights(list: WhoopNightIn[]): Night[] {
       for (let i = Math.max(0, Math.floor((seg.start - w.start) / EPOCH)); i < Math.min(grid.length, Math.ceil((seg.end - w.start) / EPOCH)); i++) grid[i] = c;
     }
     if (!staged) grid.fill(4);
+    applyHrOnset(grid, w.start, w.hr5, w.restingHr);       // correct WHOOP's too-early onset using heart rate
     const sm = summarise(grid, w.start, staged);
     if (!sm) continue;
     out.push({ ...sm, id: `whoop-${w.start}`, date: localDate(sm.end), hr5: w.hr5 ?? [], hrv5: [], events: [], source: 'whoop', sourceName: 'WHOOP',
