@@ -154,7 +154,7 @@ export async function outboxCount(): Promise<number> {
 }
 AppState.addEventListener('change', (s) => { if (s === 'active') flushOutbox(); });
 
-export async function api<T = any>(path: string, opts: { method?: string; body?: any; form?: FormData; queue?: boolean } = {}): Promise<T> {
+export async function api<T = any>(path: string, opts: { method?: string; body?: any; form?: FormData; queue?: boolean; timeoutMs?: number } = {}): Promise<T> {
   let res: Response;
   const method = opts.method ?? (opts.body || opts.form ? 'POST' : 'GET');
   try {
@@ -162,7 +162,7 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
       method,
       headers: opts.form ? undefined : { 'Content-Type': 'application/json' },
       body: opts.form ?? (opts.body ? JSON.stringify(opts.body) : undefined),
-    }, opts.form ? 60000 : 12000);                          // file uploads (lab PDFs) need a much longer budget than JSON calls
+    }, opts.timeoutMs ?? (opts.form ? 60000 : 12000));      // uploads (lab PDFs, incl. base64-JSON) pass a long timeoutMs
   } catch {
     if (opts.queue && opts.body && !opts.form) {           // keep it on the phone; it goes up when the server is back
       await enqueue({ path, method, body: opts.body, t: Date.now() });

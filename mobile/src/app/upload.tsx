@@ -32,7 +32,7 @@ export default function Upload() {
       // Read the PDF as base64 and send it in a JSON body. React Native's multipart file upload was failing to reach
       // the server over HTTPS; JSON POSTs are reliable, so this is the robust path.
       const pdf_base64 = await FileSystem.readAsStringAsync(f.uri, { encoding: FileSystem.EncodingType.Base64 });
-      const r = await api('/labs/parse_b64', { body: { filename: f.name, pdf_base64 } });
+      const r = await api('/labs/parse_b64', { body: { filename: f.name, pdf_base64 }, timeoutMs: 180000 });  // large/scanned PDFs over a phone uplink
       setParsed(r);
       setStage('verify');
     } catch (e: any) {
