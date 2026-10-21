@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telomy calibration workbench</title>
+<style>
+  :root{--bg:#0b0f0e;--card:#141a18;--line:#243029;--txt:#e8efe9;--muted:#8aa093;--teal:#4fd1a5;--copper:#e08a5a;--num:'SF Mono',ui-monospace,monospace}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 -apple-system,system-ui,sans-serif;padding:16px;max-width:1100px;margin:auto}
+  h1{font-size:20px;margin:0 0 4px} .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .big{font-family:var(--num);font-size:30px} .unit{color:var(--muted);font-size:13px}
+  .row{display:flex;gap:8px;align-items:center;margin:6px 0} .row label{flex:1;color:var(--muted);font-size:13px}
+  input{background:#0b0f0e;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:7px;font-family:var(--num);width:90px}
+  button{background:var(--teal);color:#06130d;border:0;border-radius:8px;padding:7px 10px;font-weight:600;cursor:pointer}
+  button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .eq{font-family:var(--num);color:var(--teal);font-size:14px;margin-top:8px}
+  .r2{color:var(--muted);font-size:12px} svg{width:100%;height:150px;margin-top:8px;background:#0b0f0e;border-radius:8px}
+  .dot{fill:var(--copper)} .fitline{stroke:var(--teal);stroke-width:2;fill:none} .axis{stroke:var(--line)}
+  .pill{display:inline-block;background:#0b0f0e;border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:12px;color:var(--muted);font-family:var(--num)}
+  .err{color:var(--copper);font-size:12px}
+</style>
+</head>
+<body>
+<h1>Telomy calibration workbench</h1>
+<div class="sub">WHOOP raw → decoded metrics, calibrated against your reference instruments. <span id="status" class="pill">connecting…</span> <button class="ghost" onclick="refresh()">↻ refresh WHOOP</button></div>
+
+<div class="grid" style="margin-bottom:14px">
+  <div class="card"><h2>Heart rate (live)</h2><div class="big" id="hr">—</div><div class="unit">bpm · WHOOP 1 Hz</div></div>
+  <div class="card"><h2>HRV (decoded)</h2><div class="big" id="hrv">—</div><div class="unit"><span id="hrvbeats">—</span> clean beats · RMSSD from R-R</div></div>
+  <div class="card"><h2>IMU check</h2><div class="big" id="imu">—</div><div class="unit">|g| (target 1.00) · z <span id="zang">—</span>° · motion <span id="motion">—</span> mg</div></div>
+  <div class="card"><h2>Latest SpO₂ ratio / temp (sleep)</h2><div class="big" id="ratio">—</div><div class="unit">red/IR ratio · thermistor <span id="traw">—</span></div></div>
+</div>
+
+<div class="grid">
+  <!-- SpO2 -->
+  <div class="card"><h2>SpO₂ calibration</h2>
+    <div class="unit">Pair the WHOOP <b>red/IR ratio</b> with your <b>fingertip oximeter %</b>. Fit: SpO₂ = c0 − c1·ratio.</div>
+    <div class="row"><label>WHOOP ratio</label><input id="spo2_dev" step="0.001"><button class="ghost" onclick="grab('spo2')">grab</button></div>
+    <div class="row"><label>Oximeter SpO₂ %</label><input id="spo2_ref" step="0.1"><button onclick="addPair('spo2')">add</button></div>
+    <div class="eq" id="spo2_eq">add ≥2 pairs</div><div class="r2" id="spo2_r2"></div>
+    <svg id="spo2_plot" viewBox="0 0 300 150"></svg>
+    <button class="ghost" style="margin-top:6px" onclick="clearM('spo2')">clear</button>
+  </div>
+  <!-- Temp -->
+  <div class="card"><h2>Skin-temp calibration</h2>
+    <div class="unit">Pair the WHOOP <b>thermistor raw</b> with your <b>thermometer °C</b>. Fit: °C = a·raw + b.</div>
+    <div class="row"><label>Thermistor raw</label><input id="temp_dev" step="1"><button class="ghost" onclick="grab('temp')">grab</button></div>
+    <div class="row"><label>Thermometer °C</label><input id="temp_ref" step="0.1"><button onclick="addPair('temp')">add</button></div>
+    <div class="eq" id="temp_eq">add ≥2 pairs</div><div class="r2" id="temp_r2"></div>
+    <svg id="temp_plot" viewBox="0 0 300 150"></svg>
+    <button class="ghost" style="margin-top:6px" onclick="clearM('temp')">clear</button>
+  </div>
+  <!-- HRV -->
+  <div class="card"><h2>HRV calibration (vs ECG patch)</h2>
+    <div class="unit">Pair the WHOOP <b>decoded RMSSD</b> with your <b>ECG-patch RMSSD</b> at the same moment. Fit: ECG = m·WHOOP + b.</div>
+    <div class="row"><label>WHOOP RMSSD ms</label><input id="hrv_dev" step="0.1"><button class="ghost" onclick="grab('hrv')">grab</button></div>
+    <div class="row"><label>Patch ECG RMSSD ms</label><input id="hrv_ref" step="0.1"><button onclick="addPair('hrv')">add</button></div>
+    <div class="eq" id="hrv_eq">add ≥2 pairs</div><div class="r2" id="hrv_r2"></div>
+    <svg id="hrv_plot" viewBox="0 0 300 150"></svg>
+    <button class="ghost" style="margin-top:6px" onclick="clearM('hrv')">clear</button>
+  </div>
+</div>
+
+<script>
+let LIVE = {};
+async function refresh(){
+  const s=document.getElementById('status'); s.textContent='pulling WHOOP…';
+  try{
+    const d=await (await fetch('/api/decode')).json();
+    if(d.error){ s.textContent='decode error'; s.className='pill err'; return; }
+    LIVE=d; const L=d.live||{};
+    document.getElementById('hr').textContent=L.hr??'—';
+    document.getElementById('hrv').textContent=L.hrv_rmssd??'—';
+    document.getElementById('hrvbeats').textContent=L.hrv_beats??'—';
+    if(L.imu){document.getElementById('imu').textContent=L.imu.g_mag;document.getElementById('zang').textContent=L.imu.z_angle;document.getElementById('motion').textContent=L.imu.motion_mg;}
+    const sp=(d.sleep&&d.sleep.spo2||[]).slice(-1)[0], tp=(d.sleep&&d.sleep.temp||[]).slice(-1)[0];
+    document.getElementById('ratio').textContent=sp?sp.ratio:'—';
+    document.getElementById('traw').textContent=tp?tp.raw:'—';
+    s.textContent='WHOOP '+new Date().toLocaleTimeString(); s.className='pill';
+    drawFits();
+  }catch(e){ s.textContent='offline'; s.className='pill err'; }
+}
+function grab(m){
+  const L=LIVE.live||{}, S=LIVE.sleep||{};
+  if(m==='hrv'&&L.hrv_rmssd!=null) document.getElementById('hrv_dev').value=L.hrv_rmssd;
+  if(m==='spo2'){const sp=(S.spo2||[]).slice(-1)[0]; if(sp) document.getElementById('spo2_dev').value=sp.ratio;}
+  if(m==='temp'){const tp=(S.temp||[]).slice(-1)[0]; if(tp) document.getElementById('temp_dev').value=tp.raw;}
+}
+async function addPair(m){
+  const dev=parseFloat(document.getElementById(m+'_dev').value), ref=parseFloat(document.getElementById(m+'_ref').value);
+  if(isNaN(dev)||isNaN(ref)){alert('enter both values');return;}
+  await fetch('/api/readings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({metric:m,device:dev,reference:ref})});
+  document.getElementById(m+'_ref').value=''; drawFits();
+}
+async function clearM(m){ await fetch('/api/readings/clear?metric='+m,{method:'POST'}); drawFits(); }
+async function drawFits(){
+  const f=await (await fetch('/api/fit')).json();
+  for(const m of ['spo2','temp','hrv']){
+    const d=f[m], pts=d.points, fit=d.fit;
+    const eq=document.getElementById(m+'_eq'), r2=document.getElementById(m+'_r2');
+    if(fit){
+      if(m==='spo2') eq.textContent=`SpO₂ = ${(fit.b).toFixed(1)} ${fit.m>=0?'+':'−'} ${Math.abs(fit.m).toFixed(1)}·ratio`;
+      else if(m==='temp') eq.textContent=`°C = ${fit.m.toFixed(4)}·raw ${fit.b>=0?'+':'−'} ${Math.abs(fit.b).toFixed(1)}`;
+      else eq.textContent=`ECG = ${fit.m.toFixed(2)}·WHOOP ${fit.b>=0?'+':'−'} ${Math.abs(fit.b).toFixed(1)}  (factor ${fit.m.toFixed(2)})`;
+      r2.textContent=`R² = ${fit.r2.toFixed(3)} · n = ${fit.n}`;
+    } else { eq.textContent=`add ≥2 pairs (${pts.length} so far)`; r2.textContent=''; }
+    plot(m, pts, fit);
+  }
+}
+function plot(m, pts, fit){
+  const svg=document.getElementById(m+'_plot'); svg.innerHTML='';
+  if(!pts.length){return;}
+  const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
+  const xmin=Math.min(...xs), xmax=Math.max(...xs), ymin=Math.min(...ys), ymax=Math.max(...ys);
+  const px=v=>30+((v-xmin)/((xmax-xmin)||1))*255, py=v=>130-((v-ymin)/((ymax-ymin)||1))*110;
+  const NS='http://www.w3.org/2000/svg'; const add=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);};
+  add('line',{x1:30,y1:130,x2:290,y2:130,class:'axis'}); add('line',{x1:30,y1:20,x2:30,y2:130,class:'axis'});
+  if(fit){ add('line',{x1:px(xmin),y1:py(fit.m*xmin+fit.b),x2:px(xmax),y2:py(fit.m*xmax+fit.b),class:'fitline'}); }
+  pts.forEach(p=>add('circle',{cx:px(p[0]),cy:py(p[1]),r:4,class:'dot'}));
+}
+refresh(); setInterval(refresh, 8000);
+</script>
+</body>
+</html>
