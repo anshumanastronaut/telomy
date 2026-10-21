@@ -92,7 +92,7 @@ def _token() -> str:
 
 @app.middleware("http")
 async def _require_password(request: _Req, call_next):
-    if acctmod.enabled() or not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith(("/nightscout/", "/console")):
+    if acctmod.enabled() or not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith(("/nightscout/", "/console", "/cal")):
         return await call_next(request)
     auth = request.headers.get("authorization", "")
     if auth.startswith("Bearer ") and (_hm.compare_digest(auth[7:], _token()) or staffmod.whoami(auth[7:])):
@@ -162,7 +162,7 @@ async def _bind_user(request: _Req, authorization: str = _Hdr(default="")):
                     raise HTTPException(403, "You can only access your own organisation.")
     if not acctmod.enabled():
         return                                                # single-user mode unchanged
-    if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith(("/nightscout/", "/console", "/mgmt", "/interop")):
+    if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith(("/nightscout/", "/console", "/mgmt", "/interop", "/cal")):
         return
     uid = acctmod.user_for_token(_bearer(authorization))
     if not uid:
@@ -798,6 +798,27 @@ def whoop_caps(request: _Req):
         return whoop.capabilities(request.headers.get("noop-push-accept-version"))
     except whoop.PushError as e:
         return _push_err(e)
+
+
+class _CalIngest(BaseModel):
+    session_id: str
+    readings: list[dict]
+
+
+@app.post("/cal/ingest")
+async def cal_ingest(body: _CalIngest):
+    """Telomy Recorder streams time-aligned readings here (patch/band/ring/WHOOP/reference on one clock)."""
+    _bind_whoop_user()
+    from . import cal
+    return {"session_id": body.session_id, "stored": cal.ingest(body.session_id, body.readings)}
+
+
+@app.get("/cal/whoop_latest")
+def cal_whoop_latest():
+    """Latest decoded WHOOP raw (SpO2 ratio, temp raw, HRV, HR) for the recorder to show on the same timeline."""
+    _bind_whoop_user()
+    from . import cal
+    return cal.whoop_latest()
 
 
 @app.post("/whoop/push")
