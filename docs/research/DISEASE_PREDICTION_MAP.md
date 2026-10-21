@@ -9,7 +9,7 @@ Three prediction layers, by what the member has given us:
 | Layer | Source | Model | When it fires |
 |---|---|---|---|
 | **A · Blood-panel** | lab PDF (34+ markers) + age/sex | NHANES 2009–2018, 30k adults, 15 conditions, AUC 0.73–0.89 | a recent panel exists |
-| **B · Lab-free chronic** | onboarding questionnaire + wearable-derived lifestyle | **BRFSS 2021–2023, ~1.3M adults** (this build) | no recent bloods — wearable + Q only |
+| **B · Lab-free chronic** | onboarding questionnaire + wearable-derived lifestyle | **BRFSS 2011–2023, ~5.9M adults** (this build) | no recent bloods — wearable + Q only |
 | **C · Longitudinal / device** | ECG patch, ring, oximeter, WHOOP over time | trained signal models (AFib, sleep-stage) + cited evidence overlays | continuous capture is running |
 
 The engine uses the strongest layer available and fuses them: B screens everyone from day one, A takes over

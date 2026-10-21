@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "source": "BRFSS 2021-2023",
-    "n_total": 1317148,
+    "source": "BRFSS 2011-2023",
+    "n_total": 5891176,
     "features": [
       "age",
       "sex",
@@ -23,80 +23,80 @@
     "note": "self-reported outcomes; risk-stratification screen, decision-support only"
   },
   "diabetes": {
-    "n": 1314092,
-    "n_pos": 178560,
-    "prevalence": 0.1359,
-    "test_AUC": 0.822,
-    "test_AP": 0.404
+    "n": 5878711,
+    "n_pos": 778194,
+    "prevalence": 0.1324,
+    "test_AUC": 0.824,
+    "test_AP": 0.405
   },
   "heart_attack": {
-    "n": 1308860,
-    "n_pos": 71390,
-    "prevalence": 0.0545,
+    "n": 5859616,
+    "n_pos": 341012,
+    "prevalence": 0.0582,
     "test_AUC": 0.83,
-    "test_AP": 0.222
+    "test_AP": 0.234
   },
   "coronary_hd": {
-    "n": 1304237,
-    "n_pos": 72896,
-    "prevalence": 0.0559,
-    "test_AUC": 0.847,
-    "test_AP": 0.244
+    "n": 5838739,
+    "n_pos": 342751,
+    "prevalence": 0.0587,
+    "test_AUC": 0.84,
+    "test_AP": 0.242
   },
   "stroke": {
-    "n": 1312688,
-    "n_pos": 54802,
-    "prevalence": 0.0417,
-    "test_AUC": 0.806,
-    "test_AP": 0.144
+    "n": 5873335,
+    "n_pos": 245643,
+    "prevalence": 0.0418,
+    "test_AUC": 0.809,
+    "test_AP": 0.152
   },
   "copd": {
-    "n": 1310756,
-    "n_pos": 102922,
-    "prevalence": 0.0785,
-    "test_AUC": 0.843,
-    "test_AP": 0.367
+    "n": 5357380,
+    "n_pos": 437582,
+    "prevalence": 0.0817,
+    "test_AUC": 0.844,
+    "test_AP": 0.369
   },
   "asthma_current": {
-    "n": 1306088,
-    "n_pos": 132268,
-    "prevalence": 0.1013,
-    "test_AUC": 0.701,
-    "test_AP": 0.228
+    "n": 5847822,
+    "n_pos": 555560,
+    "prevalence": 0.095,
+    "test_AUC": 0.705,
+    "test_AP": 0.222
   },
   "kidney_disease": {
-    "n": 1311517,
-    "n_pos": 57971,
-    "prevalence": 0.0442,
-    "test_AUC": 0.804,
-    "test_AP": 0.165
+    "n": 5432467,
+    "n_pos": 204453,
+    "prevalence": 0.0376,
+    "test_AUC": 0.791,
+    "test_AP": 0.137
   },
   "skin_cancer": {
-    "n": 1309634,
-    "n_pos": 113164,
-    "prevalence": 0.0864,
-    "test_AUC": 0.807,
-    "test_AP": 0.256
+    "n": 5869568,
+    "n_pos": 535430,
+    "prevalence": 0.0912,
+    "test_AUC": 0.783,
+    "test_AP": 0.247
   },
   "other_cancer": {
-    "n": 1311026,
-    "n_pos": 143173,
-    "prevalence": 0.1092,
-    "test_AUC": 0.773,
-    "test_AP": 0.266
+    "n": 5872344,
+    "n_pos": 582827,
+    "prevalence": 0.0992,
+    "test_AUC": 0.757,
+    "test_AP": 0.235
   },
   "arthritis": {
-    "n": 1309059,
-    "n_pos": 436453,
-    "prevalence": 0.3334,
-    "test_AUC": 0.805,
-    "test_AP": 0.649
+    "n": 5855320,
+    "n_pos": 1973613,
+    "prevalence": 0.3371,
+    "test_AUC": 0.799,
+    "test_AP": 0.653
   },
   "depression": {
-    "n": 1309232,
-    "n_pos": 264957,
-    "prevalence": 0.2024,
-    "test_AUC": 0.823,
-    "test_AP": 0.575
+    "n": 5860392,
+    "n_pos": 1122686,
+    "prevalence": 0.1916,
+    "test_AUC": 0.821,
+    "test_AP": 0.573
   }
 }

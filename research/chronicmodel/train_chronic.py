@@ -104,20 +104,28 @@ def main():
     from sklearn.model_selection import train_test_split, cross_val_score
     from sklearn.metrics import roc_auc_score, average_precision_score
 
-    frames = []
-    for y in (2021, 2022, 2023):
-        p = os.path.join(RAW, f"LLCP{y}.XPT")
-        if not os.path.exists(p):
-            print(f"  skip {y}: {p} missing"); continue
-        f = load_year(p)
-        print(f"  {y}: {len(f):,} rows")
-        frames.append(f)
-    data = pd.concat(frames, ignore_index=True)
-    print(f"TOTAL: {len(data):,} respondents")
+    mega = os.path.join(HERE, "megaset.parquet")
+    if os.path.exists(mega):
+        data = pd.read_parquet(mega)
+        yrs = data["year"].nunique() if "year" in data else "?"
+        print(f"MEGASET: {len(data):,} respondents across {yrs} years")
+    else:
+        frames = []
+        for y in (2021, 2022, 2023):
+            p = os.path.join(RAW, f"LLCP{y}.XPT")
+            if not os.path.exists(p):
+                print(f"  skip {y}: {p} missing"); continue
+            f = load_year(p)
+            print(f"  {y}: {len(f):,} rows")
+            frames.append(f)
+        data = pd.concat(frames, ignore_index=True)
+        print(f"TOTAL: {len(data):,} respondents")
 
     feats = list(PRED.keys())
     X = data[feats]
-    results = {"_meta": {"source": "BRFSS 2021-2023", "n_total": int(len(data)), "features": feats,
+    yr_lo = int(data["year"].min()) if "year" in data else 2021
+    yr_hi = int(data["year"].max()) if "year" in data else 2023
+    results = {"_meta": {"source": f"BRFSS {yr_lo}-{yr_hi}", "n_total": int(len(data)), "features": feats,
                          "note": "self-reported outcomes; risk-stratification screen, decision-support only"}}
     for name in OUT:
         y = data["y_" + name]
