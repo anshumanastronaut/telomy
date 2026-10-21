@@ -127,6 +127,22 @@ device routes authenticate with `X-Device-Key` (SHA-256 stored), key management 
   → `decide` (keep list, dose edits, signature) → `order` → `prescription_pdf` (prescriber + reg. no.). **→ prod:** licensed DB.
 - `diagnostics`: 75 tests, `recommend()` (guidelines, risk, gaps), `book()` refuses grade-D tests.
 
+### 4.8 Trained intelligence: `telomy_ml.py`, `llx/*`
+
+- `telomy_ml.py`: mounts an **additive** `APIRouter` (the `/me/*` routes) on the app in `main.py` — it never changes the legacy
+  bioage/predict routes. `_ALIAS` maps app catalogue marker codes → engine panel keys (incl. body-composition); `_panel()` builds the
+  current user's most-recent-value panel from the Vault (bound by `_bind_user`). All heavy imports are lazy so the app boots without the
+  ML extra. Routes: `/me/report` (reconciles the **trained** clock with the app's **clinical** bioage, both labelled), `/me/report/compute`,
+  `/me/supplements`, `/me/foodscore`, `/me/modalities`, `/me/checkin`, `/me/health`.
+- `llx/` (vendored from `telomy-slm`): deterministic engines that call the trained joblib models (`app/assets/{clocks,muscle,disease}/`)
+  as **grounded tools** and compose explanations — `report`, `tools`/`disease_tools`, `fusion` (wearable, personal-baseline),
+  `supplements` (+`dsld`, `AWAITING_DOCTOR_VALIDATION` gate), `modalities` (Bonphul, evidence-graded, contraindication screen),
+  `casestudy` (n-of-1, ITS + counterfactual), `food_quality`/`nutrition`, `voice_biomarkers`/`personal_agent`/`checkin_engine`,
+  `signatures`, `intake`. Models pinned to `scikit-learn==1.9.1`/`scipy==1.18.1`/`joblib==1.6.0`. Full model/metric reference:
+  [MODELS.md](../MODELS.md). **→ prod:** the Telomy-LLX SLM narrates these on-device; engines run with or without it.
+- **Tenancy note:** per-user DBs are schema-initialised by `accounts._ensure_user_db`; any module that owns a table must be in its init
+  list (a drift there left prod DBs without `vitals_ts`/`goals`).
+
 ## 5. Data model
 
 48 tables today; full column list in [DATA_MODEL.md](../DATA_MODEL.md). Domain grouping and the production ownership mapping are in

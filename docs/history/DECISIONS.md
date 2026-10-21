@@ -55,6 +55,26 @@ with the same context. Newest at the bottom of each section. Iteration-by-iterat
 Single-user Vault and no authentication; OTP dev code; `/admin/reset` unauthenticated; SQLite; no migrations; DDInter licence;
 native wearable sync; DICOM viewer; always-on voice; Telomy Care web; 3D twin UI.
 
+## 2026-10-21 — trained-ML suite, cloud multi-user, device testing, sleep
+
+- **Trained intelligence layer shipped** (`telomy_ml.py` + `llx/`, served at `/me/*`): NHANES-trained blood-age clocks (full MAE 8.79 y,
+  R² 0.64), muscle clocks (MAE 9.05 y), 13-condition disease screen (diabetes AUC 0.887), 10-yr mortality (AUC 0.81), wearable fusion, and
+  supplement/modality/nutrition/voice/check-in engines. Additive and reconciled with the guideline PhenoAge, never replacing it. Full
+  reference: [MODELS.md](../MODELS.md). Honesty: every number is a grounded tool result; supplements gated `AWAITING_DOCTOR_VALIDATION`.
+- **Cloud is the interim always-on backend** (Oracle VM, HTTPS, systemd), switched to **multi-user** (per-user SQLite via `accounts.py`;
+  the access-password lock auto-bypasses once accounts exist). Founder is the **first n-of-1 subject** on real data. Deploy: `deploy/oracle/deploy.sh`.
+- **Per-user DB init drift is a real bug class:** `accounts._ensure_user_db` had a hardcoded module list missing `vitals`/`goals`, so prod
+  DBs lacked `vitals_ts`/`goals` → 500s. Any table-owning module must be in that list.
+- **File uploads need a longer client timeout:** lab-PDF upload over a phone uplink exceeded the 12 s JSON budget → "could not reach";
+  `api.ts` now gives uploads 60 s.
+- **Sleep accuracy — WHOOP is NOT ground truth.** On 2026-10-18 the user's own recall (asleep 02:55) showed the HR-based **ring nailed
+  onset (0 min error)** while WHOOP (+92 min), fused (+66), and motion-only HDCZA (+138) all over-called sleep by scoring lying-still-awake
+  as sleep. Keep HR in the onset logic; calibrate against the user's logged sleep/wake times, not a wearable. See [[whoop-noop-study]] in
+  agent memory and `telomy-lab/whoop/analyse_night.py`.
+- **Device builds (free Apple account):** 7-day provisioning profiles expire weekly and need the user to re-sign in Xcode; strip the
+  `@bacons/apple-targets` **TelomyLive** Live Activity target for a quick CLI build (its `.live` App ID has no profile). `devicectl` install
+  needs the iPhone unlocked on a data cable. Details in `docs/DEVICE_INTEGRATION.md` + agent memory.
+
 ## Lessons
 
 - Simulator automation: iOS shows "Open in Telomy?" on every deep link: approve it before recording; split long screens into clips.

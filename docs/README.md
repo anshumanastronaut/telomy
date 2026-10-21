@@ -19,7 +19,8 @@ Start here. Read in this order if you are new; jump by role otherwise. Claude Co
 | Doc | Content |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Current-state overview and module table |
-| [ENGINE.md](ENGINE.md) | Every algorithm and model with citations |
+| [ENGINE.md](ENGINE.md) | Every algorithm and model with citations (guideline path) |
+| [MODELS.md](MODELS.md) | Trained-ML suite + engines: clocks, disease, mortality, fusion, supplements, modalities, voice (datasets, metrics, `/me/*` API) |
 | [API.md](API.md) · [DATA_MODEL.md](DATA_MODEL.md) | Generated (`make docs`): 171 operations, 48 tables |
 | [DEVICE_INTEGRATION.md](DEVICE_INTEGRATION.md) | Centre machines, Telomy patch and wearables → server contract |
 | [SECURITY_PRIVACY.md](SECURITY_PRIVACY.md) | DPDP, secrets, test-data rules |
