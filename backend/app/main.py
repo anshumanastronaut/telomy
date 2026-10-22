@@ -1061,6 +1061,16 @@ def environment_city(name: str | None = None, lat: float | None = None, lon: flo
     return p
 
 
+@app.get("/environment/exposome")
+def environment_exposome(name: str | None = None, lat: float | None = None, lon: float | None = None, country: str | None = None):
+    """Full multi-factor exposome: air + social connection + noise + UV/water + food pointer, each with its
+    evidence-based health translation and honest confidence."""
+    p = exposome.exposome_profile(name=name, lat=lat, lon=lon, country=country)
+    if not p or not p.get("place"):
+        raise HTTPException(404, "Could not resolve that place.")
+    return p
+
+
 # ------------------------------------------------------------------ digital twin
 
 @app.get("/twin")

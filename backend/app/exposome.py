@@ -84,6 +84,77 @@ def city_profile(name: str | None = None, lat: float | None = None, lon: float |
     return prof or None
 
 
+# ---- social connection (the single biggest non-medical longevity lever) ----
+# Loneliness prevalence by country (% who felt lonely "a lot yesterday", Gallup World Poll 2023, 142 countries;
+# global mean 23%). Only documented values are listed; everything else falls back to the global mean, labelled.
+GLOBAL_LONELY = 23.0
+SOCIAL = {"Comoros": 45, "Denmark": 12, "Finland": 11, "Iceland": 11, "Poland": 11, "Slovenia": 11,
+          "Taiwan": 11, "Estonia": 10, "Kosovo": 10, "Kazakhstan": 10, "Vietnam": 6}
+LONELY_OR = 1.26        # Holt-Lunstad 2015 meta-analysis: loneliness → mortality odds ratio
+ISOLATION_OR = 1.29     # objective social isolation → mortality OR
+
+
+def social_impact(country: str | None = None, lonely_pct: float | None = None) -> dict:
+    """Social-connection exposure. Loneliness raises mortality ~26% (Holt-Lunstad) — on par with smoking 15
+    cig/day and larger than obesity. Country prevalence here; the member's own social data (if logged) overrides."""
+    documented = country in SOCIAL if country else False
+    pct = lonely_pct if lonely_pct is not None else (SOCIAL.get(country, GLOBAL_LONELY) if country else GLOBAL_LONELY)
+    return {"factor": "social_connection", "lonely_pct": pct,
+            "mortality_or_if_lonely": LONELY_OR, "isolation_or": ISOLATION_OR,
+            "note": ("Loneliness ≈ +26% mortality risk (Holt-Lunstad 2015) — comparable to smoking 15 cigarettes/day. "
+                     "Strongest modifiable non-medical factor Telomy can surface."),
+            "source": "Gallup World Poll 2023" + ("" if documented else " (global mean — country value not released)"),
+            "confidence": "country-level" if documented else "global-default"}
+
+
+# ---- environmental noise (estimated from urban density; measured EEA/DOT noise maps are the roadmap) ----
+import math as _math  # noqa: E402
+
+
+def noise_estimate(population: float | None, pm25: float | None = None) -> dict:
+    """Day-evening-night noise (Lden) estimated from settlement size (proxy); road-traffic noise raises coronary
+    disease ~8% per 10 dB above 50 dB (WHO 2018 meta-analysis). Measured noise maps are a roadmap integration."""
+    pop = population or 500_000
+    lden = max(45.0, min(75.0, 42 + 4.5 * _math.log10(max(pop, 1000) / 1000)))
+    cad_increase = round(max(0.0, (lden - 50)) / 10 * 8, 1)
+    return {"factor": "noise", "lden_db_estimated": round(lden, 0), "coronary_disease_risk_increase_pct": cad_increase,
+            "note": "Above 50 dB, road-traffic noise ≈ +8% coronary disease per 10 dB (WHO 2018); also fragments sleep.",
+            "source": "estimated from population density — measured EEA/US-DOT noise maps are the integration roadmap",
+            "confidence": "estimated"}
+
+
+def exposome_profile(name: str | None = None, lat: float | None = None, lon: float | None = None,
+                     country: str | None = None) -> dict:
+    """The full multi-factor exposome for a place: air + social connection + noise + heat/UV/water, each with its
+    evidence-based health translation and honest confidence. Food quality is PERSONAL (the member's diet log via
+    the nutrition/NOVA engine), not a postcode factor, so it is referenced, not geolocated."""
+    air = city_profile(name=name, lat=lat, lon=lon) or {}
+    ctry = country or air.get("country")
+    factors = []
+    if air.get("pm25") is not None:
+        factors.append({"factor": "air_quality", "pm25": air["pm25"], "pm10": air.get("pm10"), "no2": air.get("no2"),
+                        "life_years_lost": air.get("life_years_lost"), "cigarettes_per_day_equiv": air.get("cigarettes_per_day_equiv"),
+                        "note": "Each 10 µg/m³ PM2.5 above the WHO guideline (5) ≈ 0.98 yr of life (AQLI).",
+                        "source": air.get("source", "WHO AAQ V8.0"), "confidence": "measured"})
+    factors.append(social_impact(ctry))
+    factors.append(noise_estimate(air.get("population"), air.get("pm25")))
+    if air.get("uv_mean_max"):
+        factors.append({"factor": "uv", "uv_mean_max": air["uv_mean_max"], "note": "UV ≥3 drives skin vitamin-D synthesis and photo-ageing.", "confidence": "annual-estimate"})
+    if air.get("water"):
+        factors.append({"factor": "water", "note": air["water"], "source": "CGWB / Jal Jeevan Mission (India)", "confidence": "city-note"})
+    factors.append({"factor": "food_quality", "note": "Food quality is measured from your own diet log (NOVA processing + Nutri-score), "
+                    "not your location — see the nutrition engine. Ultra-processed-heavy diets ≈ +10–18% mortality (Naghshi 2024).",
+                    "source": "Telomy nutrition engine (food_quality / NOVA)", "confidence": "personal-if-logged"})
+    return {"place": air.get("city", name), "country": ctry, "lat": air.get("lat"), "lon": air.get("lon"),
+            "factors": factors,
+            "summary": f"{air.get('city', name)}'s exposome: air {('loses ≈%.1f yr (AQLI)' % air['life_years_lost']) if air.get('life_years_lost') else 'n/a'}; "
+                       f"social {'elevated' if social_impact(ctry)['lonely_pct'] >= GLOBAL_LONELY else 'lower'}-loneliness context; "
+                       f"noise ~{noise_estimate(air.get('population'))['lden_db_estimated']:.0f} dB est.",
+            "honesty": "Evidence-translation engine (cited dose-responses), not a trained outcome model — no free "
+                       "location-exposome→mortality cohort exists to train on. Air is measured; social is country-level; "
+                       "noise is estimated; food is personal. Each factor states its own confidence."}
+
+
 def init():
     with db.tx() as c:
         c.executescript(SCHEMA)
