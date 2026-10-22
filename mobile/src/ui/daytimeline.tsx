@@ -5,11 +5,10 @@ import { View } from 'react-native';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { useApi } from '@/lib/api';
+import { kindColor } from '@/lib/events';
 import { radius, space, type, usePalette } from '@/lib/theme';
 import { Card, Row, T } from '@/ui/core';
 
-const EVENT_COLOR: Record<string, string> = { alcohol: '#E0794B', caffeine: '#C9A227', caffeine_late: '#C9A227',
-  workout_hard: '#4FD08F', sauna: '#E0794B', cold: '#5BA8D6', symptom: '#E05B6B', supplement: '#8E79E0', medication: '#8E79E0', meal: '#9AA0A6' };
 
 export function DayTimelineVitals() {
   const p = usePalette();
@@ -47,7 +46,7 @@ export function DayTimelineVitals() {
           {events.map((e, i) => {
             const t = typeof e.ts === 'string' ? new Date(e.ts).getTime() / 1000 : e.ts;
             if (t < start || t > end) return null;
-            return <Circle key={i} cx={x(t)} cy={padT + 2} r={2.6} fill={EVENT_COLOR[e.kind] ?? p.muted} />;
+            return <Circle key={i} cx={x(t)} cy={padT + 2} r={2.6} fill={kindColor(e.kind)} />;
           })}
         </Svg>
         <Row style={{ flexWrap: 'wrap' }} gap={8}>
