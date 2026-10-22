@@ -786,6 +786,32 @@ function overviewCard(ov) {
     c.appendChild(tableOf(['Report', 'Panel', 'Date', 'Flagged'], ov.reports.map(r => [r.title, r.panel_title || '—', r.collected_on, r.flagged || 0]), ''));
     node.appendChild(c);
   }
+  // organ clocks
+  const orgs = (ov.organs || {}).organs || [];
+  if (orgs.length) {
+    const c = el('div', 'card'); c.appendChild(el('div', 'section-title', 'How each system is aging'));
+    c.appendChild(tableOf(['System', 'Organ age', 'Acceleration'], orgs.map(o => {
+      const acc = o.age_acceleration_years;
+      const accTxt = acc == null ? '—' : `<span style="color:${acc >= 2 ? 'var(--warn)' : acc <= -1 ? 'var(--ok)' : 'var(--ink)'}">${acc > 0 ? '+' : ''}${acc} yr</span>`;
+      return [o.label, o.organ_age != null ? Math.round(o.organ_age) : '—', accTxt];
+    }), ''));
+    if (ov.organs.note) c.appendChild(el('div', 'small muted', ov.organs.note));
+    node.appendChild(c);
+  }
+
+  // environment / exposome
+  const factors = (ov.environment || {}).factors || [];
+  if (factors.length) {
+    const LAB = { air_quality: 'Air quality', social_connection: 'Social connection', noise: 'Noise', uv: 'UV', water: 'Water', food_quality: 'Food quality' };
+    const line = (f) => f.factor === 'air_quality' ? `PM2.5 ${f.pm25} µg/m³ · ≈${f.life_years_lost ?? '—'} yr lost (AQLI)`
+      : f.factor === 'social_connection' ? `${f.lonely_pct}% loneliness context · isolation ≈ +26% mortality`
+      : f.factor === 'noise' ? `~${f.lden_db_estimated} dB · +${f.coronary_disease_risk_increase_pct}% coronary risk`
+      : f.factor === 'uv' ? `UV max ~${f.uv_mean_max ?? '—'}` : f.factor === 'food_quality' ? 'From the diet log (NOVA), not the postcode' : (f.note ?? '');
+    const c = el('div', 'card'); c.appendChild(el('div', 'section-title', `What ${(ov.environment.place || 'their city')} does to them`));
+    c.appendChild(tableOf(['Factor', 'Signal', 'Confidence'], factors.map(f => [LAB[f.factor] ?? f.factor, line(f), `<span class="badge">${f.confidence || '—'}</span>`]), ''));
+    node.appendChild(c);
+  }
+
   // data sources
   const ds = ov.data_sources || {};
   node.appendChild(el('div', 'small muted', `Sources — labs: ${ds.biomarkers}; vitals: ${ds.vitals ? 'live' : 'none'}; recovery: ${ds.recovery ? 'live' : 'none'}; habits: ${ds.habits ? 'live' : 'none'}; reports: ${ds.reports}.`));

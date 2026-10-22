@@ -222,6 +222,31 @@ def _habits_current() -> dict:
     return {"available": any(v is not None for v in h.values()), **h}
 
 
+def _organs_current() -> dict | None:
+    """Per-organ ages from the bound DB's blood panel (organ clocks), or None if not enough data."""
+    try:
+        from .llx import organ_tools
+        if not organ_tools.available():
+            return None
+        from . import telomy_ml
+        panel = telomy_ml._panel()
+        if len([k for k in panel if k not in ("age", "sex")]) < 4:
+            return None
+        return organ_tools.organ_ages(panel)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _environment_current() -> dict | None:
+    """The exposome for the bound person's city (air/social/noise/UV/water/food)."""
+    try:
+        from . import exposome, engine
+        city = (engine.profile() or {}).get("city")
+        return exposome.exposome_profile(name=city) if city else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def vitals_summary(pid: int) -> dict:
     with _patient_db(pid) as live:
         return _vitals_current() if live else {"available": False, "note": "No wearable data linked for this patient."}
@@ -320,10 +345,15 @@ def overview(pid: int) -> dict:
             rep = summaries.patient_reports(pid) if pid == 1 else []
     except Exception:  # noqa: BLE001
         rep = []
+    with _patient_db(pid) as live:
+        organs = _organs_current() if live else None
+        environment = _environment_current() if live else None
     models = _risk(pid, bm)
     narrative = _narrative(ident, bm, vit, rec, hab, rep, models)
     return {
         "patient": ident,
+        "organs": organs,
+        "environment": environment,
         "ai_summary": {"text": narrative,
                        "drafted_by": "Telomy grounded composer — every statement traces to a value in the patient's record",
                        "disclaimer": "Draft for clinician review and sign-off. Not a diagnosis. Review for omissions before acting."},
@@ -370,6 +400,8 @@ def overview_me() -> dict:
     narrative = _narrative(ident, bm, vit, rec, hab, rep, models)
     return {
         "patient": ident,
+        "organs": _organs_current(),
+        "environment": _environment_current(),
         "ai_summary": {"text": narrative,
                        "drafted_by": "Telomy grounded composer — every statement traces to a value in your record",
                        "disclaimer": "An at-a-glance summary of your own data. Not a diagnosis; your clinician reviews it."},
