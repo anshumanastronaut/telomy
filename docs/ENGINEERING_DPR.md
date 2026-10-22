@@ -110,8 +110,9 @@ held-out metric and provenance. Full inventory in `docs/research/MODELS_STATUS.m
 | **Blood-panel disease screen** | 14 (diabetes, HTN, CHD, HF, stroke, CKD, COPD, cancer, liver…) | NHANES ~30k | AUC 0.73–0.89 |
 | **Lab-free chronic suite** | 11 (diabetes, CHD, COPD, stroke, depression, arthritis…) | **BRFSS 2011–2023, 5.89M** | AUC 0.70–0.84 |
 | **Aging / body clocks** | blood-age, muscle-age, PhenoAge | NHANES | MAE 8.8 / 9.1 y |
+| **Organ clocks ×5** | metabolic/hepatic/renal/immune/cardiometabolic | NHANES 49.7k | MAE 11.9–13.9 y (/me/organs) |
 | **Nutrition / deficiency** | NOVA food-processing, micronutrient | 703k / ~10k | acc 0.81 / AUC 0.72 |
-| **Signal** | AFib, sleep-stager, fall-detect | af2017 / sleepstage PSG | trained |
+| **Signal** | AFib/rhythm (GBDT, F1 0.783), sleep-stager, fall-detect | CinC-2017 / sleepstage PSG | trained (/me/rhythm) |
 
 **Serving — the doctor clinic engine** (`llx/clinic_engine.py`, `POST /mgmt/clinic/assess` + `/validate`): one
 patient → one grounded, **clinician-gated** assessment unifying diagnostics (blood-panel models when bloods exist,
