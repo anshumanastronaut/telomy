@@ -205,6 +205,16 @@ def me_longevity_catalog(intervention_id: str | None = None):
     return _g.lookup(intervention_id) if intervention_id else _g.corpus_summary()
 
 
+@router.get("/longevity/safety")
+def me_longevity_safety(intervention_id: str | None = None):
+    """FAERS (FDA adverse-event) disproportionality signals mined from ~20.7M reports — the whole coverage
+    summary, or the top signals for one drug/hormone. A monitoring/consent aid, not causation."""
+    from .llx import faers_safety as _f
+    if intervention_id:
+        return _f.signals(intervention_id, topk=12) or {"available": False, "note": "no FAERS data for this item (e.g. a consumer supplement)"}
+    return _f.summary()
+
+
 @router.get("/health")
 def me_ml_health():
     try:

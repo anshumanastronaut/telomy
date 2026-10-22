@@ -80,3 +80,34 @@ def test_lifestyle_trial_allows_washout_rechallenge():
     t = g.design_trial("omega3", {"age": 50})
     assert t["doctor_gate"] is False
     assert "re-start" in t["washout_rechallenge"]
+
+
+# ── FAERS data-backed safety layer (only runs once the asset has been built) ──────────────────────────
+import pytest
+from app.llx import faers_safety as fs
+
+
+@pytest.mark.skipif(not fs.available(), reason="FAERS signals asset not built in this environment")
+def test_faers_signals_attach_to_drugs():
+    out = g.recommend({"age": 55, "sex": "M", "goals": ["metabolic", "longevity"]}, {"hba1c": 6.2})
+    metformin = next((r for tier in out["tiers"].values() for r in tier if r["id"] == "metformin"), None)
+    assert metformin is not None
+    assert metformin.get("faers_safety"), "metformin should carry FAERS signals when the asset exists"
+    sig = metformin["faers_safety"]
+    assert sig["total_corpus"] >= 10_000_000          # mined from the full ~20.7M-report corpus
+    assert all(len(s["ror_95ci"]) == 2 for s in sig["top_signals"])
+
+
+@pytest.mark.skipif(not fs.available(), reason="FAERS signals asset not built in this environment")
+def test_faers_feeds_trial_watchlist():
+    t = g.design_trial("rapamycin", {"age": 55})
+    assert t["faers_watch"] is None or isinstance(t["faers_watch"], list)
+
+
+@pytest.mark.skipif(not fs.available(), reason="FAERS signals asset not built in this environment")
+def test_supplements_have_no_faers_but_dont_break():
+    out = g.recommend({"age": 55, "goals": ["longevity"]}, {})
+    for tier in out["tiers"].values():
+        for r in tier:
+            if r["category"] == "supplement":
+                assert "faers_safety" not in r or r["faers_safety"] is None

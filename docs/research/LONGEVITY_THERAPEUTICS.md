@@ -101,6 +101,31 @@ consumer supplements can self-run; anything clinical/experimental is clinician-s
 the member's plan and roll up (de-identified) into centre priors — the same n-of-1 loop as the modality and
 supplement engines.
 
+## Data-backed safety layer — trained on 20.7M FAERS reports
+
+There is no free 10M-scale dataset of longevity *benefit* outcomes — those trials are small (PEARL n=114,
+CALERIE n≈200), and the corpus grades say so. But there **is** a 20.7M-record dataset that makes this engine
+measurably *safer*: the **FDA Adverse Event Reporting System (FAERS)**, via openFDA.
+
+[`research/safety/build_faers_signals.py`](../../research/safety/build_faers_signals.py) mines the full corpus
+for **disproportionality signals** on every drug/hormone in the catalog. For a drug D and reaction R across N
+reports it computes the Reporting Odds Ratio and Proportional Reporting Ratio with 95% CIs:
+
+```
+a = reports with D and R      ROR = (a·d)/(b·c)      signal if a≥3 and ROR lower-95%CI > 1
+```
+
+The result (`backend/app/assets/safety/faers_signals.json`, loaded by
+[`faers_safety.py`](../../backend/app/llx/faers_safety.py)) attaches, to each recommended drug, the reactions
+reported disproportionately often — a **monitoring/consent watchlist**, folded into the n-of-1 trial's
+`faers_watch`. Served at `/me/longevity/safety`.
+
+Honesty: reporting disproportionality is **not** causation (reporting bias, indication confounding, no
+denominator). It informs *what to watch and disclose*, never a hard block — the hand-coded contraindication/
+interaction screen keeps that job. FAERS is drug-centric, so consumer supplements carry little signal there and
+stay on the hand-coded screen. Rebuild any time (`python -I research/safety/build_faers_signals.py`) to refresh
+as FAERS grows.
+
 ## Safety & claims posture
 - Contraindications and interactions are deterministic and auditable, not inferred.
 - Nothing reaches a member until a clinician validates it (the existing doctor gate).
