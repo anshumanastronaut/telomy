@@ -231,6 +231,24 @@ def me_macros(intake: dict = Body(default={}), gut: dict = Body(default={}), act
     return _m.prescribe(profile, _panel(), intake, gut)
 
 
+@router.get("/circadian")
+def me_circadian(days: int = 7, target_wake_h: float = 6.5):
+    """Diagnose, track and help fix the body clock from the member's continuous vitals (cosinor + nadir phase):
+    circadian phase, rhythm robustness, day-to-day regularity, faults (delayed/advanced/flat/irregular) + fixes."""
+    import time
+    from . import circadian, vitals
+    now = int(time.time()); start = now - max(1, days) * 86400
+    series = {}
+    for m in ("hr", "skin_temp", "hrv", "steps", "motion", "resp"):
+        try:
+            s = vitals.series(m, start, now, 6000)
+            if s.get("n"):
+                series[m] = [[p[0], p[1]] for p in s.get("points", []) if isinstance(p, (list, tuple))]
+        except Exception:  # noqa: BLE001
+            pass
+    return circadian.assess(series, target_wake_h=target_wake_h)
+
+
 @router.get("/overview")
 def me_overview():
     """The signed-in member's own 360 — labs + vitals + recovery/sleep + habits + reports + a grounded AI summary,
