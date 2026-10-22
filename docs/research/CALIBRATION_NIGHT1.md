@@ -78,3 +78,40 @@ wake-detection and as the artifact gate for the HRV/SpO₂ above.
 Sleep-stage verification against WHOOP's own hypnogram needs the **full-rate ECG** from the patch's on-device log
 (`ecg-<session>.csv`), pulled off the phone and run through the KYECG HSMM stager. The cloud has only the
 decimated trace. That's the next pull + analysis.
+
+---
+
+## FINAL VERDICT — complete-data re-analysis (timestamps fixed)
+
+Re-ran the whole thing on the **full WHOOP dataset** (4.5 days / 7 sleep sessions, 383k raw samples) with
+**corrected real-time alignment** — matching the oximeter's server-ingest time to WHOOP's own `ts`, instead of
+the phone's `wall` clock, which drifts ~22 min behind real time over a long session (iOS pauses the monotonic
+clock while the phone sleeps).
+
+**The timestamp fix was real and necessary** — it lifted the apparent SpO₂ correlation 10× (R² 0.01 → 0.10) and
+gave the physiologically-correct sign. But the deeper look is decisive:
+
+**WHOOP SpO₂ cannot be reconstructed from the NOOP raw stream — fundamental, not fixable here.**
+- Pulse oximetry needs the **pulsatile (AC)** component of red/IR. WHOOP's NOOP stream is **1 Hz, DC-only**, with
+  values held constant for ~10 s at a time (e.g. `ir:605, red:512` repeated). No AC → no ratio-of-ratios → no SpO₂.
+- Proof: during real sleep desaturations to **85–92%**, WHOOP's ratio read **0.861** — identical to its value at a
+  healthy **100%** (normal-SpO₂ ratio range 0.834–0.861). **The raw ratio cannot distinguish 85% from 100%.**
+- WHOOP computes SpO₂ on-device from internal high-rate PPG and forwards only the downsampled baseline. The
+  SpO₂-bearing signal never reaches us.
+
+**WHOOP skin temp cannot be reconstructed either.** Raw thermistor swings **613–913** while true skin temp
+(ring) was stable at **36.5–36.8 °C**; R² = 0.006. Artifact-dominated at the wrist; WHOOP computes temp on its
+cloud from data we don't receive.
+
+**Clinical finding (from the reliable instrument):** the BerryMed oximeter recorded genuine **nocturnal SpO₂
+dips to 85–86% during sleep** — a real desaturation, a possible mild sleep-disordered-breathing (OSA) signal.
+Worth proper overnight oximetry / a sleep study if it recurs.
+
+**Decisions:**
+1. **Drop WHOOP as a SpO₂/temp source.** Its NOOP raw is DC-downsampled and uninformative for both. It stays a
+   reference for HR/HRV/motion only.
+2. **For a calibrated Telomy SpO₂, use the ring's finger SpO₂** (same site as the oximeter, pulsatile data intact)
+   calibrated against the BerryMed on-demand — a sensor we control.
+3. **Clock fix shipped in the recorder:** `CaptureClock.wall()` now returns the real wall clock (`Date()`), not
+   `startWall + monotonic`, so long sessions stay aligned and future cross-device analysis needs no ingest-time
+   workaround.
