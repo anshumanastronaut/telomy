@@ -136,6 +136,38 @@ def me_environment(name: str | None = None, lat: float | None = None, lon: float
     return _e.exposome_profile(name=name, lat=lat, lon=lon) or {"error": "could not resolve a location"}
 
 
+@router.get("/organs")
+def me_organs():
+    """Organ-specific aging clocks — per-organ age + age-acceleration (which system is aging fastest) from the
+    signed-in user's latest blood panel."""
+    from .llx import organ_tools as _o
+    if not _o.available():
+        return {"status": "unavailable", "note": "organ clocks not installed"}
+    panel = _panel()
+    if len([k for k in panel if k not in ("age", "sex")]) < 4:
+        return {"status": "need_more_data", "note": "Upload a blood report (CBC + metabolic panel) to see organ ages."}
+    return _o.organ_ages(panel)
+
+
+@router.post("/rhythm")
+def me_rhythm(features: list = Body(..., embed=True)):
+    """AFib / rhythm classifier (Normal / AF / Other / Noisy) from the 21 on-device ECG features (beat detector +
+    RR stats). The phone computes the features from the last ECG window and posts them here."""
+    import os as _os, joblib as _jl
+    path = _os.path.join(_os.path.dirname(__file__), "assets", "afib_rhythm.joblib")
+    if not _os.path.exists(path):
+        return {"status": "unavailable"}
+    import numpy as _np
+    clf = _jl.load(path)
+    p = clf.predict_proba(_np.array([features], dtype=float))[0]
+    classes = ["Normal", "AF", "Other", "Noisy"]
+    ranked = sorted(zip(classes, (round(float(x), 3) for x in p)), key=lambda z: -z[1])
+    return {"rhythm": ranked[0][0], "probabilities": dict(ranked),
+            "af_probability": round(float(p[1]), 3),
+            "note": "Decision-support rhythm screen (CinC-2017-trained, AF Se 0.79/Sp 0.98) — not a diagnosis; "
+                    "confirm symptomatic/high-probability results with a clinician/12-lead."}
+
+
 @router.get("/health")
 def me_ml_health():
     try:
