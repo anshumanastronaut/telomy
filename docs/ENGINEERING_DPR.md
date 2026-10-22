@@ -100,6 +100,27 @@ Each model is a published equation, computed only from the inputs it has; missin
 Inputs come from `inputs_from_vault()` (latest labs + profile + signal means). `what_if()` recomputes risk under a
 changed input for the twin.
 
+### 4b. Trained ML model suite (`research/*`, served via `llx/`)
+
+Beyond the published equations, Telomy ships **~37 trained models** (gradient-boosted trees / clocks), each with a
+held-out metric and provenance. Full inventory in `docs/research/MODELS_STATUS.md`.
+
+| Family | Models | Data & scale | Metric |
+|---|---|---|---|
+| **Blood-panel disease screen** | 14 (diabetes, HTN, CHD, HF, stroke, CKD, COPD, cancer, liver…) | NHANES ~30k | AUC 0.73–0.89 |
+| **Lab-free chronic suite** | 11 (diabetes, CHD, COPD, stroke, depression, arthritis…) | **BRFSS 2011–2023, 5.89M** | AUC 0.70–0.84 |
+| **Aging / body clocks** | blood-age, muscle-age, PhenoAge | NHANES | MAE 8.8 / 9.1 y |
+| **Nutrition / deficiency** | NOVA food-processing, micronutrient | 703k / ~10k | acc 0.81 / AUC 0.72 |
+| **Signal** | AFib, sleep-stager, fall-detect | af2017 / sleepstage PSG | trained |
+
+**Serving — the doctor clinic engine** (`llx/clinic_engine.py`, `POST /mgmt/clinic/assess` + `/validate`): one
+patient → one grounded, **clinician-gated** assessment unifying diagnostics (blood-panel models when bloods exist,
+else the lab-free chronic model + 10-yr mortality + wearable fusion overlay), **evidence-graded treatments**
+(lifestyle / referral / medication-class-to-discuss / monitoring), **therapies** (centre modalities), and
+**supplements** (safety-screened). Claims firewall (§12.1 of the master DPR) enforced: A–D grades,
+"supports/consider/discuss", never "treats"; nothing reaches the member without sign-off. Roadmap + honest
+per-model data-scale in `docs/research/TOP20_MODELS.md`.
+
 ---
 
 ## 5. Correlation / effect engine (`engine.effect_table`, `event_effects`)
@@ -230,8 +251,23 @@ existing `unlock` flow is replaced by login). This is the remaining client piece
 
 ---
 
-## 11. Roadmap (open)
+## 11. Devices & sensor strategy (single-device-per-user)
 
-Multi-user client login UI · activity/workout recogniser (PAMAP2/WISDM/Capture-24) · nutrition closed loop (Open Food
-Facts, DSLD, openFDA) · NHANES biological-age refit · expand the cellular KB and science registry · Anthropic-powered
-deep research · align device fusion with the team's smart-ring work. Tracked in `docs/TASKS.md`.
+A user wears **one** device, so each must be standalone-complete. Common baseline in all three (PPG-HR, skin temp,
+IMU, flash+BLE+battery) + a hero per anatomy: **Patch** = chest ECG (HRV, AFib, respiration, best sleep staging);
+**Ring** = finger SpO₂ + temp (best oximetry site, sleep, cycle); **Band** = wrist IMU (steps, activity, EDA,
+spot-ECG). Onboarding routes the user to the device matching their goal; all three feed the same model backend.
+Full spec + body-site validation in `docs/research/DEVICE_SENSOR_SPEC.md`.
+
+**Recorder + calibration (2026-10):** native iOS recorder (`telomy-lab/.../TelomyRec`) captures patch/ring/
+oximeter/WHOOP on one clock → `/cal/*` backend + live monitor. Night-1 verdict (`docs/research/
+CALIBRATION_NIGHT1.md`): the ECG patch quantified a +13–18 ms HRV inflation in PPG devices; **WHOOP SpO₂/temp are
+NOT reconstructable from the NOOP raw stream** (1 Hz DC-only, no pulsatile AC) — drop WHOOP as a SpO₂/temp source,
+calibrate the ring's finger SpO₂ against a reference oximeter instead.
+
+## 12. Roadmap (open)
+
+Pace-of-aging + organ-specific aging clocks · vascular age (ECG→PPG PTT) · apnea/nocturnal-hypoxemia · HRV→autonomic
+age · VO₂max · retrain AFib at scale · ring finger-SpO₂ calibration (driven protocol) · activity/workout recogniser
+(PAMAP2/WISDM/Capture-24) · SQLite→Postgres for the multi-tenant plane · biobank-grade models (UK Biobank / MIMIC —
+need access applications). Ranked with honest data-scale in `docs/research/TOP20_MODELS.md`; tracked in `docs/TASKS.md`.
