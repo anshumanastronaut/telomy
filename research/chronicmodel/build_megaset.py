@@ -40,6 +40,12 @@ PRED = {
     "educ":       ["_EDUCAG"],
     "race":       ["_RACE1", "_RACE", "_RACEGR3"],
     "has_insur":  ["_HLTHPL1", "HLTHPLN1", "HLTHPLN"],
+    # ---- exposome / social / food parameters (BRFSS-measured; partial coverage handled as NaN) ----
+    "state":      ["_STATE"],                       # location → absorbs state-level environment/policy
+    "marital":    ["MARITAL"],                      # social connection (living alone → mortality OR 1.32)
+    "urban":      ["_URBSTAT", "MSCODE"],           # urban/rural → noise/air/activity context
+    "fruit_lt1":  ["_FRTLT1", "_FRTLT1A"],          # food quality: eats fruit <1×/day
+    "veg_lt1":    ["_VEGLT1", "_VEGLT1A"],          # food quality: eats veg <1×/day
 }
 OUT = {
     "diabetes":       (["DIABETE4", "DIABETE3", "DIABETE2"], {1}),

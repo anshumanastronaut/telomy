@@ -46,6 +46,7 @@ FEATURE_ALIASES = {                       # accept friendly keys from the app/qu
     "hi_bp_flag": ["hi_bp_flag", "high_bp", "hypertension_known"],
     "hi_chol": ["hi_chol", "high_cholesterol_known"], "heavy_drink": ["heavy_drink", "heavy_alcohol"],
     "income": ["income"], "educ": ["educ", "education"], "race": ["race"], "has_insur": ["has_insur", "insured"],
+    "state": ["state"], "marital": ["marital"], "urban": ["urban"], "fruit_lt1": ["fruit_lt1"], "veg_lt1": ["veg_lt1"],
 }
 
 

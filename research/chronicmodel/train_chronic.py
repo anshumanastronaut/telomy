@@ -121,8 +121,9 @@ def main():
         data = pd.concat(frames, ignore_index=True)
         print(f"TOTAL: {len(data):,} respondents")
 
-    feats = list(PRED.keys())
+    feats = [c for c in data.columns if not c.startswith("y_") and c != "year"]  # all predictors incl. new exposome ones
     X = data[feats]
+    EXPOSOME = [f for f in ("state", "marital", "urban", "fruit_lt1", "veg_lt1") if f in feats]
     yr_lo = int(data["year"].min()) if "year" in data else 2021
     yr_hi = int(data["year"].max()) if "year" in data else 2023
     results = {"_meta": {"source": f"BRFSS {yr_lo}-{yr_hi}", "n_total": int(len(data)), "features": feats,
@@ -144,6 +145,16 @@ def main():
         joblib.dump(clf, os.path.join(MODELS, f"{name}.joblib"))
         results[name] = {"n": int(len(yn)), "n_pos": int(yn.sum()), "prevalence": round(float(yn.mean()), 4),
                          "test_AUC": round(float(auc), 3), "test_AP": round(float(ap), 3)}
+        # which features carry the model — permutation importance on a subsample (highlights the exposome ones)
+        try:
+            from sklearn.inspection import permutation_importance
+            ss = min(15000, len(Xte))
+            pi = permutation_importance(clf, Xte.iloc[:ss], yte.iloc[:ss], n_repeats=3, scoring="roc_auc", random_state=42, n_jobs=-1)
+            imp = dict(zip(feats, (round(float(v), 4) for v in pi.importances_mean)))
+            results[name]["top_features"] = sorted(imp.items(), key=lambda z: -z[1])[:6]
+            results[name]["exposome_importance"] = {f: imp.get(f, 0.0) for f in EXPOSOME}
+        except Exception:  # noqa: BLE001
+            pass
         print(f"  {name:16s} n={len(yn):>8,} pos={int(yn.sum()):>7,} AUC={auc:.3f} AP={ap:.3f}")
 
     json.dump(results, open(os.path.join(HERE, "results.json"), "w"), indent=2)
