@@ -28,6 +28,10 @@ try:
     from . import geroprotectors as _gero   # the longevity-therapeutics corpus (drugs/peptides/sups/protocols)
 except Exception:  # noqa: BLE001
     _gero = None
+try:
+    from . import macros as _macros          # curated protein/fibre/fat fix
+except Exception:  # noqa: BLE001
+    _macros = None
 
 # condition key -> candidate interventions a doctor reviews. type: lifestyle | referral | medication_class |
 # monitoring | procedure. grade: A/B/C/D. "action" is framed as a consideration, not an order.
@@ -196,6 +200,23 @@ def assess(panel: dict | None = None, profile: dict | None = None,
         except Exception:  # noqa: BLE001
             longevity = {"note": "longevity corpus unavailable"}
 
+    # ---- MACROS (curated protein/fibre/fat fix) ----
+    macros = None
+    if _macros is not None:
+        try:
+            bm2 = {**(features or {}), **(panel or {}), **(wearable or {})}
+            mprofile = {"age": (profile or {}).get("age") or (panel or {}).get("age"),
+                        "sex": ("M" if str((profile or {}).get("sex") or (panel or {}).get("sex") or "").upper().startswith(("M", "1")) else
+                                ("F" if (profile or {}).get("sex") or (panel or {}).get("sex") else None)),
+                        "weight_kg": (profile or {}).get("weight_kg") or (panel or {}).get("weight"),
+                        "height_cm": (profile or {}).get("height_cm") or (panel or {}).get("height"),
+                        "activity": (profile or {}).get("activity", "moderate"),
+                        "goals": (profile or {}).get("goals") or ["longevity"],
+                        "conditions": (profile or {}).get("conditions") or []}
+            macros = _macros.prescribe(mprofile, bm2, (profile or {}).get("intake") or {}, (profile or {}).get("gut") or {})
+        except Exception:  # noqa: BLE001
+            macros = {"note": "macro engine unavailable"}
+
     # ---- RETEST ----
     retest = []
     if _has_bloods(panel):
@@ -211,6 +232,7 @@ def assess(panel: dict | None = None, profile: dict | None = None,
         "therapies": therapies,
         "supplements": supplements,
         "longevity": longevity,
+        "macros": macros,
         "retest_plan": retest,
         "doctor_gate": {"status": "pending_validation",
                         "message": "Clinician review required before anything reaches the member.",

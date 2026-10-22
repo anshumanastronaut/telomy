@@ -807,6 +807,24 @@ def _matches(iv: dict, profile: dict, biomarkers: dict) -> tuple[bool, list[str]
     return (len(reasons) > 0), reasons
 
 
+_SCOPE_WORD = {"A": "strong human evidence", "B": "moderate human evidence",
+               "C": "limited/mixed human evidence", "D": "weak or contested evidence"}
+_TIER_WHY = {"foundation": "lifestyle — do this first, it has the best evidence and lowest risk",
+             "clinical": "an approved drug/hormone for an indication — prescriber-led",
+             "optional": "a consumer supplement, mostly a biomarker-level benefit",
+             "experimental": "off-label/investigational — informed-consent, trial-grade, clinician-only"}
+
+
+def _rationale(iv: dict, reasons: list[str], tier: str) -> str:
+    """One synthesized 'why this, for you' line: the person's trigger + mechanism + evidence scope + the honest
+    caveat — so a doctor/member sees the reasoning, not just a ranked name."""
+    trig = ("surfaced because " + "; ".join(reasons)) if reasons else "a general longevity candidate"
+    hallmark = HALLMARKS[iv["hallmarks"][0]] if iv.get("hallmarks") else "an aging hallmark"
+    return (f"{trig}. It targets {hallmark} via {iv['mechanism']}. "
+            f"Evidence: grade {iv['grade']} ({_SCOPE_WORD[iv['grade']]}) for {iv['scope']}. "
+            f"Tier: {_TIER_WHY[tier]}. Caveat: {iv['caution']}")
+
+
 def _safety(iv: dict, profile: dict) -> tuple[bool, list[str]]:
     """Hard-coded contraindication + interaction screen. Returns (blocked, flags)."""
     conditions = {c.lower() for c in profile.get("conditions", [])}
@@ -860,6 +878,7 @@ def recommend(profile: dict | None = None, biomarkers: dict | None = None,
                 "mechanism": iv["mechanism"], "hallmarks": [HALLMARKS[h] for h in iv["hallmarks"]],
                 "effect": iv["effect"], "dose": iv["dose"], "monitor": iv["monitor"],
                 "caution": iv["caution"], "safety_flags": flags,
+                "rationale": _rationale(iv, reasons, tier),
                 "doctor_gate": iv["status"] in ("approved_drug", "off_label", "investigational", "unapproved") or iv["category"] == "hormone"}
         if _faers is not None:
             fs = _faers.signals(iv["id"], topk=6)

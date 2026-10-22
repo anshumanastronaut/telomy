@@ -215,6 +215,22 @@ def me_longevity_safety(intervention_id: str | None = None):
     return _f.summary()
 
 
+@router.post("/macros")
+def me_macros(intake: dict = Body(default={}), gut: dict = Body(default={}), activity: str = Body(default="moderate")):
+    """Curated protein/fibre/fat fix for the signed-in member — targets + the gap + food swaps + rationale,
+    tuned to their profile, routine, gut and latest biomarkers. Renal protein restriction is clinician-gated."""
+    from .llx import macros as _m
+    import json as _j
+    prof = (db.one("SELECT data FROM profile WHERE id=1") or {}).get("data")
+    p = (_j.loads(prof) if isinstance(prof, str) else prof) or {}
+    profile = {"age": p.get("age"),
+               "sex": ("M" if str(p.get("sex", "")).lower().startswith("m") else ("F" if p.get("sex") else None)),
+               "weight_kg": p.get("weight_kg") or p.get("weight"), "height_cm": p.get("height_cm") or p.get("height"),
+               "activity": activity or p.get("activity") or "moderate",
+               "goals": p.get("goals") or ["longevity"], "conditions": p.get("conditions") or []}
+    return _m.prescribe(profile, _panel(), intake, gut)
+
+
 @router.get("/health")
 def me_ml_health():
     try:
