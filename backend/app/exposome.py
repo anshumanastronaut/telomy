@@ -34,6 +34,55 @@ CITIES = {  # lat, lon, altitude m, approx annual PM2.5 µg/m³ (CPCB/IQAir 2023
 }
 WHO_PM25 = 5.0
 
+# ---- global city-environment database (WHO Ambient Air Quality V8.0, 7,482 cities) ----
+# Replaces the 10-city hardcoded table above for coverage: any city or lat/lon resolves to a real PM2.5/PM10/NO2
+# profile + AQLI life-years-lost. The CITIES dict above is kept for its richer India UV + groundwater notes.
+import os as _os  # noqa: E402
+try:
+    _G = json.load(open(_os.path.join(_os.path.dirname(__file__), "assets", "env", "cities.json")))
+    GLOBAL = {c["city"].lower(): c for c in _G["cities"]}
+    GLOBAL_LIST = [c for c in _G["cities"] if c.get("pm25") is not None]
+    GLOBAL_SRC = _G.get("source", "WHO AAQ V8.0")
+except Exception:  # noqa: BLE001
+    GLOBAL, GLOBAL_LIST, GLOBAL_SRC = {}, [], ""
+
+
+def _nearest(lat: float, lon: float):
+    import math
+    def d2(a):
+        dla = math.radians(a["lat"] - lat); dlo = math.radians(a["lon"] - lon)
+        return math.sin(dla / 2) ** 2 + math.cos(math.radians(lat)) * math.cos(math.radians(a["lat"])) * math.sin(dlo / 2) ** 2
+    return min(GLOBAL_LIST, key=d2) if GLOBAL_LIST else None
+
+
+def city_profile(name: str | None = None, lat: float | None = None, lon: float | None = None) -> dict | None:
+    """Resolve ANY city to a real environmental profile. Match order: rich India table → exact WHO name →
+    name prefix → nearest WHO station by lat/lon. Merges real pollution (WHO) with UV/water (India table)."""
+    prof: dict = {}
+    g = None
+    if name and name.lower() in GLOBAL:
+        g = GLOBAL[name.lower()]
+    elif name:
+        g = next((c for c in GLOBAL_LIST if c["city"].lower().startswith(name.lower())), None)
+    if g is None and lat is not None and lon is not None:
+        g = _nearest(lat, lon)
+    if g:
+        pm = g.get("pm25")
+        prof = {"city": g["city"], "country": g.get("country"), "iso3": g.get("iso3"), "lat": g["lat"], "lon": g["lon"],
+                "pm25": pm, "pm10": g.get("pm10"), "no2": g.get("no2"), "life_years_lost": g.get("life_years_lost"),
+                "population": g.get("pop"), "data_year": g.get("year"),
+                "cigarettes_per_day_equiv": round(pm / 22, 1) if pm else None,
+                "source": GLOBAL_SRC, "resolved_by": "nearest-station" if (name and name.lower() not in GLOBAL) else "name"}
+    if name and name in CITIES:          # overlay richer India UV + groundwater notes
+        la, lo, alt, pm, uv, water = CITIES[name]
+        prof.setdefault("city", name)
+        prof.update({"lat": la, "lon": lo, "altitude_m": alt, "uv_mean_max": uv, "water": water})
+        if not prof.get("pm25"):
+            prof["pm25"] = pm
+            prof["life_years_lost"] = round(max(0, pm - WHO_PM25) / 10 * 0.98, 2)
+            prof["cigarettes_per_day_equiv"] = round(pm / 22, 1)
+    return prof or None
+
 
 def init():
     with db.tx() as c:
@@ -154,24 +203,35 @@ def personal(days: int = 120) -> dict:
 
 
 def compare(a: str = "Delhi", b: str = "Bengaluru", live: dict | None = None) -> dict:
-    """Two identical people, two cities: what differs and what it is estimated to cost."""
+    """Two identical people, two cities: what differs and what it is estimated to cost. Works for any of the
+    7,482 WHO cities (resolved via city_profile), not just the hardcoded India set."""
     out = []
     for c in (a, b):
-        lat, lon, alt, pm, uv, water = CITIES[c]
-        cur = live.get(c) if live else None
-        out.append({"city": c, "pm25_annual": pm, "pm25_last_week": cur, "uv_mean_max": uv, "altitude_m": alt, "water": water,
-                    "aqli_years_lost": round(max(0, pm - WHO_PM25) / 10 * 0.98, 1), "cigarettes_per_day_equiv": round(pm / 22, 1)})
+        p = city_profile(c) or {"city": c, "pm25": None}
+        pm = p.get("pm25")
+        out.append({"city": p.get("city", c), "country": p.get("country"), "pm25_annual": pm,
+                    "pm25_last_week": (live.get(c) if live else None), "pm10_annual": p.get("pm10"), "no2_annual": p.get("no2"),
+                    "uv_mean_max": p.get("uv_mean_max"), "altitude_m": p.get("altitude_m"), "water": p.get("water"),
+                    "aqli_years_lost": p.get("life_years_lost"), "cigarettes_per_day_equiv": p.get("cigarettes_per_day_equiv"),
+                    "data_year": p.get("data_year"), "source": p.get("source")})
     da, db_ = out
-    lines = [f"Same person, same habits: living in {a} vs {b} means breathing about {da['pm25_annual'] - db_['pm25_annual']:+.0f} µg/m³ more PM2.5 every day — "
-             f"like smoking {da['cigarettes_per_day_equiv']:.1f} vs {db_['cigarettes_per_day_equiv']:.1f} cigarettes a day (Berkeley Earth).",
-             f"AQLI estimates the long-term difference at ≈ {da['aqli_years_lost'] - db_['aqli_years_lost']:.1f} years of life expectancy.",
-             f"Short-term: each +10 µg/m³ PM2.5 lowers HRV and raises blood pressure within days (Pieters 2012, Heart; Liang 2014, Hypertension). "
-             f"Telomy measures this in your own data.",
-             f"UV: {b} averages a midday UV maximum near {db_['uv_mean_max']}, {a} near {da['uv_mean_max']} — vitamin D synthesis and skin photo-ageing both follow UV dose; "
-             f"{a}'s winter smog cuts UV-B further.",
-             f"Water: {a}: {da['water']} {b}: {db_['water']}"]
+    lines = []
+    if da["pm25_annual"] is not None and db_["pm25_annual"] is not None:
+        lines.append(f"Same person, same habits: living in {da['city']} vs {db_['city']} means breathing about "
+                     f"{da['pm25_annual'] - db_['pm25_annual']:+.0f} µg/m³ more PM2.5 every day — like smoking "
+                     f"{da['cigarettes_per_day_equiv']:.1f} vs {db_['cigarettes_per_day_equiv']:.1f} cigarettes a day (Berkeley Earth).")
+        if da["aqli_years_lost"] is not None and db_["aqli_years_lost"] is not None:
+            lines.append(f"AQLI estimates the long-term difference at ≈ {da['aqli_years_lost'] - db_['aqli_years_lost']:.1f} years of life expectancy.")
+        lines.append("Short-term: each +10 µg/m³ PM2.5 lowers HRV and raises blood pressure within days (Pieters 2012, Heart; "
+                     "Liang 2014, Hypertension). Telomy measures this in your own data.")
+    if da.get("uv_mean_max") and db_.get("uv_mean_max"):
+        lines.append(f"UV: {db_['city']} averages a midday UV maximum near {db_['uv_mean_max']}, {da['city']} near {da['uv_mean_max']} — "
+                     f"vitamin D synthesis and skin photo-ageing both follow UV dose.")
+    if da.get("water") or db_.get("water"):
+        lines.append(f"Water: {da['city']}: {da.get('water','—')} {db_['city']}: {db_.get('water','—')}")
     return {"cities": out, "summary": lines,
-            "sources": ["AQLI 2024 (EPIC, University of Chicago)", "Berkeley Earth — air pollution and cigarette equivalence (Muller 2015)",
+            "sources": ["WHO Ambient Air Quality Database V8.0 (2026) — 7,482 cities", "AQLI 2024 (EPIC, University of Chicago)",
+                        "Berkeley Earth — air pollution and cigarette equivalence (Muller 2015)",
                         "Pieters N et al. 2012, Heart — PM and HRV meta-analysis", "Liang R et al. 2014, Hypertension — PM2.5 and blood pressure",
                         "CGWB groundwater quality reports; Jal Jeevan Mission WQMIS", "Copernicus CAMS via Open-Meteo"]}
 

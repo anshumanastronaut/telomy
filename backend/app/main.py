@@ -1046,9 +1046,19 @@ def environment():
 
 @app.get("/environment/compare")
 def environment_compare(a: str = "Delhi", b: str = "Bengaluru"):
-    if a not in exposome.CITIES or b not in exposome.CITIES:
-        raise HTTPException(400, f"Cities available: {', '.join(exposome.CITIES)}")
+    """Compare any two of the 7,482 WHO cities (name-resolved, with a nearest-station fallback)."""
+    if not exposome.city_profile(a) or not exposome.city_profile(b):
+        raise HTTPException(400, "Could not resolve one of those cities. Use a city name or pass lat/lon to /environment/city.")
     return exposome.compare(a, b, exposome.live_week())
+
+
+@app.get("/environment/city")
+def environment_city(name: str | None = None, lat: float | None = None, lon: float | None = None):
+    """Environmental profile for any city or coordinate — real PM2.5/PM10/NO2 + AQLI life-years-lost (WHO V8.0)."""
+    p = exposome.city_profile(name=name, lat=lat, lon=lon)
+    if not p:
+        raise HTTPException(404, "No city or nearby monitoring station found for that query.")
+    return p
 
 
 # ------------------------------------------------------------------ digital twin
