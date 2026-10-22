@@ -105,6 +105,37 @@ def me_checkin(now_min: int = Body(...), context: dict = Body(default={}), signa
     # stateless demo instance; production holds per-user state. Returns the decision for the app to deliver.
     return CheckinEngine().decide(now_min, context, signals) or {"prompt": None}
 
+@router.post("/chronic")
+def me_chronic(features: dict = Body(default={}), topk: int = Body(default=6)):
+    """Lab-free chronic-disease screen (BRFSS 5.89M) — for members with NO recent bloods. Takes non-invasive
+    features (age, sex, bmi, smoker, phys_act, sleep_hrs, hi_bp_flag, marital, state, …); missing ones default."""
+    from .llx import chronic_tools as _c
+    if not _c.available():
+        return {"error": "chronic model not installed", "ranked": []}
+    feats = dict(features)
+    if "age" not in feats or "sex" not in feats:            # fall back to the profile for basics
+        prof = (db.one("SELECT data FROM profile WHERE id=1") or {}).get("data")
+        if prof:
+            import json as _j
+            p = _j.loads(prof) if isinstance(prof, str) else prof
+            feats.setdefault("age", p.get("age"))
+            feats.setdefault("sex", 1 if str(p.get("sex", "")).lower().startswith("m") else (2 if p.get("sex") else None))
+            feats.setdefault("bmi", p.get("bmi"))
+    return _c.predict_chronic({k: v for k, v in feats.items() if v is not None}, topk=topk)
+
+
+@router.get("/environment")
+def me_environment(name: str | None = None, lat: float | None = None, lon: float | None = None):
+    """The member's exposome — air (7,482 WHO cities) + social connection + noise + UV/water + food pointer."""
+    from . import exposome as _e
+    if not name and lat is None:                            # default to the profile's city
+        prof = (db.one("SELECT data FROM profile WHERE id=1") or {}).get("data")
+        if prof:
+            import json as _j
+            name = (_j.loads(prof) if isinstance(prof, str) else prof).get("city")
+    return _e.exposome_profile(name=name, lat=lat, lon=lon) or {"error": "could not resolve a location"}
+
+
 @router.get("/health")
 def me_ml_health():
     try:
