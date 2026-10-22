@@ -9,6 +9,32 @@ import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T }
 import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
 import type { OrganId } from '@/twin3d/scene';
 
+// Edge tap-list: on a small screen, orbiting to a precise organ is fiddly — tapping a name flies the camera to it
+// (drives the same `selected` state as tapping the 3D mesh). Short labels so they fit the side rail.
+const ORGAN_EDGE: [OrganId, string][] = [
+  ['brain', 'Brain'], ['lungs', 'Lungs'], ['heart', 'Heart'], ['vessels', 'Vessels'], ['liver', 'Liver'],
+  ['stomach', 'Stomach'], ['pancreas', 'Pancreas'], ['kidneys', 'Kidneys'], ['intestines', 'Gut'],
+  ['bladder', 'Bladder'], ['skeleton', 'Skeleton'],
+];
+
+function OrganRail({ selected, onSelect }: { selected: OrganId | null; onSelect: (o: OrganId | null) => void }) {
+  const p = usePalette();
+  return (
+    <View style={{ position: 'absolute', right: 2, top: 6, bottom: 6, justifyContent: 'center', gap: 4 }} pointerEvents="box-none">
+      {ORGAN_EDGE.map(([id, label]) => {
+        const on = selected === id;
+        return (
+          <Pressable key={id} onPress={() => onSelect(on ? null : id)} hitSlop={6} accessibilityRole="button" accessibilityLabel={`Focus ${label}`}
+            style={{ paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999, alignSelf: 'flex-end',
+              backgroundColor: on ? p.teal : p.surface + 'E6', borderWidth: 1, borderColor: on ? p.teal : p.border }}>
+            <T v="small" color={on ? p.onAccent : p.text} style={{ fontSize: 11 }}>{label}</T>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'], xLabel = (x: number) => `${Math.round(x / 365 * 10) / 10}y` }:
   { a: [number, number][]; b?: [number, number][]; unit: string; height?: number; labels?: string[]; xLabel?: (x: number) => string }) {
   const p = usePalette();
@@ -118,7 +144,10 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
     <Screen edges={inTab ? ['top'] : []} scrollEnabled={!touching3d}>
       {inTab ? null : <Stack.Screen options={{ title: 'Digital twin' }} />}
       <T v="h1">{inTab ? 'Your twin' : 'Your digital twin'}</T>
-      <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} onInteract={setTouching3d} />
+      <View style={{ position: 'relative' }}>
+        <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} onInteract={setTouching3d} />
+        <OrganRail selected={organSel} onSelect={setOrganSel} />
+      </View>
       <OrganPanel systems={d.systems} organ={organSel} onClear={() => setOrganSel(null)} />
       <T v="small">{d.about}</T>
       <Row style={{ flexWrap: 'wrap' }}>
