@@ -160,6 +160,27 @@ def assess(series: dict | None = None, sleep_windows: list | None = None, chrono
     weak = (fit["r2"] < 0.3) or (trough_metric and frac_amp < 0.06)
     rhythmic = not weak
 
+    # degenerate fit: when samples don't span enough of the 24-h cycle the cosinor extrapolates wildly — an
+    # impossible baseline (e.g. negative HR) or a swing bigger than the mean. Phase/amplitude are then unreliable,
+    # so we don't emit delayed/advanced/flat verdicts off it; we ask for more continuous wear instead.
+    hours_covered = len({datetime.fromtimestamp(float(p[0]), IST).hour for p in pts if isinstance(p, (list, tuple))})
+    sane_mesor = {"hr": (35, 120), "resp": (6, 30), "skin_temp": (25, 40), "hrv": (5, 300)}
+    lo, hi = sane_mesor.get(metric, (float("-inf"), float("inf")))
+    degenerate = (not (lo <= fit["mesor"] <= hi)) or (trough_metric and frac_amp > 0.6) or hours_covered < 12
+    if degenerate:
+        return {
+            "status": "ok", "signal": metric, "days_of_data": days, "confidence": "low",
+            "rhythm": {**fit, "acrophase": _fmt_h(fit["acrophase_h"]), "nadir": _fmt_h(fit["nadir_h"]), "robust": False},
+            "phase": None, "regularity": {"day_to_day_sd_h": reg_sd, "days_fit": len(nad)},
+            "social_jetlag": social_jetlag(sleep_windows) if sleep_windows else None,
+            "faults": [], "fixes": [],
+            "alignment": {"target_wake": _fmt_h(target_wake_h), "estimated_vs_target_h": None, "verdict": "building_baseline"},
+            "note": f"Only {hours_covered} h of the day are covered so far — not enough continuous around-the-clock wear "
+                    "to read the body clock reliably. Wear the patch, ring or WHOOP across full days (ideally 3+) and this sharpens.",
+            "disclaimer": "Decision-support from your wearable rhythm — a proxy for the clinical dim-light melatonin onset, not a diagnosis.",
+            "method": "cosinor 24-h fit + heart-rate/temperature nadir phase proxy (CBTmin→DLMO offset); chronobiology-standard.",
+        }
+
     # ---- diagnose faults ----
     faults = []
     # delayed / advanced phase vs target (CBTmin should sit ~2 h before target wake)
@@ -189,9 +210,10 @@ def assess(series: dict | None = None, sleep_windows: list | None = None, chrono
     # ---- fixes (evidence-based circadian hygiene, targeted to the fault) ----
     fixes = _fixes(faults, cbt_min, est_wake, target_wake_h)
 
+    confidence = "high" if (days >= 3 and hours_covered >= 20) else "moderate" if days >= 2 else "low"
     return {
         "status": "ok",
-        "signal": metric, "days_of_data": days,
+        "signal": metric, "days_of_data": days, "confidence": confidence,
         "rhythm": {**fit, "acrophase": _fmt_h(fit["acrophase_h"]), "nadir": _fmt_h(fit["nadir_h"]), "robust": rhythmic},
         "phase": {"cbt_min_est": _fmt_h(cbt_min), "dlmo_est": _fmt_h(dlmo_est), "natural_wake_est": _fmt_h(est_wake),
                   "note": "Body-temperature minimum and DLMO are estimated from the rhythm (±1–2 h); not a lab measurement."},
