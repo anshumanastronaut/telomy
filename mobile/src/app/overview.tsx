@@ -45,6 +45,16 @@ export default function OverviewScreen() {
         <T v="small" color={p.muted}>{ai.disclaimer}</T>
       </Card>
 
+      <Card onPress={() => router.push('/plan')} accessibilityLabel="Your longevity plan">
+        <Row>
+          <View style={{ flex: 1 }}>
+            <T v="h3">Your longevity plan</T>
+            <T v="small">Evidence-graded interventions and your protein · fibre · fat fix, from these numbers.</T>
+          </View>
+          <T v="small" color={p.teal} style={{ fontWeight: '600' }}>View →</T>
+        </Row>
+      </Card>
+
       {/* recovery + vitals */}
       <Section title="Recovery & vitals">
         <Row>
