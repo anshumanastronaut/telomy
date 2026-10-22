@@ -1,0 +1,110 @@
+{
+  "_meta": {
+    "source": "NHANES 2009-2018 (49.7k adults); organ-specific age clocks from routine chemistry",
+    "method": "predict chronological age per organ panel; residual = age acceleration",
+    "reference": "mirrors Cell 2026 Digital Aging Twin (organ-specific clocks)"
+  },
+  "organ_metabolic": {
+    "n": 27327,
+    "n_features": 11,
+    "markers": [
+      "sex",
+      "glucose_fasting",
+      "hba1c",
+      "insulin",
+      "trig",
+      "trig_serum",
+      "hdl",
+      "total_chol",
+      "ldl",
+      "uric_acid",
+      "glucose_serum"
+    ],
+    "test_MAE_years": 11.88,
+    "test_R2": 0.366,
+    "test_pearson_r": 0.605,
+    "cv5_MAE_mean": 11.83,
+    "accel_std_years": 14.73
+  },
+  "organ_hepatic": {
+    "n": 27281,
+    "n_features": 9,
+    "markers": [
+      "sex",
+      "albumin",
+      "alt",
+      "ast",
+      "alp",
+      "ggt",
+      "bilirubin",
+      "total_protein",
+      "globulin"
+    ],
+    "test_MAE_years": 13.29,
+    "test_R2": 0.244,
+    "test_pearson_r": 0.496,
+    "cv5_MAE_mean": 13.36,
+    "accel_std_years": 16.12
+  },
+  "organ_renal": {
+    "n": 27281,
+    "n_features": 10,
+    "markers": [
+      "sex",
+      "creatinine",
+      "bun",
+      "uric_acid",
+      "phosphorus",
+      "potassium",
+      "sodium",
+      "chloride",
+      "bicarb",
+      "calcium"
+    ],
+    "test_MAE_years": 12.25,
+    "test_R2": 0.348,
+    "test_pearson_r": 0.59,
+    "cv5_MAE_mean": 12.41,
+    "accel_std_years": 14.96
+  },
+  "organ_immune": {
+    "n": 27732,
+    "n_features": 10,
+    "markers": [
+      "sex",
+      "wbc",
+      "lymph_pct",
+      "neut_pct",
+      "mono_pct",
+      "eos_pct",
+      "baso_pct",
+      "rdw",
+      "platelets",
+      "crp_mgL"
+    ],
+    "test_MAE_years": 13.93,
+    "test_R2": 0.184,
+    "test_pearson_r": 0.43,
+    "cv5_MAE_mean": 14.15,
+    "accel_std_years": 16.63
+  },
+  "organ_cardiometabolic": {
+    "n": 27522,
+    "n_features": 8,
+    "markers": [
+      "sex",
+      "total_chol",
+      "hdl",
+      "ldl",
+      "trig",
+      "glucose",
+      "hba1c",
+      "uric_acid"
+    ],
+    "test_MAE_years": 12.2,
+    "test_R2": 0.349,
+    "test_pearson_r": 0.591,
+    "cv5_MAE_mean": 12.06,
+    "accel_std_years": 15.09
+  }
+}
