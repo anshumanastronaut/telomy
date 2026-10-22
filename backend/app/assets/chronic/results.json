@@ -1,0 +1,470 @@
+{
+  "_meta": {
+    "source": "BRFSS 2011-2023",
+    "n_total": 5891176,
+    "features": [
+      "age",
+      "sex",
+      "bmi",
+      "smoker",
+      "phys_act",
+      "gen_health",
+      "ment_days",
+      "phys_days",
+      "sleep_hrs",
+      "hi_bp_flag",
+      "hi_chol",
+      "heavy_drink",
+      "income",
+      "educ",
+      "race",
+      "has_insur",
+      "state",
+      "marital",
+      "urban",
+      "fruit_lt1",
+      "veg_lt1"
+    ],
+    "note": "self-reported outcomes; risk-stratification screen, decision-support only"
+  },
+  "diabetes": {
+    "n": 5878711,
+    "n_pos": 778194,
+    "prevalence": 0.1324,
+    "test_AUC": 0.825,
+    "test_AP": 0.407,
+    "top_features": [
+      [
+        "age",
+        0.0751
+      ],
+      [
+        "gen_health",
+        0.0572
+      ],
+      [
+        "bmi",
+        0.039
+      ],
+      [
+        "hi_bp_flag",
+        0.0174
+      ],
+      [
+        "hi_chol",
+        0.0084
+      ],
+      [
+        "heavy_drink",
+        0.0052
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0008,
+      "marital": 0.0023,
+      "urban": 0.0016,
+      "fruit_lt1": 0.0,
+      "veg_lt1": 0.0002
+    }
+  },
+  "heart_attack": {
+    "n": 5859616,
+    "n_pos": 341012,
+    "prevalence": 0.0582,
+    "test_AUC": 0.833,
+    "test_AP": 0.237,
+    "top_features": [
+      [
+        "age",
+        0.0959
+      ],
+      [
+        "gen_health",
+        0.0532
+      ],
+      [
+        "sex",
+        0.0287
+      ],
+      [
+        "hi_bp_flag",
+        0.0097
+      ],
+      [
+        "smoker",
+        0.0068
+      ],
+      [
+        "hi_chol",
+        0.0054
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0006,
+      "marital": 0.0052,
+      "urban": 0.0004,
+      "fruit_lt1": -0.0001,
+      "veg_lt1": 0.0001
+    }
+  },
+  "coronary_hd": {
+    "n": 5838739,
+    "n_pos": 342751,
+    "prevalence": 0.0587,
+    "test_AUC": 0.843,
+    "test_AP": 0.247,
+    "top_features": [
+      [
+        "age",
+        0.1101
+      ],
+      [
+        "gen_health",
+        0.0615
+      ],
+      [
+        "hi_bp_flag",
+        0.0212
+      ],
+      [
+        "sex",
+        0.0151
+      ],
+      [
+        "hi_chol",
+        0.0115
+      ],
+      [
+        "race",
+        0.0058
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0013,
+      "marital": 0.0038,
+      "urban": 0.0003,
+      "fruit_lt1": 0.0003,
+      "veg_lt1": 0.0011
+    }
+  },
+  "stroke": {
+    "n": 5873335,
+    "n_pos": 245643,
+    "prevalence": 0.0418,
+    "test_AUC": 0.812,
+    "test_AP": 0.155,
+    "top_features": [
+      [
+        "age",
+        0.0813
+      ],
+      [
+        "gen_health",
+        0.0463
+      ],
+      [
+        "hi_bp_flag",
+        0.0129
+      ],
+      [
+        "income",
+        0.0096
+      ],
+      [
+        "marital",
+        0.0054
+      ],
+      [
+        "phys_days",
+        0.0038
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0005,
+      "marital": 0.0054,
+      "urban": 0.0014,
+      "fruit_lt1": 0.0002,
+      "veg_lt1": 0.0002
+    }
+  },
+  "copd": {
+    "n": 5357380,
+    "n_pos": 437582,
+    "prevalence": 0.0817,
+    "test_AUC": 0.845,
+    "test_AP": 0.372,
+    "top_features": [
+      [
+        "smoker",
+        0.058
+      ],
+      [
+        "age",
+        0.0442
+      ],
+      [
+        "gen_health",
+        0.0408
+      ],
+      [
+        "phys_days",
+        0.0081
+      ],
+      [
+        "race",
+        0.0051
+      ],
+      [
+        "bmi",
+        0.0046
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0028,
+      "marital": 0.0009,
+      "urban": 0.0005,
+      "fruit_lt1": 0.0001,
+      "veg_lt1": 0.0
+    }
+  },
+  "asthma_current": {
+    "n": 5847822,
+    "n_pos": 555560,
+    "prevalence": 0.095,
+    "test_AUC": 0.709,
+    "test_AP": 0.226,
+    "top_features": [
+      [
+        "sex",
+        0.032
+      ],
+      [
+        "gen_health",
+        0.0312
+      ],
+      [
+        "phys_days",
+        0.0199
+      ],
+      [
+        "bmi",
+        0.0148
+      ],
+      [
+        "age",
+        0.0091
+      ],
+      [
+        "state",
+        0.0064
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0064,
+      "marital": 0.003,
+      "urban": 0.0006,
+      "fruit_lt1": 0.0001,
+      "veg_lt1": -0.0002
+    }
+  },
+  "kidney_disease": {
+    "n": 5432467,
+    "n_pos": 204453,
+    "prevalence": 0.0376,
+    "test_AUC": 0.793,
+    "test_AP": 0.139,
+    "top_features": [
+      [
+        "gen_health",
+        0.0739
+      ],
+      [
+        "age",
+        0.0502
+      ],
+      [
+        "hi_bp_flag",
+        0.0177
+      ],
+      [
+        "phys_days",
+        0.0095
+      ],
+      [
+        "bmi",
+        0.003
+      ],
+      [
+        "has_insur",
+        0.0025
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0014,
+      "marital": 0.0012,
+      "urban": 0.0014,
+      "fruit_lt1": 0.0001,
+      "veg_lt1": -0.0
+    }
+  },
+  "skin_cancer": {
+    "n": 5869568,
+    "n_pos": 535430,
+    "prevalence": 0.0912,
+    "test_AUC": 0.792,
+    "test_AP": 0.259,
+    "top_features": [
+      [
+        "age",
+        0.1685
+      ],
+      [
+        "race",
+        0.0703
+      ],
+      [
+        "state",
+        0.0106
+      ],
+      [
+        "educ",
+        0.0069
+      ],
+      [
+        "marital",
+        0.0044
+      ],
+      [
+        "has_insur",
+        0.0043
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0106,
+      "marital": 0.0044,
+      "urban": 0.0035,
+      "fruit_lt1": 0.0005,
+      "veg_lt1": 0.0007
+    }
+  },
+  "other_cancer": {
+    "n": 5872344,
+    "n_pos": 582827,
+    "prevalence": 0.0992,
+    "test_AUC": 0.76,
+    "test_AP": 0.237,
+    "top_features": [
+      [
+        "age",
+        0.1435
+      ],
+      [
+        "gen_health",
+        0.0424
+      ],
+      [
+        "race",
+        0.0176
+      ],
+      [
+        "sex",
+        0.0111
+      ],
+      [
+        "phys_days",
+        0.0045
+      ],
+      [
+        "educ",
+        0.004
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0009,
+      "marital": 0.0024,
+      "urban": 0.003,
+      "fruit_lt1": 0.0002,
+      "veg_lt1": -0.0001
+    }
+  },
+  "arthritis": {
+    "n": 5855320,
+    "n_pos": 1973613,
+    "prevalence": 0.3371,
+    "test_AUC": 0.802,
+    "test_AP": 0.657,
+    "top_features": [
+      [
+        "age",
+        0.1233
+      ],
+      [
+        "phys_days",
+        0.0245
+      ],
+      [
+        "gen_health",
+        0.022
+      ],
+      [
+        "hi_bp_flag",
+        0.0092
+      ],
+      [
+        "bmi",
+        0.0083
+      ],
+      [
+        "sex",
+        0.0081
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0015,
+      "marital": 0.0048,
+      "urban": 0.0017,
+      "fruit_lt1": 0.0001,
+      "veg_lt1": 0.0006
+    }
+  },
+  "depression": {
+    "n": 5860392,
+    "n_pos": 1122686,
+    "prevalence": 0.1916,
+    "test_AUC": 0.824,
+    "test_AP": 0.578,
+    "top_features": [
+      [
+        "ment_days",
+        0.1527
+      ],
+      [
+        "sex",
+        0.015
+      ],
+      [
+        "age",
+        0.0094
+      ],
+      [
+        "gen_health",
+        0.008
+      ],
+      [
+        "smoker",
+        0.0066
+      ],
+      [
+        "race",
+        0.0065
+      ]
+    ],
+    "exposome_importance": {
+      "state": 0.0033,
+      "marital": 0.0034,
+      "urban": 0.0009,
+      "fruit_lt1": 0.0002,
+      "veg_lt1": -0.0
+    }
+  }
+}

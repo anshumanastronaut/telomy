@@ -38,7 +38,7 @@ export default function Routine() {
         <T v="small">Describe a normal day — typed here or spoken to Sinc. Telomy turns it into a schedule, quantifies it, and learns from the days that differ.</T>
         <TextInput value={text} onChangeText={setText} multiline placeholder="e.g. I wake up around 8, coffee at 11, lunch at 1 with dal and eggs, gym Mon/Wed/Fri at 7 pm, sleep around 12…"
           placeholderTextColor={p.faint} testID="routine-text" autoCorrect={false} spellCheck={false} autoCapitalize="sentences"
-          style={{ minHeight: 110, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular', textAlignVertical: 'top' }} />
+          style={{ minHeight: 110, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular', textAlignVertical: 'top' }} />
         <Row>
           <Button kind="secondary" title="Preview" style={{ flex: 1 }} disabled={text.trim().length < 20} onPress={parse} />
           <Button title="Save routine" style={{ flex: 1 }} disabled={text.trim().length < 20} onPress={save} />

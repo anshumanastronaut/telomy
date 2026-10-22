@@ -2,12 +2,25 @@
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 
+import math
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel
 
 from . import config  # noqa: F401  (loads backend/.env first)
+from . import whoop
+from . import cgm
+from . import accounts as acctmod  # noqa: E402  (module; /accounts route shadows the name)
+from . import vitals as vitalsmod  # noqa: E402
+from . import bioage  # noqa: E402
+from . import platform as pform  # noqa: E402
+from . import centre as centremod  # noqa: E402
+from . import clinic as clinicmod  # noqa: E402
+from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancymod, billing as billingmod  # noqa: E402
+from . import science  # noqa: E402
+from . import telomy_llm  # noqa: E402
+from . import trackers  # noqa: E402
 from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
@@ -21,15 +34,193 @@ async def lifespan(_app):
     therapy.init()
     rx.init()
     summaries.init()
-    for mod in (voice, routine, activities, exposome, devices, band):
+    acctmod.init()
+    for mod in (voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitalsmod, pform, centremod, clinicmod, fulfillment, goals, interop, staffmod, tenancymod, billingmod):
         mod.init()
     if not db.one("SELECT 1 AS x FROM profile"):
         seed.run(reset=False)
+    # warm the seeded physiology validation off the request path (~8 s on the 1-core server, then cached)
+    import threading
+    from . import physio
+    threading.Thread(target=physio.validate_prior, args=(20,), daemon=True).start()
+
+    def _warm_whoop_day():   # keep today's WHOOP day engine warm so the app never waits ~10 s for it
+        import time as _t
+        from . import whoop_day
+        while True:
+            try:
+                if db.one("SELECT 1 AS x FROM whoop_rows LIMIT 1"):
+                    whoop_day.day()
+                    whoop_day.store_signals()     # finished days → strain / exercise signals for the load models
+                    whoop.nights(21)        # stages each new WHOOP night once (cached) so the app never waits
+            except Exception:  # noqa: BLE001 — no WHOOP data / table yet
+                pass
+            _t.sleep(540)
+    threading.Thread(target=_warm_whoop_day, daemon=True).start()
     yield
 
 
 app = FastAPI(title="Telomy API", version="0.1.0", lifespan=lifespan)
+
+# 3D twin anatomy model (BodyParts3D, © DBCLS, CC BY 4.0). Served instead of embedded in the app bundle; cached hard.
+from pathlib import Path as _P
+_ANATOMY = _P(__file__).resolve().parent.parent / "static" / "telomy_anatomy.glb"
+
+
+@app.get("/static/telomy_anatomy.glb")
+def anatomy_glb():
+    if not _ANATOMY.exists():
+        raise HTTPException(404, "anatomy model not built")
+    return Response(_ANATOMY.read_bytes(), media_type="model/gltf-binary",
+                    headers={"Cache-Control": "public, max-age=604800", "Access-Control-Allow-Origin": "*"})
+# ---------------------------------------------------------------- access password (hosted deployments)
+# Off when TELOMY_ACCESS_PASSWORD is unset (local Mac dev, unchanged). When set, every request needs
+# `Authorization: Bearer <token>`; the token comes from POST /auth/password with the right password. The token is an
+# HMAC of the password with a server secret, so changing either revokes every session. Constant-time compares and a
+# small delay on failure blunt guessing.
+import hashlib as _hl, hmac as _hm, os as _os, time as _t
+from fastapi import Request as _Req
+from fastapi.responses import JSONResponse as _JR
+_PW = _os.environ.get("TELOMY_ACCESS_PASSWORD", "")
+_SECRET = _os.environ.get("TELOMY_SECRET", "") or _hl.sha256(("telomy:" + _PW).encode()).hexdigest()
+_OPEN = {"/auth/password", "/auth/status", "/docs", "/openapi.json", "/static/telomy_anatomy.glb", "/whoop/push", "/mgmt/auth/login", "/mgmt/auth/signup", "/mgmt/auth/status"}  # /whoop/push has its own bearer token  # model: public CC-BY anatomy, nothing personal
+
+
+def _token() -> str:
+    return _hm.new(_SECRET.encode(), ("v1:" + _PW).encode(), _hl.sha256).hexdigest()
+
+
+@app.middleware("http")
+async def _require_password(request: _Req, call_next):
+    if acctmod.enabled() or not _PW or request.method == "OPTIONS" or request.url.path in _OPEN or request.url.path.startswith(("/nightscout/", "/console", "/cal")):
+        return await call_next(request)
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer ") and (_hm.compare_digest(auth[7:], _token()) or staffmod.whoami(auth[7:])):
+        return await call_next(request)
+    return _JR({"detail": "Telomy is locked. Enter your access password."}, status_code=401)
+
+
+class _PwBody(BaseModel):
+    password: str
+
+
+@app.get("/auth/status")
+def auth_status():
+    return {"password_required": bool(_PW) and not acctmod.enabled(), "accounts_enabled": acctmod.enabled(),
+            "accounts_available": True}
+
+
+@app.post("/auth/password")
+def auth_password(body: _PwBody):
+    if not _PW:
+        return {"token": "", "password_required": False}
+    if not _hm.compare_digest(body.password.encode(), _PW.encode()):
+        _t.sleep(1.0)
+        raise HTTPException(401, "That password isn't right.")
+    return {"token": _token(), "password_required": True}
+
+# ---------------------------------------------------------------- multi-user (per-user database)
+# Turns on automatically once an account exists. A global dependency resolves the bearer token to a user and binds that
+# user's database for the request (db.set_db); it runs in the request context so every sync endpoint + db.* call uses
+# the right file. Open paths (auth, health, device push) don't require a user.
+from fastapi import Depends as _Dep, Header as _Hdr  # noqa: E402
+_USER_OPEN = {"/", "/health", "/auth/password", "/auth/status", "/auth/signup", "/auth/login", "/auth/logout",
+              "/docs", "/openapi.json", "/redoc", "/static/telomy_anatomy.glb", "/whoop/push"}
+
+
+# Management plane auth is independent of consumer multi-user mode. These are the only /mgmt paths without a staff token.
+_MGMT_OPEN = {"/mgmt/auth/login", "/mgmt/auth/signup", "/mgmt/auth/status"}
+
+
+def _bearer(authorization: str) -> str:
+    return authorization[7:] if authorization.startswith("Bearer ") else ""
+
+
+async def _bind_user(request: _Req, authorization: str = _Hdr(default="")):
+    db.set_db(None)                                           # default; overridden below for an authenticated user
+    path = request.url.path
+    # ---- C1: the /mgmt management plane ALWAYS requires a valid staff token, in every mode. This runs as a global
+    # dependency (not the password middleware, which exits early in multi-user mode), so it can't be bypassed. ----
+    if path.startswith("/mgmt") and request.method != "OPTIONS" and path not in _MGMT_OPEN:
+        me = staffmod.whoami(_bearer(authorization))
+        if not me:
+            raise HTTPException(401, "Sign in to the console.")
+        request.state.staff = me
+        # ---- C2: a staff member is scoped to their own org (a super-admin may address any org). Reject any org the
+        # caller doesn't own, whether it arrives as a query param or in the JSON body. Starlette caches the body, so
+        # the endpoint's own parsing still works. This single global check covers every /mgmt route. ----
+        if me["role"] != "super_admin":
+            q_org = request.query_params.get("org")
+            if q_org and q_org != me["org"]:
+                raise HTTPException(403, "You can only access your own organisation.")
+            if request.method in ("POST", "PUT", "PATCH"):
+                try:
+                    body = await request.json()
+                except Exception:  # noqa: BLE001  (no/invalid JSON body — nothing to scope)
+                    body = None
+                if isinstance(body, dict) and body.get("org") and body["org"] != me["org"]:
+                    raise HTTPException(403, "You can only access your own organisation.")
+    if not acctmod.enabled():
+        return                                                # single-user mode unchanged
+    if request.method == "OPTIONS" or path in _USER_OPEN or path.startswith(("/nightscout/", "/console", "/mgmt", "/interop", "/cal")):
+        return
+    uid = acctmod.user_for_token(_bearer(authorization))
+    if not uid:
+        raise HTTPException(401, "Please sign in.")
+    db.set_db(acctmod.user_db_path(uid))
+    request.state.user_id = uid
+
+
+app.router.dependencies.append(_Dep(_bind_user))
+
+from . import telomy_ml as _telomy_ml  # noqa: E402  trained-ML engines (additive /me/* routes, per-user)
+# starlette 1.7's include_router doesn't transfer routes here; add them directly (reliable).
+for _r in _telomy_ml.router.routes:
+    app.add_api_route(_r.path, _r.endpoint, methods=list(_r.methods), tags=["telomy-ml"])
+
+
+class _SignupBody(BaseModel):
+    email: str
+    password: str
+    name: str = ""
+
+
+class _LoginBody(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/auth/signup")
+def auth_signup(body: _SignupBody):
+    try:
+        return acctmod.signup(body.email, body.password, body.name)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/auth/login")
+def auth_login(body: _LoginBody):
+    try:
+        return acctmod.login(body.email, body.password)
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+
+
+@app.post("/auth/logout")
+def auth_logout(authorization: str = _Hdr(default="")):
+    if authorization.startswith("Bearer "):
+        acctmod.logout(authorization[7:])
+    return {"ok": True}
+
+
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# Serve the web console (centre + doctor) as static files at /console; it authenticates to the API itself.
+from fastapi.staticfiles import StaticFiles as _SF  # noqa: E402
+import os as _os3  # noqa: E402
+_console_dir = _os3.path.join(_os3.path.dirname(__file__), "..", "webconsole")
+if _os3.path.isdir(_console_dir):
+    app.mount("/console", _SF(directory=_console_dir, html=True), name="console")
 
 
 def now():
@@ -44,7 +235,7 @@ def today():
 @app.get("/health")
 def health():
     return {"ok": True, "version": app.version, "engine": engine.ENGINE_VERSION,
-            "sinc": sinc.MODEL if sinc._claude_available() else "telomy-retrieval (no API key)"}
+            "sinc": telomy_llm.model_name() if telomy_llm.available() else "telomy-retrieval (grounded composer)"}
 
 
 @app.post("/admin/reset")
@@ -580,6 +771,140 @@ def report_review(rid: int, body: ReportReviewIn):
         raise HTTPException(400, str(e))
 
 
+# ------------------------------------------------------------------ WHOOP via NOOP self-hosted push (app/whoop.py)
+
+def _push_err(e: "whoop.PushError"):
+    return _JR({"type": "error", "protocolVersion": whoop.VERSION, "code": e.code}, status_code=e.status)
+
+
+def _bind_whoop_user():
+    """NOOP's WHOOP push authenticates with its own token, not a user login, so in multi-user mode it would write to the
+    default (legacy) DB and the signed-in member would never see their WHOOP data. Bind the configured owner's Vault
+    (TELOMY_WHOOP_USER_ID) so the push lands where the app reads it. Single-user mode is unchanged (no-op)."""
+    uid = _os3.environ.get("TELOMY_WHOOP_USER_ID")
+    if uid and acctmod.enabled():
+        try:
+            db.set_db(acctmod.user_db_path(int(uid)))
+        except Exception:  # noqa: BLE001
+            pass
+
+
+@app.get("/whoop/push")
+def whoop_caps(request: _Req):
+    if not whoop.token_ok(request.headers.get("authorization")):
+        return _push_err(whoop.PushError(401, "unauthorized"))
+    _bind_whoop_user()
+    try:
+        return whoop.capabilities(request.headers.get("noop-push-accept-version"))
+    except whoop.PushError as e:
+        return _push_err(e)
+
+
+class _CalIngest(BaseModel):
+    session_id: str
+    readings: list[dict]
+
+
+@app.post("/cal/ingest")
+async def cal_ingest(body: _CalIngest):
+    """Telomy Recorder streams time-aligned readings here (patch/band/ring/WHOOP/reference on one clock)."""
+    _bind_whoop_user()
+    from . import cal
+    return {"session_id": body.session_id, "stored": cal.ingest(body.session_id, body.readings)}
+
+
+@app.get("/cal/whoop_latest")
+def cal_whoop_latest():
+    """Latest decoded WHOOP raw (SpO2 ratio, temp raw, HRV, HR) for the recorder to show on the same timeline."""
+    _bind_whoop_user()
+    from . import cal
+    return cal.whoop_latest()
+
+
+@app.get("/cal/status")
+def cal_status(session: str | None = None):
+    """Live capture health per source.channel (count, last value, seconds since the server last received it)."""
+    _bind_whoop_user()
+    from . import cal
+    return cal.status(session)
+
+
+@app.get("/cal/monitor", response_class=Response)
+def cal_monitor():
+    """A self-contained live dashboard (same-origin) for watching the overnight capture."""
+    from . import cal
+    return Response(content=cal.monitor_html(), media_type="text/html")
+
+
+@app.post("/whoop/push")
+async def whoop_push(request: _Req):
+    if not whoop.token_ok(request.headers.get("authorization")):
+        return _push_err(whoop.PushError(401, "unauthorized"))
+    _bind_whoop_user()
+    body = await request.body()
+    if len(body) > whoop.MAX_NDJSON + 64 * 1024:
+        return _push_err(whoop.PushError(413, "too_large"))
+    try:
+        return whoop.receive(body, request.headers.get("content-encoding"))
+    except whoop.PushError as e:
+        return _push_err(e)
+
+
+# ------------------------------------------------------------------ CGM via Nightscout-compatible upload (app/cgm.py)
+
+def _ns_auth(request: _Req):
+    if not cgm.secret_ok(request.headers.get("api-secret"), request.query_params.get("token")):
+        raise HTTPException(401, "Unauthorized")
+
+
+@app.get("/nightscout/api/v1/status.json")
+@app.get("/nightscout/api/v1/status")
+def ns_status(request: _Req):
+    _ns_auth(request)
+    return cgm.status()
+
+
+@app.post("/nightscout/api/v1/entries")
+@app.post("/nightscout/api/v1/entries.json")
+async def ns_add_entries(request: _Req):
+    _ns_auth(request)
+    body = await request.json()
+    return {"ok": True, "n": cgm.add_entries(body)}
+
+
+@app.get("/nightscout/api/v1/entries")
+@app.get("/nightscout/api/v1/entries.json")
+@app.get("/nightscout/api/v1/entries/sgv.json")
+def ns_entries(request: _Req, count: int = 10):
+    _ns_auth(request)
+    return cgm.entries(count)
+
+
+@app.get("/cgm/summary")
+def cgm_summary(days: int = 14):
+    return cgm.summary(days)
+
+
+@app.get("/whoop/status")
+def whoop_status():
+    return whoop.status()
+
+
+@app.get("/whoop/day")
+def whoop_day(day: str | None = None):
+    """Day strain, auto-detected workouts, calories and HR-based stress from the WHOOP 1 Hz stream."""
+    from . import whoop_day as wd
+    whoop.init()
+    return wd.day(day)
+
+
+@app.get("/whoop/nights")
+def whoop_nights(days: int = 30):
+    from . import sleep_fusion
+    fused = sleep_fusion.fuse(whoop.nights(days))   # split real overnight nights from daytime naps; flag/reject false ones
+    return {**fused, "daily": whoop.daily(days)}
+
+
 # ------------------------------------------------------------------ Sinc voice (any language, say anything)
 
 @app.post("/voice/audio")
@@ -596,13 +921,22 @@ async def voice_audio(file: UploadFile = File(...), language: str | None = None)
 class VoiceText(BaseModel):
     text: str
     language: str | None = None
+    features: dict | None = None     # acoustic features computed on the phone (raw audio never sent)
+    source: str | None = None        # "typed" | "voice-ondevice" | "checkin"
+    model: str | None = None
 
 
 @app.post("/voice/command")
 def voice_command(body: VoiceText):
     if not body.text.strip():
+        if body.features:   # a voice check-in with no words still gives a stress reading
+            return {"text": "", "actions": [], "stress": voice.record_stress(body.features, body.source or "checkin")}
         raise HTTPException(400, "Say or type something first.")
-    return voice.command(body.text, None, body.language, "typed")
+    out = voice.command(body.text, body.features, body.language, body.source or "typed")
+    if body.model:
+        out["transcription"] = {"text": body.text, "language": body.language, "model": body.model}
+    out["features"] = body.features
+    return out
 
 
 @app.get("/voice/stress")
@@ -712,9 +1046,29 @@ def environment():
 
 @app.get("/environment/compare")
 def environment_compare(a: str = "Delhi", b: str = "Bengaluru"):
-    if a not in exposome.CITIES or b not in exposome.CITIES:
-        raise HTTPException(400, f"Cities available: {', '.join(exposome.CITIES)}")
+    """Compare any two of the 7,482 WHO cities (name-resolved, with a nearest-station fallback)."""
+    if not exposome.city_profile(a) or not exposome.city_profile(b):
+        raise HTTPException(400, "Could not resolve one of those cities. Use a city name or pass lat/lon to /environment/city.")
     return exposome.compare(a, b, exposome.live_week())
+
+
+@app.get("/environment/city")
+def environment_city(name: str | None = None, lat: float | None = None, lon: float | None = None):
+    """Environmental profile for any city or coordinate — real PM2.5/PM10/NO2 + AQLI life-years-lost (WHO V8.0)."""
+    p = exposome.city_profile(name=name, lat=lat, lon=lon)
+    if not p:
+        raise HTTPException(404, "No city or nearby monitoring station found for that query.")
+    return p
+
+
+@app.get("/environment/exposome")
+def environment_exposome(name: str | None = None, lat: float | None = None, lon: float | None = None, country: str | None = None):
+    """Full multi-factor exposome: air + social connection + noise + UV/water + food pointer, each with its
+    evidence-based health translation and honest confidence."""
+    p = exposome.exposome_profile(name=name, lat=lat, lon=lon, country=country)
+    if not p or not p.get("place"):
+        raise HTTPException(404, "Could not resolve that place.")
+    return p
 
 
 # ------------------------------------------------------------------ digital twin
@@ -738,6 +1092,24 @@ def twin_simulate(body: TwinIn):
     if bad:
         raise HTTPException(400, f"Unknown lever: {', '.join(bad)}")
     return twin.simulate(ch or None, max(0.25, min(10, body.years)))
+
+
+@app.get("/twin/projections")
+def twin_projections(step_days: int = 10, horizon_days: int = 90):
+    """Labelled lab projections every 10 days from your latest REAL measurements (never stored as reports).
+    Cached 1 h per (inputs fingerprint): the twin simulation takes seconds on the 1-core server."""
+    import time as _t
+    key = (db.db_path(), step_days, horizon_days, db.one("SELECT COUNT(*) AS n, MAX(id) AS m FROM results")["m"],
+           db.one("SELECT COUNT(*) AS n FROM signals")["n"])
+    hit = _PROJ_CACHE.get(key)
+    if hit and _t.time() - hit[0] < 3600:
+        return hit[1]
+    out = {**twin.projections(max(5, min(step_days, 30)), max(30, min(horizon_days, 365))), "accuracy": twin.projection_accuracy()}
+    _PROJ_CACHE.clear(); _PROJ_CACHE[key] = (_t.time(), out)
+    return out
+
+
+_PROJ_CACHE: dict = {}
 
 
 @app.get("/twin/day")
@@ -789,6 +1161,22 @@ def device_recent(device_id: str, minutes: int = 120):
 @app.get("/devices/channels")
 def device_channels():
     return {m: {k: {"label": v[0], "unit": v[1], "limits": [v[2], v[3]]} for k, v in ch.items()} for m, ch in devices.CHANNELS.items()}
+
+
+@app.get("/dynamics/load")
+def dynamics_load(outcome: str = "hrv"):
+    """Personal training-load → next-day HRV model (Banister impulse-response fitted to your data, with skill)."""
+    from . import dynamics
+    return dynamics.banister(outcome)
+
+
+@app.get("/dynamics/sleep-pressure")
+def dynamics_sleep_pressure():
+    """Two-process sleep pressure from your recent WHOOP-detected sleep periods (needs 3 nights)."""
+    import time
+    from . import dynamics
+    ns = [(n["start"], n["end"]) for n in whoop.nights(14) if n.get("end")]
+    return dynamics.sleep_pressure(ns, time.time())
 
 
 @app.get("/physio/validation")
@@ -1196,24 +1584,76 @@ def add_signal(body: ManualSignal):
              (body.day or today(), body.metric, body.value, "Manual entry"))
     return {"ok": True}
 
+class DailyItem(BaseModel):
+    day: str
+    metric: str
+    value: float
+    source: str
+
+
+class DailyBatch(BaseModel):
+    items: list[DailyItem]
+
+
+DEVICE_SOURCES = {"Telomy patch", "Telomy ring", "WHOOP", "Apple Health", "Apple Watch", "Telomy (fused)"}
+
+
+@app.post("/signals/daily")
+def add_daily(body: DailyBatch):
+    """Daily summaries computed on the phone from the user's real devices (fused nights, recovery inputs, Apple
+    Health activity). Idempotent upsert per (day, metric); only known metrics from labelled real sources."""
+    ok = 0
+    for it in body.items[:2000]:
+        if it.metric not in engine.SIGNALS or it.source not in DEVICE_SOURCES or not math.isfinite(it.value):
+            continue
+        try:
+            date.fromisoformat(it.day)
+        except ValueError:
+            continue
+        db.exec_("INSERT OR REPLACE INTO signals (day, metric, value, source) VALUES (?,?,?,?)", (it.day, it.metric, it.value, it.source))
+        ok += 1
+    if ok:
+        engine.regenerate_insights()
+    return {"ok": True, "accepted": ok}
+
 # ------------------------------------------------------------------ labs
 
-@app.post("/labs/parse")
-async def labs_parse(file: UploadFile = File(...)):
-    data = await file.read()
+def _parse_pdf_payload(data: bytes, filename: str) -> dict:
     if not data[:5] == b"%PDF-":
         raise HTTPException(400, "That file isn't a PDF. Upload the PDF your lab sent you.")
     try:
-        parsed = parse_pdf(data, file.filename or "")
+        parsed = parse_pdf(data, filename or "")
     except Exception as exc:
         raise HTTPException(422, f"I couldn't read that PDF ({type(exc).__name__}). If it's a scan, a photo upload is coming next.")
     if not parsed["markers"]:
         raise HTTPException(422, "I didn't find any biomarkers I recognise in that PDF.")
     dup = db.one("SELECT id FROM reports WHERE panel = ? AND collected_on = ?", (parsed["panel"], parsed["collected_on"]))
     parsed["duplicate_of"] = dup["id"] if dup else None
-    parsed["filename"] = file.filename
+    parsed["filename"] = filename
     parsed["panel_title"] = PANELS[parsed["panel"]]
     return parsed
+
+
+@app.post("/labs/parse")
+async def labs_parse(file: UploadFile = File(...)):
+    return _parse_pdf_payload(await file.read(), file.filename or "")
+
+
+class LabB64(BaseModel):
+    filename: str | None = None
+    pdf_base64: str
+
+
+@app.post("/labs/parse_b64")
+def labs_parse_b64(body: LabB64):
+    """JSON upload path: the phone sends the PDF base64-encoded in a JSON body. Multipart file upload from React
+    Native over HTTPS was failing to reach the server; JSON POSTs are reliable, so this is the robust ingestion path."""
+    import base64 as _b64
+    try:
+        data = _b64.b64decode(body.pdf_base64, validate=False)
+    except Exception:
+        raise HTTPException(400, "Could not read the uploaded file. Please try the PDF again.")
+    return _parse_pdf_payload(data, body.filename or "")
 
 
 class SaveReport(BaseModel):
@@ -1374,6 +1814,15 @@ def delete_meal(mid: int):
     return {"ok": True}
 
 
+@app.get("/nutrition/targets")
+def nutrition_targets(goal: str = "maintain"):
+    """Personal daily targets from body, labs and measured activity; with today's logged meals against them."""
+    from . import nutrition
+    if goal not in ("maintain", "lose"):
+        raise HTTPException(400, "goal must be maintain or lose")
+    return nutrition.today_vs_targets(goal)
+
+
 @app.get("/nutrition/trends")
 def nutrition_trends(days: int = 7):
     end = date.fromisoformat(today())
@@ -1450,6 +1899,1029 @@ def ask(body: Ask):
     if not body.question.strip():
         raise HTTPException(400, "Ask me something about your health data.")
     return sinc.ask(body.question.strip(), body.chat_id, body.mode if body.mode in ("normal", "deep") else "normal")
+
+
+@app.get("/sinc/context")
+def sinc_context(q: str = ""):
+    return sinc.slm_context(q)
+
+
+class OnDevice(BaseModel):
+    question: str
+    answer: str
+    chat_id: int | None = None
+    model: str = "on-device"
+
+
+@app.post("/sinc/log")
+def sinc_log(body: OnDevice):
+    if not body.question.strip() or not body.answer.strip():
+        raise HTTPException(400, "Question and answer are required.")
+    return sinc.log_on_device(body.question.strip(), body.answer.strip()[:4000], body.chat_id, body.model[:60])
+
+
+class Capture(BaseModel):
+    text: str
+
+
+@app.post("/sinc/capture")
+def sinc_capture(body: Capture):
+    """Statements only (used by on-device Sinc before it answers): set up / update trackers. {captured: false} otherwise."""
+    r = trackers.capture(body.text.strip()) if body.text.strip() else None
+    return {"captured": bool(r), **(r or {})}
+
+
+@app.get("/trackers")
+def trackers_list(active: bool = False):
+    return trackers.all_trackers(active)
+
+
+@app.get("/trackers/today")
+def trackers_today():
+    return trackers.today()
+
+
+@app.get("/trackers/{tid}")
+def tracker_get(tid: int):
+    if not db.one("SELECT 1 AS x FROM trackers WHERE id = ?", (tid,)):
+        raise HTTPException(404, "No such tracker.")
+    return {**trackers.summary(tid), "drivers": trackers.drivers(tid),
+            "entries": db.rows("SELECT ts, value, note, source FROM tracker_entries WHERE tracker_id = ? ORDER BY ts DESC LIMIT 60", (tid,))}
+
+
+class TrackerEntry(BaseModel):
+    value: float | None = None
+    note: str | None = None
+
+
+@app.post("/trackers/{tid}/entry")
+def tracker_entry(tid: int, body: TrackerEntry):
+    if not db.one("SELECT 1 AS x FROM trackers WHERE id = ?", (tid,)):
+        raise HTTPException(404, "No such tracker.")
+    trackers.log_entry(tid, body.value, note=body.note, source="app")
+    return trackers.summary(tid)
+
+
+@app.post("/trackers/{tid}/stop")
+def tracker_stop(tid: int):
+    db.exec_("UPDATE trackers SET active = 0 WHERE id = ?", (tid,))
+    return trackers.summary(tid)
+
+
+class ClientLog(BaseModel):
+    area: str
+    stage: str = ""
+    message: str = ""
+    model: str | None = None
+    free_bytes: float | None = None
+
+
+@app.post("/client/log")
+def client_log(body: ClientLog):
+    """App-side failures (e.g. the on-device model download) land here so they can be diagnosed without the phone.
+    Technical messages only — the app never sends health data on this route."""
+    db.exec_("CREATE TABLE IF NOT EXISTS client_log (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, area TEXT, stage TEXT, message TEXT, data TEXT)")
+    db.exec_("INSERT INTO client_log (ts, area, stage, message, data) VALUES (?,?,?,?,?)",
+             (engine.now_iso(), body.area[:40], body.stage[:40], body.message[:500], db.j({"model": body.model, "free_bytes": body.free_bytes})))
+    return {"ok": True}
+
+
+class Finding(BaseModel):
+    kind: str
+    payload: dict
+    citation: str
+    evidence: str = "C"
+    note: str = ""
+
+
+@app.get("/science")
+def science_list(include_inactive: bool = False):
+    return science.list_findings(include_inactive)
+
+
+@app.post("/science")
+def science_add(body: Finding):
+    """Add a new finding (a paper/guideline) as data — it takes effect on the next request. Clinician/admin use."""
+    try:
+        return science.add_finding(body.kind, body.payload, body.citation, body.evidence, "api", body.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/science/{fid}/active")
+def science_toggle(fid: int, active: bool = True):
+    return science.set_active(fid, active)
+
+
+class VitalsBatch(BaseModel):
+    samples: list[dict]
+    source: str
+
+
+@app.post("/vitals/ingest")
+def vitals_ingest(body: VitalsBatch):
+    """A device batch of high-frequency vitals (ts, metric, value, step_s). Idempotent; fills the longitudinal record."""
+    return vitalsmod.ingest(body.samples, body.source[:40] or "device")
+
+
+@app.get("/vitals/day")
+def vitals_day(day: str | None = None):
+    return vitalsmod.day(day)
+
+
+@app.get("/vitals/series")
+def vitals_series(metric: str, start: int, end: int, max_points: int = 1000):
+    return vitalsmod.series(metric, start, end, min(max_points, 5000))
+
+
+@app.get("/vitals/coverage")
+def vitals_coverage(days: int = 7):
+    return vitalsmod.coverage(days)
+
+
+# ---- Fulfillment & logistics (pickups/deliveries) ----
+class OrderIn(BaseModel):
+    org: str = "default"
+    kind: str
+    items: list[dict]
+    member_id: int | None = None
+    patient_id: int | None = None
+    address: str = ""
+    slot: str | None = None
+    rx_plan_id: int | None = None
+    partner: str = ""
+
+
+@app.get("/mgmt/orders")
+def mgmt_orders(org: str = "default", status: str | None = None, kind: str | None = None):
+    return fulfillment.list_orders(org, status, kind)
+
+
+@app.post("/mgmt/orders")
+def mgmt_order_add(body: OrderIn):
+    try:
+        return fulfillment.create_order(body.org, body.kind, body.items, body.member_id, body.patient_id, body.address, body.slot, body.rx_plan_id, body.partner)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/orders/{oid}")
+def mgmt_order(oid: int):
+    o = fulfillment.order(oid)
+    if not o:
+        raise HTTPException(404, "no such order")
+    return o
+
+
+@app.post("/mgmt/orders/{oid}/advance")
+def mgmt_order_advance(oid: int, body: dict):
+    try:
+        return fulfillment.advance(oid, body.get("status", ""), body.get("note", ""), body.get("tracking"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/orders/from-rx/{plan_id}")
+def mgmt_order_from_rx(plan_id: int, body: dict):
+    try:
+        return fulfillment.from_rx_plan(body.get("org", "default"), plan_id, body.get("address", ""), body.get("slot"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/sample-pickup")
+def mgmt_sample_pickup(body: dict):
+    try:
+        return fulfillment.schedule_sample_pickup(body.get("org", "default"), int(body["patient_id"]), body.get("tests", []),
+                                                   body.get("address", ""), body.get("slot", ""), body.get("partner", ""))
+    except (ValueError, KeyError) as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- Goals ----
+class GoalIn(BaseModel):
+    org: str = "default"
+    title: str
+    owner_kind: str = "member"
+    owner_id: int | None = None
+    category: str = ""
+    metric: str | None = None
+    target: float | None = None
+    deadline: str | None = None
+    set_by: str = ""
+
+
+@app.get("/mgmt/goals")
+def mgmt_goals(org: str = "default", owner_kind: str | None = None, owner_id: int | None = None, status: str = "active"):
+    return goals.list_goals(org, owner_kind, owner_id, status)
+
+
+@app.post("/mgmt/goals")
+def mgmt_goal_add(body: GoalIn):
+    try:
+        return goals.add_goal(body.org, body.title, body.owner_kind, body.owner_id, body.category, body.metric, body.target, body.deadline, body.set_by)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/goals/{gid}")
+def mgmt_goal_update(gid: int, body: dict):
+    try:
+        return goals.update_goal(gid, body.get("status"), body.get("target"), body.get("deadline"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- Interoperability (open to hospital/EHR systems) ----
+@app.get("/interop/fhir/Patient")
+def interop_fhir_patient():
+    return interop.fhir_patient()
+
+
+@app.get("/interop/fhir/Bundle")
+def interop_fhir_bundle():
+    return interop.fhir_bundle()
+
+
+@app.get("/mgmt/api-keys")
+def mgmt_keys(org: str = "default"):
+    return interop.list_keys(org)
+
+
+@app.post("/mgmt/api-keys")
+def mgmt_key_add(body: dict):
+    return interop.create_key(body.get("org", "default"), body.get("name", "integration"), body.get("scopes", ["read"]))
+
+
+@app.delete("/mgmt/api-keys/{kid}")
+def mgmt_key_del(kid: int):
+    interop.revoke_key(kid); return {"ok": True}
+
+
+@app.get("/mgmt/webhooks")
+def mgmt_webhooks(org: str = "default"):
+    return interop.list_webhooks(org)
+
+
+@app.post("/mgmt/webhooks")
+def mgmt_webhook_add(body: dict):
+    return interop.add_webhook(body.get("org", "default"), body.get("url", ""), body.get("events", ["*"]))
+
+
+# ---- Staff accounts & role-based login (centre vs doctor log in separately) ----
+class StaffSignup(BaseModel):
+    org: str = "default"
+    role: str
+    name: str
+    email: str
+    password: str
+
+
+class StaffLogin(BaseModel):
+    email: str
+    password: str
+
+
+@app.get("/mgmt/auth/status")
+def mgmt_auth_status():
+    return {"roles": staffmod.ROLES, "has_staff": staffmod.any_staff()}
+
+
+@app.post("/mgmt/auth/signup")
+def mgmt_auth_signup(body: StaffSignup, authorization: str = _Hdr(default="")):
+    # first account bootstraps; after that, only an admin can add staff
+    me = None
+    if staffmod.any_staff():
+        me = staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+        if not me or not me["admin"]:
+            raise HTTPException(403, "Only an admin can add staff.")
+    _guard_staff_creation(me, body.role, body.org)
+    try:
+        return staffmod.create_staff(body.org, body.role, body.name, body.email, body.password, by=(me or {}).get("email", "bootstrap"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/auth/login")
+def mgmt_auth_login(body: StaffLogin):
+    try:
+        return staffmod.login(body.email, body.password)
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+
+
+@app.get("/mgmt/auth/me")
+def mgmt_auth_me(authorization: str = _Hdr(default="")):
+    me = staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+    if not me:
+        raise HTTPException(401, "Not signed in.")
+    return me
+
+
+@app.post("/mgmt/auth/logout")
+def mgmt_auth_logout(authorization: str = _Hdr(default="")):
+    if authorization.startswith("Bearer "):
+        staffmod.logout(authorization[7:])
+    return {"ok": True}
+
+
+@app.get("/mgmt/staff")
+def mgmt_staff(org: str = "default"):
+    return staffmod.list_staff(org)
+
+
+@app.post("/mgmt/staff")
+def mgmt_staff_add(body: StaffSignup, authorization: str = _Hdr(default="")):
+    me = staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+    if staffmod.any_staff() and (not me or not me["admin"]):
+        raise HTTPException(403, "Only an admin can add staff.")
+    _guard_staff_creation(me, body.role, body.org)
+    try:
+        return staffmod.create_staff(body.org, body.role, body.name, body.email, body.password, by=(me or {}).get("email", "setup"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+def _guard_staff_creation(me: dict | None, role: str, org: str):
+    """Privilege rules: only a super-admin creates super-admins or staff outside their own org/workspace."""
+    if role not in staffmod.ROLES:
+        raise HTTPException(400, "Unknown role.")
+    if me is None:
+        return  # bootstrap: the very first account may be anything (typically super_admin or a centre_admin)
+    if me["role"] == "super_admin":
+        return
+    target_ws = staffmod.ROLES[role]["workspace"]
+    if role == "super_admin" or target_ws == "platform":
+        raise HTTPException(403, "Only a super-admin can create platform accounts.")
+    if org != me["org"]:
+        raise HTTPException(403, "You can only add staff to your own organisation.")
+    if target_ws != me["workspace"]:
+        raise HTTPException(403, f"A {me['workspace']} admin cannot create {target_ws}-side accounts.")
+
+
+class StaffActive(BaseModel):
+    active: bool = True
+
+
+@app.post("/mgmt/staff/{sid}/active")
+def mgmt_staff_active(sid: int, body: StaffActive, authorization: str = _Hdr(default="")):
+    me = staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+    if not me or not me["admin"]:
+        raise HTTPException(403, "Only an admin can change staff access.")
+    if sid == me["staff_id"]:
+        raise HTTPException(400, "You cannot disable your own account.")
+    if not any(s["id"] == sid for s in staffmod.list_staff(me["org"])):
+        raise HTTPException(404, "No such staff member in your organisation.")
+    staffmod.set_active(sid, body.active)
+    return {"ok": True, "id": sid, "active": body.active}
+
+
+# ---- staff auth helpers (shared by the admin / assignment / performance endpoints) ----
+def _staff(authorization: str) -> dict | None:
+    return staffmod.whoami(authorization[7:] if authorization.startswith("Bearer ") else "")
+
+
+def _require_staff(authorization: str) -> dict:
+    me = _staff(authorization)
+    if not me:
+        raise HTTPException(401, "Sign in to the console first.")
+    return me
+
+
+def _require_super(authorization: str) -> dict:
+    me = _require_staff(authorization)
+    if me["role"] != "super_admin":
+        raise HTTPException(403, "Super-admin only.")
+    return me
+
+
+def _require_org_admin(authorization: str, org: str) -> dict:
+    """An admin of this org, or any super-admin."""
+    me = _require_staff(authorization)
+    if me["role"] == "super_admin":
+        return me
+    if not me["admin"] or me["org"] != org:
+        raise HTTPException(403, "You must be an admin of this organisation.")
+    return me
+
+
+class _ClinicAssess(BaseModel):
+    panel: dict | None = None          # blood markers (preferred) → trained NHANES disease models
+    features: dict | None = None       # non-invasive questionnaire/wearable features → lab-free chronic model
+    profile: dict | None = None        # meds / conditions / goals (for the supplement safety screen)
+    wearable: dict | None = None       # resting_hr / sdnn / spo2 → fusion overlay
+    risk_threshold: float = 0.2
+
+
+@app.post("/mgmt/clinic/assess")
+def mgmt_clinic_assess(body: _ClinicAssess, authorization: str = _Hdr(default="")):
+    """Doctor-side: one grounded assessment (diagnostics + treatments + therapies + supplements + retest),
+    pending clinician validation. Uses the blood-panel models when bloods exist, else the lab-free chronic model."""
+    _require_staff(authorization)
+    from .llx import clinic_engine
+    return clinic_engine.assess(panel=body.panel, profile=body.profile, features=body.features,
+                                wearable=body.wearable, risk_threshold=body.risk_threshold)
+
+
+class _ClinicValidate(BaseModel):
+    assessment: dict
+    approved: list | None = None
+    note: str = ""
+
+
+@app.post("/mgmt/clinic/validate")
+def mgmt_clinic_validate(body: _ClinicValidate, authorization: str = _Hdr(default="")):
+    """The clinician sign-off gate: records which treatment/therapy/supplement items the doctor approved."""
+    me = _require_staff(authorization)
+    from .llx import clinic_engine
+    return clinic_engine.validate(body.assessment, approved_items=body.approved,
+                                  doctor=me.get("name", ""), note=body.note)
+
+
+class _ClinicTrial(BaseModel):
+    intervention_id: str
+    profile: dict | None = None
+
+
+@app.post("/mgmt/clinic/trial")
+def mgmt_clinic_trial(body: _ClinicTrial, authorization: str = _Hdr(default="")):
+    """Doctor-side: design a proper n-of-1 trial for one longevity intervention on a patient (baseline, course,
+    tracked markers + FAERS watchlist, washout/re-challenge, stopping & response rules). Clinician-gated."""
+    _require_staff(authorization)
+    from .llx import geroprotectors
+    return geroprotectors.design_trial(body.intervention_id, body.profile or {})
+
+
+@app.get("/mgmt/clinic/catalog")
+def mgmt_clinic_catalog(intervention_id: str = "", authorization: str = _Hdr(default="")):
+    """Doctor-side: browse the longevity corpus (summary) or one intervention's full evidence record."""
+    _require_staff(authorization)
+    from .llx import geroprotectors
+    return geroprotectors.lookup(intervention_id) if intervention_id else geroprotectors.corpus_summary()
+
+
+@app.get("/mgmt/clinic/patients/{pid}/biomarkers")
+def mgmt_patient_biomarkers(pid: int, authorization: str = _Hdr(default="")):
+    """Intake auto-fill: a patient's latest stored biomarkers (engine-keyed), pulled from their own record — so the
+    Longevity Rx / macro screens never retype values."""
+    _require_staff(authorization)
+    from . import patient_data
+    return patient_data.biomarkers(pid)
+
+
+@app.get("/mgmt/clinic/patients/{pid}/overview")
+def mgmt_patient_overview(pid: int, authorization: str = _Hdr(default="")):
+    """The 360: identity + risk + labs + vitals + recovery/sleep + habits + reports + a grounded AI summary."""
+    _require_staff(authorization)
+    from . import patient_data
+    return patient_data.overview(pid)
+
+
+@app.post("/mgmt/staff/{sid}/profile")
+def mgmt_staff_profile(sid: int, body: dict, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    tgt = staffmod.get_staff(sid)
+    if not tgt:
+        raise HTTPException(404, "No such staff member.")
+    if not (me["role"] == "super_admin" or (me["admin"] and me["org"] == tgt["org"]) or me["staff_id"] == sid):
+        raise HTTPException(403, "Not allowed.")
+    return staffmod.update_profile(sid, name=body.get("name"), profile=body.get("profile") or {})
+
+
+# ---- Super-admin: onboard & oversee the whole network ----
+class CentreOnboard(BaseModel):
+    name: str
+    city: str = ""
+    slug: str | None = None
+    admin_name: str = ""
+    admin_email: str = ""
+    admin_password: str = ""
+
+
+@app.get("/mgmt/admin/overview")
+def mgmt_admin_overview(authorization: str = _Hdr(default="")):
+    _require_super(authorization)
+    return tenancymod.platform_overview()
+
+
+@app.get("/mgmt/admin/centres")
+def mgmt_admin_centres(authorization: str = _Hdr(default="")):
+    _require_super(authorization)
+    return tenancymod.list_centres()
+
+
+@app.post("/mgmt/admin/centres")
+def mgmt_admin_centre_add(body: CentreOnboard, authorization: str = _Hdr(default="")):
+    me = _require_super(authorization)
+    try:
+        return tenancymod.onboard_centre(body.name, body.city, body.slug, body.admin_name, body.admin_email,
+                                         body.admin_password, by=me["email"])
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/admin/centres/{slug}/status")
+def mgmt_admin_centre_status(slug: str, body: dict, authorization: str = _Hdr(default="")):
+    _require_super(authorization)
+    tenancymod.set_centre_status(slug, body.get("status", "active"))
+    return {"ok": True}
+
+
+@app.get("/mgmt/admin/staff")
+def mgmt_admin_staff(authorization: str = _Hdr(default="")):
+    _require_super(authorization)
+    return staffmod.all_staff()
+
+
+class DoctorOnboard(BaseModel):
+    name: str
+    email: str
+    password: str
+    org: str | None = None          # affiliate to a centre on creation (optional)
+    clinic_admin: bool = False
+
+
+@app.post("/mgmt/admin/doctors")
+def mgmt_admin_doctor_add(body: DoctorOnboard, authorization: str = _Hdr(default="")):
+    me = _require_super(authorization)
+    role = "clinic_admin" if body.clinic_admin else "doctor"
+    org = body.org or "independent"
+    try:
+        doc = staffmod.create_staff(org, role, body.name, body.email, body.password, by=me["email"])
+        if body.org:
+            tenancymod.affiliate_doctor(doc["id"], body.org)
+        return doc
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- The care graph: onboarding & assignments (doctor ⇄ centre ⇄ patient) ----
+class PatientOnboard(BaseModel):
+    name: str
+    user_ref: str | None = None
+    age: float | None = None
+    sex: str | None = None
+    city: str = ""
+    org: str | None = None          # assign to this centre
+    doctor_id: int | None = None    # assign to this doctor
+
+
+@app.post("/mgmt/patients/onboard")
+def mgmt_patient_onboard(body: PatientOnboard, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    # a centre person may only onboard into their own centre; a doctor may onboard freely (they then assign to a centre)
+    if me["workspace"] == "centre":
+        body.org = me["org"]
+    by_role = me["role"]
+    try:
+        return tenancymod.onboard_patient(body.name, by_role, by=me["email"], user_ref=body.user_ref, age=body.age,
+                                          sex=body.sex, city=body.city, org=body.org, doctor_id=body.doctor_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class AssignCentre(BaseModel):
+    patient_id: int
+    org: str
+    note: str = ""
+
+
+@app.post("/mgmt/assign/centre")
+def mgmt_assign_centre(body: AssignCentre, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)   # doctors assign their patients to a centre
+    try:
+        return tenancymod.assign_to_centre(body.patient_id, body.org, by=me["email"], note=body.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class AssignDoctor(BaseModel):
+    patient_id: int
+    doctor_id: int
+    note: str = ""
+
+
+@app.post("/mgmt/assign/doctor")
+def mgmt_assign_doctor(body: AssignDoctor, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)   # centres assign their members to an affiliated doctor
+    try:
+        return tenancymod.assign_to_doctor(body.patient_id, body.doctor_id, by=me["email"], note=body.note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/patients/{pid}/graph")
+def mgmt_patient_graph(pid: int, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.patient_graph(pid)
+
+
+@app.get("/mgmt/centre/people")
+def mgmt_centre_people(org: str = "default", authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.centre_patients(org)
+
+
+@app.get("/mgmt/doctor/patients")
+def mgmt_doctor_patients(authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    return tenancymod.doctor_patients(me["staff_id"])
+
+
+@app.get("/mgmt/doctor/centres")
+def mgmt_doctor_centres(authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    # a doctor sees the centres they're affiliated to; a super-admin sees all
+    if me["role"] == "super_admin":
+        return tenancymod.list_centres()
+    return tenancymod.doctor_centres(me["staff_id"])
+
+
+# ---- doctor ⇄ centre affiliation ----
+@app.get("/mgmt/centre/doctors")
+def mgmt_centre_doctors(org: str = "default", authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.centre_doctors(org)
+
+
+class Affiliate(BaseModel):
+    doctor_id: int
+    org: str
+
+
+@app.post("/mgmt/centre/doctors")
+def mgmt_centre_affiliate(body: Affiliate, authorization: str = _Hdr(default="")):
+    _require_org_admin(authorization, body.org)
+    try:
+        return tenancymod.affiliate_doctor(body.doctor_id, body.org)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ---- operational staff ⇄ therapy / machine ----
+class Duty(BaseModel):
+    staff_id: int
+    org: str
+    duty_kind: str                  # 'service' | 'resource'
+    ref_id: int
+
+
+@app.get("/mgmt/duties")
+def mgmt_duties(org: str = "default", staff_id: int | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.staff_duties(org, staff_id)
+
+
+@app.post("/mgmt/duties")
+def mgmt_duty_add(body: Duty, authorization: str = _Hdr(default="")):
+    _require_org_admin(authorization, body.org)
+    try:
+        return tenancymod.assign_duty(body.staff_id, body.org, body.duty_kind, body.ref_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/mgmt/duties")
+def mgmt_duty_del(staff_id: int, duty_kind: str, ref_id: int, org: str = "default", authorization: str = _Hdr(default="")):
+    _require_org_admin(authorization, org)
+    tenancymod.remove_duty(staff_id, duty_kind, ref_id)
+    return {"ok": True}
+
+
+# ---- performance & revenue (one app runs the whole centre) ----
+@app.get("/mgmt/centre/performance")
+def mgmt_centre_performance(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.staff_performance(org, since=since)
+
+
+@app.get("/mgmt/centre/revenue")
+def mgmt_centre_revenue(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return tenancymod.centre_revenue(org, since=since)
+
+
+# ---- Billing, payments & subscriptions ----
+@app.get("/mgmt/billing/gateways")
+def mgmt_billing_gateways(authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return billingmod.gateways()
+
+
+@app.get("/mgmt/billing/plans")
+def mgmt_billing_plans(org: str = "default", authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return {"memberships": pform.list_catalog(org, "membership_plan"),
+            "packages": [s for s in pform.list_catalog(org, "service_type") if s["data"].get("category") == "Package"],
+            "services": [s for s in pform.list_catalog(org, "service_type") if s["data"].get("category") != "Package"]}
+
+
+@app.post("/mgmt/billing/seed-plans")
+def mgmt_billing_seed(body: dict, authorization: str = _Hdr(default="")):
+    org = body.get("org", "default")
+    _require_org_admin(authorization, org)
+    return billingmod.seed_plans(org)
+
+
+class PayBody(BaseModel):
+    org: str = "default"
+    invoice_id: int
+    gateway: str
+
+
+@app.post("/mgmt/billing/pay")
+def mgmt_billing_pay(body: PayBody, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    try:
+        return billingmod.record_payment(body.org, body.invoice_id, body.gateway)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+class SubscribeBody(BaseModel):
+    org: str = "default"
+    member_id: int
+    plan_id: int
+    gateway: str
+
+
+@app.post("/mgmt/billing/subscribe")
+def mgmt_billing_subscribe(body: SubscribeBody, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    try:
+        return billingmod.create_subscription(body.org, body.member_id, body.plan_id, body.gateway)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/billing/run-cycle")
+def mgmt_billing_run_cycle(body: dict, authorization: str = _Hdr(default="")):
+    org = body.get("org", "default")
+    _require_org_admin(authorization, org)
+    return billingmod.run_billing_cycle(org, body.get("as_of", date.today().isoformat()))
+
+
+@app.get("/mgmt/billing/payments")
+def mgmt_billing_payments(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return billingmod.list_payments(org, since=since)
+
+
+@app.get("/mgmt/billing/summary")
+def mgmt_billing_summary(org: str = "default", since: str | None = None, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    return billingmod.summary(org, since=since)
+
+
+# ---- Platform: modular, customisable config for centres & clinics ----
+class OrgCfg(BaseModel):
+    org: str = "default"
+    kind: str | None = None
+    modules: dict | None = None
+    branding: dict | None = None
+    settings: dict | None = None
+
+
+class CatalogIn(BaseModel):
+    org: str = "default"
+    kind: str
+    name: str
+    data: dict | None = None
+    key: str | None = None
+
+
+class FieldIn(BaseModel):
+    org: str = "default"
+    entity: str
+    label: str
+    type: str
+    options: list | None = None
+    required: bool = False
+    section: str = ""
+
+
+@app.get("/mgmt/overview")
+def mgmt_overview(org: str = "default"):
+    return pform.overview(org)
+
+
+@app.post("/mgmt/config")
+def mgmt_config(body: OrgCfg):
+    return pform.set_org(body.org, body.kind, body.modules, body.branding, body.settings)
+
+
+@app.get("/mgmt/catalog")
+def mgmt_catalog(org: str = "default", kind: str = "service_type", include_inactive: bool = False):
+    return pform.list_catalog(org, kind, include_inactive)
+
+
+@app.post("/mgmt/catalog")
+def mgmt_catalog_add(body: CatalogIn):
+    try:
+        return pform.add_catalog(body.org, body.kind, body.name, body.data, body.key)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/catalog/{cid}")
+def mgmt_catalog_update(cid: int, body: dict):
+    try:
+        return pform.update_catalog(cid, body.get("name"), body.get("data"), body.get("active"), body.get("sort"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/fields")
+def mgmt_fields(org: str = "default", entity: str = "member"):
+    return pform.fields_for(org, entity)
+
+
+@app.post("/mgmt/fields")
+def mgmt_fields_add(body: FieldIn):
+    try:
+        return pform.add_field(body.org, body.entity, body.label, body.type, body.options, body.required, body.section)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/mgmt/fields/{fid}")
+def mgmt_fields_del(fid: int):
+    pform.delete_field(fid); return {"ok": True}
+
+
+@app.get("/mgmt/form")
+def mgmt_form(org: str = "default", entity: str = "member"):
+    return pform.form_schema(org, entity)
+
+
+# ---- Centre operations ----
+class MemberIn(BaseModel):
+    org: str = "default"
+    name: str
+    phone: str = ""
+    email: str = ""
+    patient_id: int | None = None
+    fields: dict | None = None
+
+
+class BookIn(BaseModel):
+    org: str = "default"
+    member_id: int
+    service_id: int
+    start_ts: str
+    staff_id: int | None = None
+    resource_id: int | None = None
+    fields: dict | None = None
+
+
+@app.get("/mgmt/centre/dashboard")
+def mgmt_centre_dash(org: str = "default", day: str | None = None):
+    return centremod.dashboard(org, day)
+
+
+@app.get("/mgmt/centre/members")
+def mgmt_members(org: str = "default"):
+    return centremod.list_members(org)
+
+
+@app.post("/mgmt/centre/members")
+def mgmt_member_add(body: MemberIn):
+    try:
+        return centremod.add_member(body.org, body.name, body.phone, body.email, body.patient_id, body.fields)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/centre/members/{mid}")
+def mgmt_member(mid: int):
+    m = centremod.member(mid)
+    if not m:
+        raise HTTPException(404, "no such member")
+    return m
+
+
+@app.post("/mgmt/centre/members/{mid}/enroll")
+def mgmt_enroll(mid: int, body: dict):
+    try:
+        return centremod.enroll(body.get("org", "default"), mid, int(body["plan_id"]))
+    except (ValueError, KeyError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/mgmt/centre/schedule")
+def mgmt_schedule(org: str = "default", day: str | None = None):
+    return centremod.schedule(org, day)
+
+
+@app.post("/mgmt/centre/book")
+def mgmt_book(body: BookIn):
+    try:
+        return centremod.book(body.org, body.member_id, body.service_id, body.start_ts, body.staff_id, body.resource_id, body.fields)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/centre/bookings/{bid}/checkin")
+def mgmt_checkin(bid: int):
+    try:
+        return centremod.check_in(bid)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/centre/bookings/{bid}/status")
+def mgmt_book_status(bid: int, body: dict):
+    try:
+        return centremod.set_status(bid, body.get("status", ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/centre/invoices/{iid}/pay")
+def mgmt_pay(iid: int, body: dict):
+    return centremod.pay(iid, body.get("method", "card"))
+
+
+# ---- Clinic (doctor) operations ----
+@app.get("/mgmt/clinic/inbox")
+def mgmt_inbox(org: str = "default", doctor_id: int = 2):
+    return clinicmod.inbox(org, doctor_id)
+
+
+@app.get("/mgmt/clinic/templates")
+def mgmt_templates(org: str = "default"):
+    return clinicmod.templates(org)
+
+
+@app.get("/mgmt/clinic/patients/{pid}/notes")
+def mgmt_notes(pid: int):
+    return clinicmod.notes_for(pid)
+
+
+@app.post("/mgmt/clinic/patients/{pid}/notes")
+def mgmt_note_add(pid: int, body: dict):
+    try:
+        return clinicmod.add_note(body.get("org", "default"), pid, body.get("author", "Doctor"), body.get("template_id"),
+                                  body.get("title", ""), body.get("content"), body.get("fields"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/clinic/notes/{nid}/sign")
+def mgmt_note_sign(nid: int, body: dict):
+    return clinicmod.sign(nid, body.get("by", "Doctor"))
+
+
+@app.get("/mgmt/clinic/tasks")
+def mgmt_tasks(org: str = "default", status: str = "open"):
+    return clinicmod.tasks(org, status)
+
+
+@app.post("/mgmt/clinic/tasks")
+def mgmt_task_add(body: dict):
+    try:
+        return clinicmod.add_task(body.get("org", "default"), body.get("text", ""), body.get("patient_id"),
+                                  body.get("assignee", ""), body.get("due"), int(body.get("priority", 1)))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/mgmt/clinic/tasks/{tid}/complete")
+def mgmt_task_done(tid: int):
+    return clinicmod.complete_task(tid)
+
+
+@app.get("/bioage")
+def bioage_all():
+    """Every kind of age from your data — blood (PhenoAge, KDM, dysregulation), fitness, muscle, heart, organs."""
+    return bioage.all_ages()
+
+
+@app.get("/cellular/explain")
+def cellular_explain(name: str):
+    """What a supplement/medicine/food/stressor does at the cellular level, and which markers it moves."""
+    from . import cellular
+    return cellular.explain(name)
+
+
+@app.get("/cellular/marker/{marker_id}")
+def cellular_marker(marker_id: str):
+    from . import cellular
+    return cellular.for_marker(marker_id)
+
+
+@app.get("/sinc/insights")
+def sinc_insights():
+    """The connected story — Sinc links labs, wearables, trackers and genetics into themed threads with evidence."""
+    from . import retrieval
+    return retrieval.connect()
+
+
+@app.get("/sinc/retrieve")
+def sinc_retrieve(q: str, k: int = 12):
+    """What Sinc would ground on for a question (debug/transparency): the retrieved cards."""
+    from . import retrieval
+    return [{"id": c["id"], "kind": c["kind"], "title": c["title"], "text": c["text"]} for c in retrieval.retrieve(q, k)]
 
 
 @app.get("/sinc/chats")

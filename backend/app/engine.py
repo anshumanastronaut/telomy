@@ -6,7 +6,7 @@ were missing, a confidence in [0, 1] and a method/version string ("receipts").
 import hashlib
 import math
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from statistics import mean, pstdev
 
 from . import db
@@ -33,6 +33,7 @@ SIGNALS = {
     "sbp": ("Systolic blood pressure", "mmHg", "low", 0),
     "dbp": ("Diastolic blood pressure", "mmHg", "low", 0),
     "glucose_mean": ("Glucose (CGM mean)", "mg/dL", "low", 0),
+    "strain": ("Daily strain (WHOOP)", "", "mid", 1),
     "daylight_min": ("Time in daylight", "min", "high", 0),
     "mindful_min": ("Mindful minutes", "min", "high", 0),
 }
@@ -93,10 +94,24 @@ def last_signal_day() -> str | None:
     return r["d"] if r else None
 
 
+def _local_now() -> datetime:
+    """Current time in the app's timezone (default Asia/Kolkata) — NOT the server's clock. The Oracle VM runs in
+    UTC, so datetime.now() there is UTC; event timestamps are stored as naive ISO and the app parses naive ISO as
+    the *device's* local time, so a UTC stamp shows ~5.5 h early in IST. Stamp in the app tz to stay consistent."""
+    import os
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(os.environ.get("TELOMY_TZ", "Asia/Kolkata")))
+    except Exception:  # noqa: BLE001  (zoneinfo/tzdata missing — fall back to a fixed IST offset)
+        return datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+
+
 def now_iso() -> str:
-    """App clock: the Vault's current day with the wall-clock time, so timestamps never run ahead of the data."""
-    day = last_signal_day() or date.today().isoformat()
-    return f"{day}T{datetime.now().strftime('%H:%M:%S')}"
+    """App clock: the Vault's current day with the local wall-clock time (app timezone), so timestamps match what
+    the member sees and never run ahead of the data."""
+    n = _local_now()
+    day = last_signal_day() or n.date().isoformat()
+    return f"{day}T{n.strftime('%H:%M:%S')}"
 
 # ---------------------------------------------------------------- confidence
 
@@ -151,14 +166,26 @@ def phenoage(values: dict[str, float], chrono_age: float) -> dict:
             "mortality_10y": round(m, 4)}
 
 
+def _pheno_aliases(v: dict) -> dict:
+    """Map routine-report marker ids onto PhenoAge inputs: total WBC in cells/mm³ → 10³/µL; standard CRP (mg/L) stands in
+    for hs-CRP (Levine 2018 used CRP). Random glucose is NOT used for fasting glucose."""
+    v = dict(v)
+    if v.get("wbc") is None and v.get("wbc_total") is not None:
+        w = v["wbc_total"]
+        v["wbc"] = w / 1000 if w > 100 else w
+    if v.get("hscrp") is None and v.get("crp") is not None:
+        v["hscrp"] = v["crp"]
+    return v
+
+
 def longevity_age(as_of: str | None = None) -> dict:
     """Dial value. Default PhenoAge from the most recent blood panel; lab epigenetic clocks shown alongside."""
     reports = db.rows("SELECT * FROM reports WHERE panel = 'blood' AND (? IS NULL OR collected_on <= ?) "
                       "ORDER BY collected_on", (as_of, as_of))
     history = []
     for rep in reports:
-        vals = {r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?", (rep["id"],))
-                if r["value_num"] is not None}
+        vals = _pheno_aliases({r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?", (rep["id"],))
+                               if r["value_num"] is not None})
         age = age_on(rep["collected_on"])
         if age is None:
             continue
@@ -174,8 +201,34 @@ def longevity_age(as_of: str | None = None) -> dict:
                            "day": h[-1]["collected_on"]}
     chrono = age_on(as_of)
     if not history:
-        return {"value": None, "chronological": round(chrono, 1) if chrono else None, "clocks": clocks,
-                "confidence": 0, "reason": "Needs a blood panel with albumin, creatinine, glucose, hs-CRP, "
+        # Fallback: guideline PhenoAge needs the full Levine panel (albumin, creatinine, FASTING glucose, hs-CRP, …).
+        # The NHANES-trained clock handles a partial panel, so show the trained blood age (clearly labelled) rather
+        # than a blank dial. The clinical model still takes over automatically once the missing markers are added.
+        try:
+            from .telomy_ml import _panel as _ml_panel
+            from .llx import tools as _ml_tools
+            panel = _ml_panel()
+            if len([k for k in panel if k not in ("age", "sex")]) >= 3:
+                tr = _ml_tools.predict_age(panel)
+                ba = tr.get("predicted_age_years")
+                if ba is not None:
+                    err = round(tr.get("typical_error_years", 9))
+                    return {"value": round(ba, 1), "chronological": round(chrono, 1) if chrono else None,
+                            "delta": round(ba - chrono, 1) if chrono else None, "clocks": clocks, "history": [],
+                            "method": f"Trained blood clock (NHANES, ±{err}y)", "confidence": 0.5, "trained_fallback": True,
+                            "reason": "From the trained blood clock. Add fasting glucose + hs-CRP next time for the clinical PhenoAge too."}
+        except Exception:  # noqa: BLE001
+            pass
+        missing = []
+        if reports:   # say exactly which inputs the latest panel lacks, so the next test can add them
+            last_vals = _pheno_aliases({r["marker_id"]: r["value_num"] for r in db.rows("SELECT * FROM results WHERE report_id = ?",
+                                       (reports[-1]["id"],)) if r["value_num"] is not None})
+            names = {"albumin": "albumin", "creatinine": "creatinine", "glucose": "fasting glucose", "hscrp": "hs-CRP",
+                     "lymph_pct": "lymphocytes %", "mcv": "MCV", "rdw": "RDW", "alp": "ALP", "wbc": "WBC"}
+            missing = [names[k] for k in names if last_vals.get(k) is None]
+        return {"value": None, "chronological": round(chrono, 1) if chrono else None, "clocks": clocks, "missing": missing,
+                "confidence": 0, "reason": ("Your latest blood panel is missing " + " and ".join(missing) + " — add them to the next test "
+                "to get your blood age.") if missing else "Needs a blood panel with albumin, creatinine, glucose, hs-CRP, "
                 "lymphocytes, MCV, RDW, ALP and WBC.", "history": []}
     last = history[-1]
     days_old = (date.fromisoformat(as_of or date.today().isoformat()) - date.fromisoformat(last["day"])).days
@@ -725,9 +778,9 @@ def cross_panel_patterns() -> list[dict]:
             f"DEXA says {dexa_bf}% and BCA says {bca_bf}%. BCA tends to read lower and shifts with hydration; DEXA is the reference. "
             f"Track each method against itself rather than mixing them.", ["body_fat_pct", "bca_body_fat"], medical=False, direction="neutral")
     cys, cr = _v(L, "cystatin_c"), _v(L, "creatinine")
-    if isinstance(cys, float) and isinstance(cr, float) and age:
+    if isinstance(cys, float) and isinstance(cr, float) and age and profile().get("sex"):
         from .derived import ckd_epi_2021, ckd_epi_cys_2012
-        e_cr, e_cy = ckd_epi_2021(cr, age, profile().get("sex", "male")), ckd_epi_cys_2012(cys, age, profile().get("sex", "male"))
+        e_cr, e_cy = ckd_epi_2021(cr, age, profile()["sex"]), ckd_epi_cys_2012(cys, age, profile()["sex"])
         if abs(e_cr - e_cy) > 15:
             add("egfr_discord", "Your two kidney-function estimates disagree",
                 f"eGFR from creatinine is {round(e_cr)} and from cystatin C {round(e_cy)} mL/min/1.73m². Creatinine depends on muscle "
@@ -888,7 +941,13 @@ def trend_insights() -> list[dict]:
 def regenerate_insights() -> list[dict]:
     """Recompute all engine insights; review state and dismissals persist by stable id."""
     now = now_iso()
-    produced = cross_panel_patterns() + event_effects() + lab_wearable_links() + signal_correlations() + trend_insights()
+    from .routine_rules import routine_patterns
+    produced = cross_panel_patterns() + routine_patterns() + event_effects() + lab_wearable_links() + signal_correlations() + trend_insights()
+    try:
+        from . import science            # new findings added as data (not code) fire here too
+        produced += science.dynamic_insights()
+    except Exception:  # noqa: BLE001
+        pass
     for ins in produced:
         existing = db.one("SELECT review_state, dismissed FROM insights WHERE id = ?", (ins["id"],))
         medical = 1 if ins.get("medical") else 0

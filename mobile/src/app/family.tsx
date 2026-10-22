@@ -19,7 +19,7 @@ export default function Family() {
       <T v="body" color={p.muted}>Share a summary, not your whole Vault. Every share has a scope and an expiry, and you can see each time someone looks.</T>
       <Section title="Invite someone">
         <Card>
-          <TextInput value={name} onChangeText={setName} placeholder="Name" placeholderTextColor={p.faint} style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, fontFamily: 'Inter_400Regular' }} />
+          <TextInput value={name} onChangeText={setName} placeholder="Name" placeholderTextColor={p.faint} style={{ borderRadius: radius.md, backgroundColor: p.surfaceAlt, padding: 12, color: p.text, fontFamily: 'Inter_400Regular' }} />
           <Row style={{ flexWrap: 'wrap' }}>
             {['Parent', 'Spouse', 'Sibling', 'Child', 'Coach'].map((r) => (
               <Pressable key={r} onPress={() => setRel(r)}><Chip label={r} fg={rel === r ? p.onAccent : p.text} bg={rel === r ? p.teal : p.surfaceAlt} /></Pressable>

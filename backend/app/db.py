@@ -1,10 +1,22 @@
 """SQLite storage. One file, created on first use. JSON columns hold structured payloads."""
+import contextvars
 import json
 import os
 import sqlite3
 from contextlib import contextmanager
 
 DB_PATH = os.environ.get("TELOMY_DB", os.path.join(os.path.dirname(__file__), "..", "telomy.db"))
+# Multi-user: a context variable selects the active user's database per request (set by the auth dependency). When unset
+# (single-user / local dev / background threads) it falls back to DB_PATH, so nothing else changes.
+_current_db: contextvars.ContextVar = contextvars.ContextVar("telomy_db_path", default=None)
+
+
+def set_db(path: str | None):
+    _current_db.set(path)
+
+
+def db_path() -> str:
+    return _current_db.get() or DB_PATH
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS profile (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
@@ -62,9 +74,12 @@ CREATE TABLE IF NOT EXISTS documents (
 
 
 def connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    # 30 s busy timeout + WAL: device pushes (WHOOP 1 Hz streams) and API reads no longer collide
+    # (2026-10-19: "database is locked" on /twin/projections during a WHOOP upload)
+    conn = sqlite3.connect(db_path(), check_same_thread=False, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
 
@@ -79,9 +94,13 @@ def tx():
 
 
 def init(reset: bool = False):
-    if reset and os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
+    if reset:
+        p = db_path()
+        for f in (p, p + "-wal", p + "-shm"):
+            if os.path.exists(f):
+                os.remove(f)
     with tx() as c:
+        c.execute("PRAGMA journal_mode=WAL")       # persistent: concurrent readers + one writer
         c.executescript(SCHEMA)
 
 

@@ -11,6 +11,23 @@ import Foundation
 /// ECG sample i belongs to the last segment with sample <= i, at unix + (i - sample) / 100. A new segment starts after any
 /// gap (band out of range, app relaunched). The active session survives app termination and resumes on relaunch.
 /// On stop, everything is bundled into <id>.telomy.json (format "telomy.capture/1") for sharing.
+/// The app's overnight therapy is "sleep"; early auto-sleep builds wrote "overnight_sleep". Accept both.
+func isOvernightTherapy(_ id: Any?) -> Bool { let s = id as? String; return s == "sleep" || s == "overnight_sleep" }
+
+/// Seconds of [from, to] (unix) that fall inside local night, 23:00–06:00. Used to decide whether to stage sleep.
+func nightOverlapSec(from: Double, to: Double) -> Double {
+    guard to > from else { return 0 }
+    let cal = Calendar.current
+    var total = 0.0
+    var day = cal.startOfDay(for: Date(timeIntervalSince1970: from)).addingTimeInterval(-86400)
+    while day.timeIntervalSince1970 < to {
+        let ns = day.addingTimeInterval(23 * 3600).timeIntervalSince1970, ne = day.addingTimeInterval(30 * 3600).timeIntervalSince1970
+        total += max(0, min(to, ne) - max(from, ns))
+        day = day.addingTimeInterval(86400)
+    }
+    return total
+}
+
 final class KYCapture {
     let id: String
     let dir: URL
@@ -270,7 +287,10 @@ final class KYCapture {
         let tS = segs.first?.1 ?? t0
         let wall = (meta["endedAt"] as? Double ?? (beatRows.last?.t ?? tS)) - tS
         summary["sleep"] = nil
-        if wall > 2 * 3600, let n = KYSleepNight.analyze(beats: beatRows.map { $0.t - tS }, durationSec: wall) {
+        // Only stage sleep for an overnight session, or one that covers ≥ 2 h of the 23:00–06:00 window. Without this
+        // gate a long daytime session (e.g. 19:25, awake at ~100 bpm) was being reported as "156 min asleep".
+        let overnight = isOvernightTherapy(meta["therapyId"]) || nightOverlapSec(from: tS, to: tS + wall) >= 2 * 3600
+        if wall > 2 * 3600, overnight, let n = KYSleepNight.analyze(beats: beatRows.map { $0.t - tS }, durationSec: wall) {
             var sl: [String: Any] = ["totalSleepMin": n.totalSleepMin, "efficiency": n.efficiency, "wasoMin": n.wakeAfterOnsetMin,
                                      "awakenings": n.awakenings, "hypnogram": n.asleep.map { $0 ? 1 : 0 }, "epochSec": 30, "t0": tS]
             if let v = n.sleepOnsetMin { sl["onsetMin"] = v }

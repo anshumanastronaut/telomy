@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telomy Console</title>
+<meta name="description" content="Wellness-centre and doctor management console for Telomy.">
+<link rel="stylesheet" href="styles.css?v=1792433413">
+</head>
+<body>
+<div id="app" class="app" hidden>
+  <aside class="sidebar">
+    <div class="brand"><span class="dot">T</span><span id="orgName">Telomy</span></div>
+    <div class="ws-switch">
+      <button data-ws="centre" class="on">Centre</button>
+      <button data-ws="doctor">Doctor</button>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot"><a id="signout">Sign out</a> · <span id="apiHost" class="small"></span></div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="search"><input id="search" placeholder="Search…" hidden></div>
+      <div id="pageActions" class="row center"></div>
+    </div>
+    <div class="content" id="view"></div>
+  </main>
+</div>
+
+<!-- login -->
+<div id="login" class="card" style="max-width:400px;margin:10vh auto;" hidden>
+  <div class="brand" style="padding:0 0 6px"><span class="dot">T</span><span id="loginTitle">Telomy Console</span></div>
+  <p class="muted small" style="margin-top:0" id="loginSub">Sign in — the Centre and Doctor sides use separate accounts.</p>
+  <label class="field"><span>Server</span><input id="srv" placeholder="https://your-telomy-server"></label>
+  <div id="signinFields">
+    <label class="field"><span>Email</span><input id="email" type="email" placeholder="you@centre.com" autocomplete="username"></label>
+    <label class="field"><span>Password</span><input id="pw" type="password" placeholder="••••••••" autocomplete="current-password"></label>
+  </div>
+  <div id="signupFields" hidden>
+    <label class="field"><span>Your name</span><input id="suName" placeholder="Full name"></label>
+    <label class="field"><span>Role</span><select id="suRole"></select></label>
+  </div>
+  <div id="loginErr" class="small" style="color:var(--danger);min-height:16px"></div>
+  <button class="btn primary" style="width:100%;justify-content:center" id="loginBtn">Sign in</button>
+  <div style="text-align:center;margin-top:12px"><a id="toggleSignup" class="small">First time? Create the first admin account</a></div>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer">
+  <div class="dh"><h3 id="drawerTitle">Edit</h3><button class="btn ghost sm" id="drawerClose">✕</button></div>
+  <div class="db" id="drawerBody"></div>
+  <div class="df" id="drawerFoot"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="app.js?v=1792433622"></script>
+</body>
+</html>

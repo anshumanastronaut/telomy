@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+import { getStaff } from '@/lib/staff';
+
 export type Role = 'user' | 'doctor' | 'centre';
 type Ctx = { role: Role | null; ready: boolean; setRole: (r: Role | null) => Promise<void> };
 const RoleCtx = createContext<Ctx>({ role: null, ready: false, setRole: async () => {} });
@@ -10,9 +12,10 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [role, set] = useState<Role | null>(null);
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then((v) => set((v as Role) || null))
-      .catch(() => {})
+    // Load the saved role AND the staff session (so staffOrg()/staffSync() are populated before any doctor/centre
+    // screen renders — otherwise the first /mgmt call would send org=default and the tenant guard would 403).
+    Promise.all([AsyncStorage.getItem(KEY).catch(() => null), getStaff().catch(() => null)])
+      .then(([v]) => set((v as Role) || null))
       .finally(() => setReady(true));
   }, []);
   const setRole = async (r: Role | null) => {

@@ -1,0 +1,1321 @@
+{
+ "meta": {
+  "source": "FDA FAERS via openFDA (api.fda.gov/drug/event)",
+  "total_reports": 20692690,
+  "method": "disproportionality: ROR + PRR with 95pct CI; signal if a>=3 and ROR_lo>1",
+  "caveat": "Reporting disproportionality is not causation; a monitoring/consent aid only."
+ },
+ "drugs": {
+  "metformin": {
+   "faers_name": "METFORMIN",
+   "note": null,
+   "n_reports": 354840,
+   "signals": [
+    {
+     "reaction": "Lactic Acidosis",
+     "a": 17141,
+     "ror": 71.0,
+     "ror_lo": 69.43,
+     "ror_hi": 72.6,
+     "prr": 67.61
+    },
+    {
+     "reaction": "Acute Kidney Injury",
+     "a": 17231,
+     "ror": 7.75,
+     "ror_lo": 7.62,
+     "ror_hi": 7.88,
+     "prr": 7.42
+    },
+    {
+     "reaction": "Blood Glucose Increased",
+     "a": 18630,
+     "ror": 6.65,
+     "ror_lo": 6.55,
+     "ror_hi": 6.75,
+     "prr": 6.35
+    },
+    {
+     "reaction": "Weight Decreased",
+     "a": 12317,
+     "ror": 2.74,
+     "ror_lo": 2.69,
+     "ror_hi": 2.8,
+     "prr": 2.68
+    },
+    {
+     "reaction": "Diarrhoea",
+     "a": 22967,
+     "ror": 2.23,
+     "ror_lo": 2.2,
+     "ror_hi": 2.26,
+     "prr": 2.15
+    },
+    {
+     "reaction": "Vomiting",
+     "a": 15555,
+     "ror": 2.04,
+     "ror_lo": 2.01,
+     "ror_hi": 2.07,
+     "prr": 1.99
+    },
+    {
+     "reaction": "Nausea",
+     "a": 22945,
+     "ror": 1.79,
+     "ror_lo": 1.77,
+     "ror_hi": 1.82,
+     "prr": 1.74
+    },
+    {
+     "reaction": "Asthenia",
+     "a": 10876,
+     "ror": 1.75,
+     "ror_lo": 1.72,
+     "ror_hi": 1.79,
+     "prr": 1.73
+    },
+    {
+     "reaction": "Dizziness",
+     "a": 12636,
+     "ror": 1.53,
+     "ror_lo": 1.5,
+     "ror_hi": 1.56,
+     "prr": 1.51
+    },
+    {
+     "reaction": "Dyspnoea",
+     "a": 14040,
+     "ror": 1.5,
+     "ror_lo": 1.47,
+     "ror_hi": 1.52,
+     "prr": 1.48
+    }
+   ]
+  },
+  "rapamycin": {
+   "faers_name": "SIROLIMUS",
+   "note": "rapamycin = sirolimus",
+   "n_reports": 13366,
+   "signals": [
+    {
+     "reaction": "Transplant Rejection",
+     "a": 372,
+     "ror": 78.56,
+     "ror_lo": 70.69,
+     "ror_hi": 87.3,
+     "prr": 76.4
+    },
+    {
+     "reaction": "Thrombotic Microangiopathy",
+     "a": 376,
+     "ror": 65.15,
+     "ror_lo": 58.69,
+     "ror_hi": 72.33,
+     "prr": 63.35
+    },
+    {
+     "reaction": "Cytomegalovirus Infection",
+     "a": 348,
+     "ror": 34.38,
+     "ror_lo": 30.87,
+     "ror_hi": 38.29,
+     "prr": 33.51
+    },
+    {
+     "reaction": "Product Use In Unapproved Indication",
+     "a": 784,
+     "ror": 5.3,
+     "ror_lo": 4.93,
+     "ror_hi": 5.7,
+     "prr": 5.05
+    },
+    {
+     "reaction": "Acute Kidney Injury",
+     "a": 434,
+     "ror": 4.6,
+     "ror_lo": 4.18,
+     "ror_hi": 5.06,
+     "prr": 4.48
+    },
+    {
+     "reaction": "Drug Interaction",
+     "a": 448,
+     "ror": 4.56,
+     "ror_lo": 4.15,
+     "ror_hi": 5.01,
+     "prr": 4.44
+    },
+    {
+     "reaction": "Off Label Use",
+     "a": 2055,
+     "ror": 4.22,
+     "ror_lo": 4.02,
+     "ror_hi": 4.42,
+     "prr": 3.72
+    },
+    {
+     "reaction": "Toxicity To Various Agents",
+     "a": 314,
+     "ror": 2.99,
+     "ror_lo": 2.67,
+     "ror_hi": 3.34,
+     "prr": 2.94
+    },
+    {
+     "reaction": "Pyrexia",
+     "a": 524,
+     "ror": 2.43,
+     "ror_lo": 2.23,
+     "ror_hi": 2.65,
+     "prr": 2.38
+    },
+    {
+     "reaction": "Pneumonia",
+     "a": 487,
+     "ror": 2.42,
+     "ror_lo": 2.21,
+     "ror_hi": 2.65,
+     "prr": 2.37
+    }
+   ]
+  },
+  "acarbose": {
+   "faers_name": "ACARBOSE",
+   "note": null,
+   "n_reports": 3848,
+   "signals": [
+    {
+     "reaction": "Hypoglycaemia",
+     "a": 275,
+     "ror": 33.36,
+     "ror_lo": 29.5,
+     "ror_hi": 37.72,
+     "prr": 31.04
+    },
+    {
+     "reaction": "Lactic Acidosis",
+     "a": 107,
+     "ror": 18.72,
+     "ror_lo": 15.44,
+     "ror_hi": 22.69,
+     "prr": 18.23
+    },
+    {
+     "reaction": "Blood Glucose Increased",
+     "a": 206,
+     "ror": 6.22,
+     "ror_lo": 5.4,
+     "ror_hi": 7.16,
+     "prr": 5.94
+    },
+    {
+     "reaction": "Acute Kidney Injury",
+     "a": 141,
+     "ror": 5.2,
+     "ror_lo": 4.4,
+     "ror_hi": 6.16,
+     "prr": 5.05
+    },
+    {
+     "reaction": "Drug Interaction",
+     "a": 145,
+     "ror": 5.14,
+     "ror_lo": 4.35,
+     "ror_hi": 6.07,
+     "prr": 4.98
+    },
+    {
+     "reaction": "Fall",
+     "a": 129,
+     "ror": 2.15,
+     "ror_lo": 1.81,
+     "ror_hi": 2.57,
+     "prr": 2.11
+    },
+    {
+     "reaction": "Dizziness",
+     "a": 168,
+     "ror": 1.88,
+     "ror_lo": 1.61,
+     "ror_hi": 2.19,
+     "prr": 1.84
+    },
+    {
+     "reaction": "Vomiting",
+     "a": 154,
+     "ror": 1.82,
+     "ror_lo": 1.55,
+     "ror_hi": 2.14,
+     "prr": 1.79
+    },
+    {
+     "reaction": "Pneumonia",
+     "a": 107,
+     "ror": 1.83,
+     "ror_lo": 1.51,
+     "ror_hi": 2.21,
+     "prr": 1.8
+    },
+    {
+     "reaction": "Asthenia",
+     "a": 114,
+     "ror": 1.67,
+     "ror_lo": 1.39,
+     "ror_hi": 2.01,
+     "prr": 1.65
+    }
+   ]
+  },
+  "sglt2i": {
+   "faers_name": "EMPAGLIFLOZIN",
+   "note": "class, representative agent",
+   "n_reports": 66937,
+   "signals": [
+    {
+     "reaction": "Euglycaemic Diabetic Ketoacidosis",
+     "a": 2037,
+     "ror": 341.23,
+     "ror_lo": 320.39,
+     "ror_hi": 363.42,
+     "prr": 330.88
+    },
+    {
+     "reaction": "Diabetic Ketoacidosis",
+     "a": 3864,
+     "ror": 63.79,
+     "ror_lo": 61.58,
+     "ror_hi": 66.09,
+     "prr": 60.17
+    },
+    {
+     "reaction": "Fungal Infection",
+     "a": 2147,
+     "ror": 22.22,
+     "ror_lo": 21.25,
+     "ror_hi": 23.23,
+     "prr": 21.54
+    },
+    {
+     "reaction": "Blood Glucose Increased",
+     "a": 3197,
+     "ror": 5.59,
+     "ror_lo": 5.39,
+     "ror_hi": 5.79,
+     "prr": 5.37
+    },
+    {
+     "reaction": "Urinary Tract Infection",
+     "a": 1979,
+     "ror": 3.76,
+     "ror_lo": 3.59,
+     "ror_hi": 3.93,
+     "prr": 3.68
+    },
+    {
+     "reaction": "Weight Decreased",
+     "a": 2922,
+     "ror": 3.41,
+     "ror_lo": 3.29,
+     "ror_hi": 3.54,
+     "prr": 3.3
+    },
+    {
+     "reaction": "Vomiting",
+     "a": 2693,
+     "ror": 1.84,
+     "ror_lo": 1.77,
+     "ror_hi": 1.91,
+     "prr": 1.8
+    },
+    {
+     "reaction": "Dizziness",
+     "a": 2654,
+     "ror": 1.7,
+     "ror_lo": 1.64,
+     "ror_hi": 1.77,
+     "prr": 1.67
+    },
+    {
+     "reaction": "Diarrhoea",
+     "a": 3239,
+     "ror": 1.61,
+     "ror_lo": 1.55,
+     "ror_hi": 1.67,
+     "prr": 1.58
+    },
+    {
+     "reaction": "Nausea",
+     "a": 3572,
+     "ror": 1.44,
+     "ror_lo": 1.4,
+     "ror_hi": 1.49,
+     "prr": 1.42
+    }
+   ]
+  },
+  "glp1_ra": {
+   "faers_name": "SEMAGLUTIDE",
+   "note": "class, representative agent",
+   "n_reports": 73001,
+   "signals": [
+    {
+     "reaction": "Impaired Gastric Emptying",
+     "a": 3558,
+     "ror": 116.97,
+     "ror_lo": 112.44,
+     "ror_hi": 121.68,
+     "prr": 111.32
+    },
+    {
+     "reaction": "Constipation",
+     "a": 4724,
+     "ror": 6.76,
+     "ror_lo": 6.56,
+     "ror_hi": 6.97,
+     "prr": 6.39
+    },
+    {
+     "reaction": "Decreased Appetite",
+     "a": 4905,
+     "ror": 6.57,
+     "ror_lo": 6.38,
+     "ror_hi": 6.76,
+     "prr": 6.19
+    },
+    {
+     "reaction": "Blood Glucose Increased",
+     "a": 3303,
+     "ror": 5.28,
+     "ror_lo": 5.1,
+     "ror_hi": 5.47,
+     "prr": 5.09
+    },
+    {
+     "reaction": "Weight Decreased",
+     "a": 4487,
+     "ror": 4.92,
+     "ror_lo": 4.77,
+     "ror_hi": 5.07,
+     "prr": 4.68
+    },
+    {
+     "reaction": "Vomiting",
+     "a": 6964,
+     "ror": 4.67,
+     "ror_lo": 4.55,
+     "ror_hi": 4.78,
+     "prr": 4.32
+    },
+    {
+     "reaction": "Nausea",
+     "a": 10674,
+     "ror": 4.43,
+     "ror_lo": 4.34,
+     "ror_hi": 4.52,
+     "prr": 3.93
+    },
+    {
+     "reaction": "Wrong Technique In Product Usage Process",
+     "a": 3016,
+     "ror": 4.48,
+     "ror_lo": 4.32,
+     "ror_hi": 4.65,
+     "prr": 4.34
+    },
+    {
+     "reaction": "Abdominal Pain Upper",
+     "a": 3039,
+     "ror": 4.44,
+     "ror_lo": 4.28,
+     "ror_hi": 4.61,
+     "prr": 4.3
+    },
+    {
+     "reaction": "Product Use In Unapproved Indication",
+     "a": 3483,
+     "ror": 4.3,
+     "ror_lo": 4.15,
+     "ror_hi": 4.45,
+     "prr": 4.14
+    }
+   ]
+  },
+  "low_dose_lithium": {
+   "faers_name": "LITHIUM",
+   "note": "FAERS includes therapeutic-dose lithium",
+   "n_reports": 25064,
+   "signals": [
+    {
+     "reaction": "Toxicity To Various Agents",
+     "a": 2267,
+     "ror": 12.48,
+     "ror_lo": 11.95,
+     "ror_hi": 13.04,
+     "prr": 11.44
+    },
+    {
+     "reaction": "Drug Interaction",
+     "a": 1581,
+     "ror": 8.91,
+     "ror_lo": 8.47,
+     "ror_hi": 9.38,
+     "prr": 8.41
+    },
+    {
+     "reaction": "Suicidal Ideation",
+     "a": 914,
+     "ror": 8.7,
+     "ror_lo": 8.14,
+     "ror_hi": 9.3,
+     "prr": 8.42
+    },
+    {
+     "reaction": "Tremor",
+     "a": 1508,
+     "ror": 8.08,
+     "ror_lo": 7.66,
+     "ror_hi": 8.51,
+     "prr": 7.65
+    },
+    {
+     "reaction": "Weight Increased",
+     "a": 1189,
+     "ror": 4.66,
+     "ror_lo": 4.39,
+     "ror_hi": 4.94,
+     "prr": 4.48
+    },
+    {
+     "reaction": "Somnolence",
+     "a": 936,
+     "ror": 4.02,
+     "ror_lo": 3.77,
+     "ror_hi": 4.29,
+     "prr": 3.91
+    },
+    {
+     "reaction": "Depression",
+     "a": 1006,
+     "ror": 3.81,
+     "ror_lo": 3.57,
+     "ror_hi": 4.06,
+     "prr": 3.7
+    },
+    {
+     "reaction": "Anxiety",
+     "a": 991,
+     "ror": 2.99,
+     "ror_lo": 2.81,
+     "ror_hi": 3.19,
+     "prr": 2.91
+    },
+    {
+     "reaction": "Insomnia",
+     "a": 930,
+     "ror": 3.0,
+     "ror_lo": 2.81,
+     "ror_hi": 3.2,
+     "prr": 2.92
+    },
+    {
+     "reaction": "Vomiting",
+     "a": 1069,
+     "ror": 1.95,
+     "ror_lo": 1.83,
+     "ror_hi": 2.07,
+     "prr": 1.91
+    }
+   ]
+  },
+  "statin": {
+   "faers_name": "ATORVASTATIN",
+   "note": "class, representative agent",
+   "n_reports": 69756,
+   "signals": [
+    {
+     "reaction": "Myalgia",
+     "a": 2523,
+     "ror": 4.65,
+     "ror_lo": 4.46,
+     "ror_hi": 4.84,
+     "prr": 4.51
+    },
+    {
+     "reaction": "Cough",
+     "a": 2638,
+     "ror": 2.92,
+     "ror_lo": 2.81,
+     "ror_hi": 3.04,
+     "prr": 2.85
+    },
+    {
+     "reaction": "Fall",
+     "a": 2468,
+     "ror": 2.29,
+     "ror_lo": 2.2,
+     "ror_hi": 2.38,
+     "prr": 2.24
+    },
+    {
+     "reaction": "Asthenia",
+     "a": 2557,
+     "ror": 2.09,
+     "ror_lo": 2.01,
+     "ror_hi": 2.18,
+     "prr": 2.05
+    },
+    {
+     "reaction": "Dyspnoea",
+     "a": 3772,
+     "ror": 2.07,
+     "ror_lo": 2.0,
+     "ror_hi": 2.14,
+     "prr": 2.01
+    },
+    {
+     "reaction": "Diarrhoea",
+     "a": 4101,
+     "ror": 1.98,
+     "ror_lo": 1.92,
+     "ror_hi": 2.04,
+     "prr": 1.92
+    },
+    {
+     "reaction": "Fatigue",
+     "a": 4649,
+     "ror": 1.86,
+     "ror_lo": 1.81,
+     "ror_hi": 1.92,
+     "prr": 1.8
+    },
+    {
+     "reaction": "Dizziness",
+     "a": 3038,
+     "ror": 1.88,
+     "ror_lo": 1.81,
+     "ror_hi": 1.95,
+     "prr": 1.84
+    },
+    {
+     "reaction": "Arthralgia",
+     "a": 2528,
+     "ror": 1.87,
+     "ror_lo": 1.8,
+     "ror_hi": 1.95,
+     "prr": 1.84
+    },
+    {
+     "reaction": "Headache",
+     "a": 3432,
+     "ror": 1.69,
+     "ror_lo": 1.63,
+     "ror_hi": 1.74,
+     "prr": 1.65
+    }
+   ]
+  },
+  "pcsk9": {
+   "faers_name": "EVOLOCUMAB",
+   "note": "class, representative agent",
+   "n_reports": 161222,
+   "signals": [
+    {
+     "reaction": "Device Difficult To Use",
+     "a": 32925,
+     "ror": 162.94,
+     "ror_lo": 160.3,
+     "ror_hi": 165.61,
+     "prr": 129.87
+    },
+    {
+     "reaction": "Drug Dose Omission By Device",
+     "a": 24638,
+     "ror": 72.5,
+     "ror_lo": 71.34,
+     "ror_hi": 73.68,
+     "prr": 61.58
+    },
+    {
+     "reaction": "Accidental Exposure To Product",
+     "a": 16804,
+     "ror": 29.09,
+     "ror_lo": 28.59,
+     "ror_hi": 29.6,
+     "prr": 26.17
+    },
+    {
+     "reaction": "Device Use Error",
+     "a": 4250,
+     "ror": 18.89,
+     "ror_lo": 18.29,
+     "ror_hi": 19.52,
+     "prr": 18.42
+    },
+    {
+     "reaction": "Wrong Technique In Product Usage Process",
+     "a": 22365,
+     "ror": 18.53,
+     "ror_lo": 18.25,
+     "ror_hi": 18.81,
+     "prr": 16.1
+    },
+    {
+     "reaction": "Product Storage Error",
+     "a": 6676,
+     "ror": 11.22,
+     "ror_lo": 10.94,
+     "ror_hi": 11.51,
+     "prr": 10.8
+    },
+    {
+     "reaction": "Injection Site Bruising",
+     "a": 4800,
+     "ror": 8.6,
+     "ror_lo": 8.35,
+     "ror_hi": 8.86,
+     "prr": 8.37
+    },
+    {
+     "reaction": "Injection Site Haemorrhage",
+     "a": 4029,
+     "ror": 7.06,
+     "ror_lo": 6.84,
+     "ror_hi": 7.29,
+     "prr": 6.91
+    },
+    {
+     "reaction": "Injection Site Pain",
+     "a": 10927,
+     "ror": 5.1,
+     "ror_lo": 5.0,
+     "ror_hi": 5.2,
+     "prr": 4.82
+    },
+    {
+     "reaction": "Myalgia",
+     "a": 5419,
+     "ror": 4.36,
+     "ror_lo": 4.25,
+     "ror_hi": 4.49,
+     "prr": 4.25
+    }
+   ]
+  },
+  "low_dose_aspirin": {
+   "faers_name": "ASPIRIN",
+   "note": null,
+   "n_reports": 534072,
+   "signals": [
+    {
+     "reaction": "Myocardial Infarction",
+     "a": 15158,
+     "ror": 3.69,
+     "ror_lo": 3.63,
+     "ror_hi": 3.75,
+     "prr": 3.61
+    },
+    {
+     "reaction": "Fall",
+     "a": 19209,
+     "ror": 2.4,
+     "ror_lo": 2.36,
+     "ror_hi": 2.43,
+     "prr": 2.35
+    },
+    {
+     "reaction": "Asthenia",
+     "a": 19488,
+     "ror": 2.13,
+     "ror_lo": 2.1,
+     "ror_hi": 2.17,
+     "prr": 2.09
+    },
+    {
+     "reaction": "Pneumonia",
+     "a": 16492,
+     "ror": 2.09,
+     "ror_lo": 2.06,
+     "ror_hi": 2.13,
+     "prr": 2.06
+    },
+    {
+     "reaction": "Dyspnoea",
+     "a": 28117,
+     "ror": 2.06,
+     "ror_lo": 2.03,
+     "ror_hi": 2.08,
+     "prr": 2.0
+    },
+    {
+     "reaction": "Dizziness",
+     "a": 23142,
+     "ror": 1.91,
+     "ror_lo": 1.88,
+     "ror_hi": 1.93,
+     "prr": 1.87
+    },
+    {
+     "reaction": "Fatigue",
+     "a": 33158,
+     "ror": 1.75,
+     "ror_lo": 1.73,
+     "ror_hi": 1.77,
+     "prr": 1.71
+    },
+    {
+     "reaction": "Diarrhoea",
+     "a": 27503,
+     "ror": 1.75,
+     "ror_lo": 1.73,
+     "ror_hi": 1.77,
+     "prr": 1.71
+    },
+    {
+     "reaction": "Nausea",
+     "a": 27440,
+     "ror": 1.4,
+     "ror_lo": 1.38,
+     "ror_hi": 1.42,
+     "prr": 1.38
+    },
+    {
+     "reaction": "Vomiting",
+     "a": 16390,
+     "ror": 1.4,
+     "ror_lo": 1.38,
+     "ror_hi": 1.42,
+     "prr": 1.39
+    }
+   ]
+  },
+  "trt": {
+   "faers_name": "TESTOSTERONE",
+   "note": null,
+   "n_reports": 23240,
+   "signals": [
+    {
+     "reaction": "Deep Vein Thrombosis",
+     "a": 875,
+     "ror": 12.68,
+     "ror_lo": 11.84,
+     "ror_hi": 13.57,
+     "prr": 12.24
+    },
+    {
+     "reaction": "Pulmonary Embolism",
+     "a": 843,
+     "ror": 8.29,
+     "ror_lo": 7.74,
+     "ror_hi": 8.89,
+     "prr": 8.03
+    },
+    {
+     "reaction": "Myocardial Infarction",
+     "a": 1019,
+     "ror": 5.45,
+     "ror_lo": 5.12,
+     "ror_hi": 5.8,
+     "prr": 5.25
+    },
+    {
+     "reaction": "Cerebrovascular Accident",
+     "a": 834,
+     "ror": 4.57,
+     "ror_lo": 4.26,
+     "ror_hi": 4.9,
+     "prr": 4.44
+    },
+    {
+     "reaction": "Anxiety",
+     "a": 955,
+     "ror": 3.11,
+     "ror_lo": 2.92,
+     "ror_hi": 3.32,
+     "prr": 3.03
+    },
+    {
+     "reaction": "Pain",
+     "a": 1261,
+     "ror": 1.9,
+     "ror_lo": 1.79,
+     "ror_hi": 2.01,
+     "prr": 1.85
+    },
+    {
+     "reaction": "Asthenia",
+     "a": 690,
+     "ror": 1.68,
+     "ror_lo": 1.55,
+     "ror_hi": 1.81,
+     "prr": 1.66
+    },
+    {
+     "reaction": "Fatigue",
+     "a": 1270,
+     "ror": 1.5,
+     "ror_lo": 1.42,
+     "ror_hi": 1.59,
+     "prr": 1.48
+    },
+    {
+     "reaction": "Off Label Use",
+     "a": 1317,
+     "ror": 1.39,
+     "ror_lo": 1.32,
+     "ror_hi": 1.47,
+     "prr": 1.37
+    },
+    {
+     "reaction": "Headache",
+     "a": 860,
+     "ror": 1.25,
+     "ror_lo": 1.17,
+     "ror_hi": 1.34,
+     "prr": 1.24
+    }
+   ]
+  },
+  "dhea": {
+   "faers_name": "DEHYDROEPIANDROSTERONE",
+   "note": null,
+   "n_reports": 0,
+   "signals": []
+  },
+  "melatonin": {
+   "faers_name": "MELATONIN",
+   "note": null,
+   "n_reports": 54122,
+   "signals": [
+    {
+     "reaction": "Somnolence",
+     "a": 1933,
+     "ror": 3.85,
+     "ror_lo": 3.68,
+     "ror_hi": 4.03,
+     "prr": 3.75
+    },
+    {
+     "reaction": "Insomnia",
+     "a": 2515,
+     "ror": 3.81,
+     "ror_lo": 3.66,
+     "ror_hi": 3.97,
+     "prr": 3.68
+    },
+    {
+     "reaction": "Fall",
+     "a": 2434,
+     "ror": 2.94,
+     "ror_lo": 2.82,
+     "ror_hi": 3.06,
+     "prr": 2.85
+    },
+    {
+     "reaction": "Fatigue",
+     "a": 4439,
+     "ror": 2.33,
+     "ror_lo": 2.26,
+     "ror_hi": 2.4,
+     "prr": 2.22
+    },
+    {
+     "reaction": "Asthenia",
+     "a": 1918,
+     "ror": 2.02,
+     "ror_lo": 1.93,
+     "ror_hi": 2.11,
+     "prr": 1.98
+    },
+    {
+     "reaction": "Nausea",
+     "a": 3762,
+     "ror": 1.92,
+     "ror_lo": 1.85,
+     "ror_hi": 1.98,
+     "prr": 1.85
+    },
+    {
+     "reaction": "Headache",
+     "a": 2970,
+     "ror": 1.89,
+     "ror_lo": 1.82,
+     "ror_hi": 1.96,
+     "prr": 1.84
+    },
+    {
+     "reaction": "Diarrhoea",
+     "a": 3026,
+     "ror": 1.88,
+     "ror_lo": 1.81,
+     "ror_hi": 1.95,
+     "prr": 1.83
+    },
+    {
+     "reaction": "Vomiting",
+     "a": 2234,
+     "ror": 1.89,
+     "ror_lo": 1.81,
+     "ror_hi": 1.97,
+     "prr": 1.85
+    },
+    {
+     "reaction": "Dizziness",
+     "a": 2342,
+     "ror": 1.86,
+     "ror_lo": 1.79,
+     "ror_hi": 1.94,
+     "prr": 1.83
+    }
+   ]
+  },
+  "growth_hormone": {
+   "faers_name": "SOMATROPIN",
+   "note": null,
+   "n_reports": 72284,
+   "signals": [
+    {
+     "reaction": "Device Information Output Issue",
+     "a": 6528,
+     "ror": 2988.39,
+     "ror_lo": 2761.14,
+     "ror_hi": 3234.34,
+     "prr": 2718.6
+    },
+    {
+     "reaction": "Device Mechanical Issue",
+     "a": 7685,
+     "ror": 485.55,
+     "ror_lo": 468.22,
+     "ror_hi": 503.51,
+     "prr": 434.03
+    },
+    {
+     "reaction": "Device Physical Property Issue",
+     "a": 2902,
+     "ror": 192.3,
+     "ror_lo": 183.42,
+     "ror_hi": 201.62,
+     "prr": 184.62
+    },
+    {
+     "reaction": "Poor Quality Device Used",
+     "a": 3207,
+     "ror": 175.19,
+     "ror_lo": 167.61,
+     "ror_hi": 183.12,
+     "prr": 167.46
+    },
+    {
+     "reaction": "Drug Dose Omission By Device",
+     "a": 18297,
+     "ror": 121.63,
+     "ror_lo": 119.38,
+     "ror_hi": 123.92,
+     "prr": 91.1
+    },
+    {
+     "reaction": "Device Leakage",
+     "a": 10550,
+     "ror": 112.67,
+     "ror_lo": 110.06,
+     "ror_hi": 115.34,
+     "prr": 96.37
+    },
+    {
+     "reaction": "Device Breakage",
+     "a": 9380,
+     "ror": 104.48,
+     "ror_lo": 101.95,
+     "ror_hi": 107.07,
+     "prr": 91.05
+    },
+    {
+     "reaction": "Device Use Issue",
+     "a": 2779,
+     "ror": 57.59,
+     "ror_lo": 55.26,
+     "ror_hi": 60.02,
+     "prr": 55.41
+    },
+    {
+     "reaction": "Wrong Technique In Device Usage Process",
+     "a": 4961,
+     "ror": 37.76,
+     "ror_lo": 36.63,
+     "ror_hi": 38.93,
+     "prr": 35.24
+    },
+    {
+     "reaction": "Incorrect Dose Administered By Device",
+     "a": 2778,
+     "ror": 36.94,
+     "ror_lo": 35.49,
+     "ror_hi": 38.45,
+     "prr": 35.56
+    }
+   ]
+  },
+  "mht": {
+   "faers_name": "ESTRADIOL",
+   "note": null,
+   "n_reports": 85884,
+   "signals": [
+    {
+     "reaction": "Product Adhesion Issue",
+     "a": 5778,
+     "ror": 50.81,
+     "ror_lo": 49.36,
+     "ror_hi": 52.31,
+     "prr": 47.46
+    },
+    {
+     "reaction": "Hot Flush",
+     "a": 3330,
+     "ror": 11.66,
+     "ror_lo": 11.25,
+     "ror_hi": 12.08,
+     "prr": 11.24
+    },
+    {
+     "reaction": "Product Quality Issue",
+     "a": 2536,
+     "ror": 4.77,
+     "ror_lo": 4.59,
+     "ror_hi": 4.97,
+     "prr": 4.66
+    },
+    {
+     "reaction": "Headache",
+     "a": 5027,
+     "ror": 2.03,
+     "ror_lo": 1.97,
+     "ror_hi": 2.09,
+     "prr": 1.97
+    },
+    {
+     "reaction": "Arthralgia",
+     "a": 2945,
+     "ror": 1.77,
+     "ror_lo": 1.7,
+     "ror_hi": 1.83,
+     "prr": 1.74
+    },
+    {
+     "reaction": "Pruritus",
+     "a": 2516,
+     "ror": 1.65,
+     "ror_lo": 1.58,
+     "ror_hi": 1.72,
+     "prr": 1.63
+    },
+    {
+     "reaction": "Nausea",
+     "a": 4840,
+     "ror": 1.53,
+     "ror_lo": 1.49,
+     "ror_hi": 1.58,
+     "prr": 1.5
+    },
+    {
+     "reaction": "Drug Ineffective",
+     "a": 7850,
+     "ror": 1.5,
+     "ror_lo": 1.47,
+     "ror_hi": 1.54,
+     "prr": 1.46
+    },
+    {
+     "reaction": "Fatigue",
+     "a": 4681,
+     "ror": 1.5,
+     "ror_lo": 1.46,
+     "ror_hi": 1.55,
+     "prr": 1.47
+    },
+    {
+     "reaction": "Dizziness",
+     "a": 2992,
+     "ror": 1.49,
+     "ror_lo": 1.43,
+     "ror_hi": 1.54,
+     "prr": 1.47
+    }
+   ]
+  },
+  "tesamorelin": {
+   "faers_name": "TESAMORELIN",
+   "note": null,
+   "n_reports": 1586,
+   "signals": [
+    {
+     "reaction": "Product Preparation Issue",
+     "a": 121,
+     "ror": 303.41,
+     "ror_lo": 251.6,
+     "ror_hi": 365.88,
+     "prr": 280.34
+    },
+    {
+     "reaction": "Product Dose Omission In Error",
+     "a": 51,
+     "ror": 25.95,
+     "ror_lo": 19.63,
+     "ror_hi": 34.31,
+     "prr": 25.15
+    },
+    {
+     "reaction": "Product Dose Omission Issue",
+     "a": 285,
+     "ror": 15.93,
+     "ror_lo": 14.01,
+     "ror_hi": 18.11,
+     "prr": 13.25
+    },
+    {
+     "reaction": "Therapeutic Product Effect Incomplete",
+     "a": 86,
+     "ror": 16.96,
+     "ror_lo": 13.65,
+     "ror_hi": 21.08,
+     "prr": 16.1
+    },
+    {
+     "reaction": "Injection Site Pruritus",
+     "a": 77,
+     "ror": 16.04,
+     "ror_lo": 12.76,
+     "ror_hi": 20.18,
+     "prr": 15.31
+    },
+    {
+     "reaction": "Injection Site Bruising",
+     "a": 89,
+     "ror": 15.77,
+     "ror_lo": 12.73,
+     "ror_hi": 19.53,
+     "prr": 14.94
+    },
+    {
+     "reaction": "Incorrect Dose Administered",
+     "a": 164,
+     "ror": 10.64,
+     "ror_lo": 9.06,
+     "ror_hi": 12.51,
+     "prr": 9.65
+    },
+    {
+     "reaction": "Injection Site Pain",
+     "a": 141,
+     "ror": 6.65,
+     "ror_lo": 5.59,
+     "ror_hi": 7.9,
+     "prr": 6.14
+    },
+    {
+     "reaction": "Weight Increased",
+     "a": 97,
+     "ror": 6.07,
+     "ror_lo": 4.94,
+     "ror_hi": 7.45,
+     "prr": 5.76
+    },
+    {
+     "reaction": "Wrong Technique In Product Usage Process",
+     "a": 78,
+     "ror": 5.32,
+     "ror_lo": 4.24,
+     "ror_hi": 6.68,
+     "prr": 5.11
+    }
+   ]
+  },
+  "dq_senolytic": {
+   "faers_name": "DASATINIB",
+   "note": "senolytic D+Q uses dasatinib \u2014 FAERS reflects its oncology use/toxicity",
+   "n_reports": 9103,
+   "signals": [
+    {
+     "reaction": "Pleural Effusion",
+     "a": 1186,
+     "ror": 52.43,
+     "ror_lo": 49.3,
+     "ror_hi": 55.76,
+     "prr": 45.73
+    },
+    {
+     "reaction": "Drug Resistance",
+     "a": 533,
+     "ror": 51.77,
+     "ror_lo": 47.4,
+     "ror_hi": 56.56,
+     "prr": 48.8
+    },
+    {
+     "reaction": "Hepatotoxicity",
+     "a": 328,
+     "ror": 35.85,
+     "ror_lo": 32.08,
+     "ror_hi": 40.06,
+     "prr": 34.59
+    },
+    {
+     "reaction": "Drug Intolerance",
+     "a": 555,
+     "ror": 14.16,
+     "ror_lo": 12.99,
+     "ror_hi": 15.43,
+     "prr": 13.35
+    },
+    {
+     "reaction": "Thrombocytopenia",
+     "a": 425,
+     "ror": 9.19,
+     "ror_lo": 8.34,
+     "ror_hi": 10.13,
+     "prr": 8.81
+    },
+    {
+     "reaction": "Malignant Neoplasm Progression",
+     "a": 391,
+     "ror": 9.23,
+     "ror_lo": 8.34,
+     "ror_hi": 10.21,
+     "prr": 8.87
+    },
+    {
+     "reaction": "Anaemia",
+     "a": 326,
+     "ror": 4.05,
+     "ror_lo": 3.62,
+     "ror_hi": 4.52,
+     "prr": 3.94
+    },
+    {
+     "reaction": "Pyrexia",
+     "a": 366,
+     "ror": 2.5,
+     "ror_lo": 2.25,
+     "ror_hi": 2.77,
+     "prr": 2.44
+    },
+    {
+     "reaction": "Dyspnoea",
+     "a": 409,
+     "ror": 1.7,
+     "ror_lo": 1.54,
+     "ror_hi": 1.87,
+     "prr": 1.67
+    },
+    {
+     "reaction": "Diarrhoea",
+     "a": 438,
+     "ror": 1.6,
+     "ror_lo": 1.45,
+     "ror_hi": 1.76,
+     "prr": 1.57
+    }
+   ]
+  }
+ }
+}

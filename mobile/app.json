@@ -25,7 +25,8 @@
         "NSSupportsLiveActivitiesFrequentUpdates": true,
         "CADisableMinimumFrameDurationOnPhone": true,
         "NSHealthShareUsageDescription": "Telomy reads steps, activity, workouts, sleep and vitals from Apple Health to build your daily scores. Telomy never writes to Health.",
-        "NSHealthUpdateUsageDescription": "Telomy does not write to Apple Health."
+        "NSHealthUpdateUsageDescription": "Telomy does not write to Apple Health.",
+        "NSMotionUsageDescription": "Telomy uses your phone's motion activity (still, walking, driving) to detect sleep and activity automatically. It stays on your phone."
       },
       "appleTeamId": "M483297A5P",
       "buildNumber": "5",
@@ -63,7 +64,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Telomy uses the microphone when you talk to Sinc \u2014 to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
+          "microphonePermission": "Telomy uses the microphone when you talk to Sinc — to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
         }
       ],
       "@bacons/apple-targets"

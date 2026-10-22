@@ -3,30 +3,21 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { api } from '@/lib/api';
+import { EVENT_KINDS, kindOf, localIso } from '@/lib/events';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Ring } from '@/ui/charts';
 import { Button, Card, Chip, Icon, Row, Screen, Spacer, Stat, T } from '@/ui/core';
 
-const KINDS = [
-  { k: 'meal', l: 'Meal', i: 'fork.knife' },
-  { k: 'alcohol', l: 'Alcohol', i: 'wineglass' },
-  { k: 'supplement', l: 'Supplement', i: 'pills' },
-  { k: 'medication', l: 'Medication', i: 'cross.vial' },
-  { k: 'symptom', l: 'Symptom', i: 'bandage' },
-  { k: 'mood', l: 'How I feel', i: 'face.smiling' },
-  { k: 'sauna', l: 'Sauna', i: 'flame' },
-  { k: 'workout_hard', l: 'Hard workout', i: 'figure.run' },
-  { k: 'late_meal', l: 'Late meal', i: 'moon' },
-  { k: 'caffeine_late', l: 'Late caffeine', i: 'cup.and.saucer' },
-  { k: 'stress', l: 'Stressful day', i: 'bolt' },
-  { k: 'travel', l: 'Travel', i: 'airplane' },
-  { k: 'life', l: 'Life event', i: 'house' },
-  { k: 'note', l: 'Note', i: 'note.text' },
-] as const;
+// Everything a person can log, from the single canonical registry (so caffeine, smoking, water, exercise, naps
+// and every therapy are all here — no more divergent lists). 'custom' is dropped from the quick picker.
+const KINDS = EVENT_KINDS.filter((x) => x.k !== 'custom');
 
 const SUGGEST: Record<string, string[]> = {
   alcohol: ['1 glass red wine', '2 beers', 'Whisky 60 ml'],
-  supplement: ['Magnesium glycinate 300 mg', 'Creatine 5 g', 'Omega-3 2 g', 'Vitamin D3 2000 IU'],
+  caffeine: ['Espresso', 'Filter coffee', '2 cups chai'],
+  smoking: ['1 cigarette', 'Vape', '2 cigarettes'],
+  water: ['250 ml', '500 ml', '1 L'],
+  supplement: ['Magnesium glycinate 300 mg', 'Creatine 5 g', 'Omega-3 2 g', 'Vitamin D3 2000 IU', 'Glutathione', 'NAC 600 mg'],
   symptom: ['Headache', 'Bloating', 'Fatigue', 'Joint pain'],
   mood: ['Calm', 'Anxious', 'Energetic', 'Low'],
   meal: ['2 rotis, dal and sabzi with salad', 'Masala oats with 2 eggs', 'Chicken biryani and a coke'],
@@ -60,11 +51,11 @@ export default function Log() {
     setErr(null);
     try {
       if (kind === 'meal') {
-        await api('/meals/analyze', { body: { text: label, save: true } });
-        setResult({ message: 'Saved. Sinc will look at it tonight.' });
+        const r = await api('/meals/analyze', { body: { text: label, save: true }, queue: true });
+        setResult({ message: r?.queued ? 'Saved on your phone. It will sync when the Telomy server is reachable.' : 'Saved. Sinc will look at it tonight.' });
       } else {
-        const r = await api('/events', { body: { kind, label: label || KINDS.find((x) => x.k === kind)!.l, severity: ['symptom', 'mood'].includes(kind) ? sev : null } });
-        setResult(r);
+        const r = await api('/events', { body: { kind, label: label || kindOf(kind).label, severity: ['symptom', 'mood'].includes(kind) ? sev : null, ts: localIso() }, queue: true });
+        setResult(r?.queued ? { message: 'Saved on your phone. It will sync when the Telomy server is reachable.' } : r);
       }
     } catch (e: any) {
       setErr(e.message);
@@ -99,8 +90,8 @@ export default function Log() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {KINDS.map((x) => (
               <Pressable key={x.k} onPress={() => { setKind(x.k); setMeal(null); setLabel(''); }} accessibilityRole="tab" accessibilityState={{ selected: kind === x.k }} style={{ alignItems: 'center', gap: 4, width: 76, paddingVertical: 10, borderRadius: radius.lg, borderWidth: 1, borderColor: kind === x.k ? p.teal : p.border, backgroundColor: kind === x.k ? p.tealSoft : p.surface }}>
-                <Icon name={x.i as any} color={kind === x.k ? p.teal : p.muted} />
-                <T v="small" style={{ fontSize: 11, textAlign: 'center' }} color={kind === x.k ? p.teal : p.muted}>{x.l}</T>
+                <Icon name={x.icon as any} color={kind === x.k ? p.teal : p.muted} />
+                <T v="small" style={{ fontSize: 11, textAlign: 'center' }} color={kind === x.k ? p.teal : p.muted}>{x.label}</T>
               </Pressable>
             ))}
           </ScrollView>
@@ -111,7 +102,7 @@ export default function Log() {
             placeholderTextColor={p.faint}
             multiline
             testID="log-input"
-            style={{ minHeight: 70, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, fontSize: 16, backgroundColor: p.surface }}
+            style={{ minHeight: 70, borderRadius: radius.md, padding: 12, color: p.text, fontSize: 16, backgroundColor: p.surface }}
           />
           {SUGGEST[kind] ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>

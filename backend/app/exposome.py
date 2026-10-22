@@ -11,6 +11,7 @@ correlation engine ("PM2.5 days → next-night HRV"), and population evidence tr
 City values are approximate annual figures, labelled as such; live values replace them when the API is reachable.
 """
 import json
+import time as _time
 import urllib.request
 from datetime import date, timedelta
 
@@ -32,6 +33,126 @@ CITIES = {  # lat, lon, altitude m, approx annual PM2.5 µg/m³ (CPCB/IQAir 2023
     "Singapore": (1.35, 103.82, 15, 13, 11.5, "Treated and NEWater supply; meets WHO guidelines."),
 }
 WHO_PM25 = 5.0
+
+# ---- global city-environment database (WHO Ambient Air Quality V8.0, 7,482 cities) ----
+# Replaces the 10-city hardcoded table above for coverage: any city or lat/lon resolves to a real PM2.5/PM10/NO2
+# profile + AQLI life-years-lost. The CITIES dict above is kept for its richer India UV + groundwater notes.
+import os as _os  # noqa: E402
+try:
+    _G = json.load(open(_os.path.join(_os.path.dirname(__file__), "assets", "env", "cities.json")))
+    GLOBAL = {c["city"].lower(): c for c in _G["cities"]}
+    GLOBAL_LIST = [c for c in _G["cities"] if c.get("pm25") is not None]
+    GLOBAL_SRC = _G.get("source", "WHO AAQ V8.0")
+except Exception:  # noqa: BLE001
+    GLOBAL, GLOBAL_LIST, GLOBAL_SRC = {}, [], ""
+
+
+def _nearest(lat: float, lon: float):
+    import math
+    def d2(a):
+        dla = math.radians(a["lat"] - lat); dlo = math.radians(a["lon"] - lon)
+        return math.sin(dla / 2) ** 2 + math.cos(math.radians(lat)) * math.cos(math.radians(a["lat"])) * math.sin(dlo / 2) ** 2
+    return min(GLOBAL_LIST, key=d2) if GLOBAL_LIST else None
+
+
+def city_profile(name: str | None = None, lat: float | None = None, lon: float | None = None) -> dict | None:
+    """Resolve ANY city to a real environmental profile. Match order: rich India table → exact WHO name →
+    name prefix → nearest WHO station by lat/lon. Merges real pollution (WHO) with UV/water (India table)."""
+    prof: dict = {}
+    g = None
+    if name and name.lower() in GLOBAL:
+        g = GLOBAL[name.lower()]
+    elif name:
+        g = next((c for c in GLOBAL_LIST if c["city"].lower().startswith(name.lower())), None)
+    if g is None and lat is not None and lon is not None:
+        g = _nearest(lat, lon)
+    if g:
+        pm = g.get("pm25")
+        prof = {"city": g["city"], "country": g.get("country"), "iso3": g.get("iso3"), "lat": g["lat"], "lon": g["lon"],
+                "pm25": pm, "pm10": g.get("pm10"), "no2": g.get("no2"), "life_years_lost": g.get("life_years_lost"),
+                "population": g.get("pop"), "data_year": g.get("year"),
+                "cigarettes_per_day_equiv": round(pm / 22, 1) if pm else None,
+                "source": GLOBAL_SRC, "resolved_by": "nearest-station" if (name and name.lower() not in GLOBAL) else "name"}
+    if name and name in CITIES:          # overlay richer India UV + groundwater notes
+        la, lo, alt, pm, uv, water = CITIES[name]
+        prof.setdefault("city", name)
+        prof.update({"lat": la, "lon": lo, "altitude_m": alt, "uv_mean_max": uv, "water": water})
+        if not prof.get("pm25"):
+            prof["pm25"] = pm
+            prof["life_years_lost"] = round(max(0, pm - WHO_PM25) / 10 * 0.98, 2)
+            prof["cigarettes_per_day_equiv"] = round(pm / 22, 1)
+    return prof or None
+
+
+# ---- social connection (the single biggest non-medical longevity lever) ----
+# Loneliness prevalence by country (% who felt lonely "a lot yesterday", Gallup World Poll 2023, 142 countries;
+# global mean 23%). Only documented values are listed; everything else falls back to the global mean, labelled.
+GLOBAL_LONELY = 23.0
+SOCIAL = {"Comoros": 45, "Denmark": 12, "Finland": 11, "Iceland": 11, "Poland": 11, "Slovenia": 11,
+          "Taiwan": 11, "Estonia": 10, "Kosovo": 10, "Kazakhstan": 10, "Vietnam": 6}
+LONELY_OR = 1.26        # Holt-Lunstad 2015 meta-analysis: loneliness → mortality odds ratio
+ISOLATION_OR = 1.29     # objective social isolation → mortality OR
+
+
+def social_impact(country: str | None = None, lonely_pct: float | None = None) -> dict:
+    """Social-connection exposure. Loneliness raises mortality ~26% (Holt-Lunstad) — on par with smoking 15
+    cig/day and larger than obesity. Country prevalence here; the member's own social data (if logged) overrides."""
+    documented = country in SOCIAL if country else False
+    pct = lonely_pct if lonely_pct is not None else (SOCIAL.get(country, GLOBAL_LONELY) if country else GLOBAL_LONELY)
+    return {"factor": "social_connection", "lonely_pct": pct,
+            "mortality_or_if_lonely": LONELY_OR, "isolation_or": ISOLATION_OR,
+            "note": ("Loneliness ≈ +26% mortality risk (Holt-Lunstad 2015) — comparable to smoking 15 cigarettes/day. "
+                     "Strongest modifiable non-medical factor Telomy can surface."),
+            "source": "Gallup World Poll 2023" + ("" if documented else " (global mean — country value not released)"),
+            "confidence": "country-level" if documented else "global-default"}
+
+
+# ---- environmental noise (estimated from urban density; measured EEA/DOT noise maps are the roadmap) ----
+import math as _math  # noqa: E402
+
+
+def noise_estimate(population: float | None, pm25: float | None = None) -> dict:
+    """Day-evening-night noise (Lden) estimated from settlement size (proxy); road-traffic noise raises coronary
+    disease ~8% per 10 dB above 50 dB (WHO 2018 meta-analysis). Measured noise maps are a roadmap integration."""
+    pop = population or 500_000
+    lden = max(45.0, min(75.0, 42 + 4.5 * _math.log10(max(pop, 1000) / 1000)))
+    cad_increase = round(max(0.0, (lden - 50)) / 10 * 8, 1)
+    return {"factor": "noise", "lden_db_estimated": round(lden, 0), "coronary_disease_risk_increase_pct": cad_increase,
+            "note": "Above 50 dB, road-traffic noise ≈ +8% coronary disease per 10 dB (WHO 2018); also fragments sleep.",
+            "source": "estimated from population density — measured EEA/US-DOT noise maps are the integration roadmap",
+            "confidence": "estimated"}
+
+
+def exposome_profile(name: str | None = None, lat: float | None = None, lon: float | None = None,
+                     country: str | None = None) -> dict:
+    """The full multi-factor exposome for a place: air + social connection + noise + heat/UV/water, each with its
+    evidence-based health translation and honest confidence. Food quality is PERSONAL (the member's diet log via
+    the nutrition/NOVA engine), not a postcode factor, so it is referenced, not geolocated."""
+    air = city_profile(name=name, lat=lat, lon=lon) or {}
+    ctry = country or air.get("country")
+    factors = []
+    if air.get("pm25") is not None:
+        factors.append({"factor": "air_quality", "pm25": air["pm25"], "pm10": air.get("pm10"), "no2": air.get("no2"),
+                        "life_years_lost": air.get("life_years_lost"), "cigarettes_per_day_equiv": air.get("cigarettes_per_day_equiv"),
+                        "note": "Each 10 µg/m³ PM2.5 above the WHO guideline (5) ≈ 0.98 yr of life (AQLI).",
+                        "source": air.get("source", "WHO AAQ V8.0"), "confidence": "measured"})
+    factors.append(social_impact(ctry))
+    factors.append(noise_estimate(air.get("population"), air.get("pm25")))
+    if air.get("uv_mean_max"):
+        factors.append({"factor": "uv", "uv_mean_max": air["uv_mean_max"], "note": "UV ≥3 drives skin vitamin-D synthesis and photo-ageing.", "confidence": "annual-estimate"})
+    if air.get("water"):
+        factors.append({"factor": "water", "note": air["water"], "source": "CGWB / Jal Jeevan Mission (India)", "confidence": "city-note"})
+    factors.append({"factor": "food_quality", "note": "Food quality is measured from your own diet log (NOVA processing + Nutri-score), "
+                    "not your location — see the nutrition engine. Ultra-processed-heavy diets ≈ +10–18% mortality (Naghshi 2024).",
+                    "source": "Telomy nutrition engine (food_quality / NOVA)", "confidence": "personal-if-logged"})
+    return {"place": air.get("city", name), "country": ctry, "lat": air.get("lat"), "lon": air.get("lon"),
+            "factors": factors,
+            "summary": f"{air.get('city', name)}'s exposome: air {('loses ≈%.1f yr (AQLI)' % air['life_years_lost']) if air.get('life_years_lost') else 'n/a'}; "
+                       f"social {'elevated' if social_impact(ctry)['lonely_pct'] >= GLOBAL_LONELY else 'lower'}-loneliness context; "
+                       f"noise ~{noise_estimate(air.get('population'))['lden_db_estimated']:.0f} dB est.",
+            "honesty": "Evidence-translation engine (cited dose-responses), not a trained outcome model — no free "
+                       "location-exposome→mortality cohort exists to train on. Air is measured; social is country-level; "
+                       "noise is estimated; food is personal. Each factor states its own confidence."}
 
 
 def init():
@@ -91,6 +212,11 @@ def where(day: str) -> str:
     return engine.profile().get("city", "Bengaluru")
 
 
+_LAST_FETCH: dict[tuple, float] = {}
+_LIVE: dict = {"t": 0.0, "end": None, "v": None}
+_TTL = 6 * 3600    # Open-Meteo data changes slowly; one network round per place per 6 h (was every request)
+
+
 def ensure(days: int = 120) -> dict:
     end = date.fromisoformat(engine.last_signal_day() or date.today().isoformat())
     start = end - timedelta(days=days - 1)
@@ -98,7 +224,12 @@ def ensure(days: int = 120) -> dict:
     got = {}
     for pl in places:
         have = db.one("SELECT COUNT(*) AS n FROM exposure WHERE place = ? AND day BETWEEN ? AND ?", (pl, start.isoformat(), end.isoformat()))["n"]
-        got[pl] = have if have >= days * 0.8 else fetch(pl, start.isoformat(), end.isoformat())
+        key = (db.db_path(), pl, start.isoformat())
+        if have >= days * 0.8 or _time.time() - _LAST_FETCH.get(key, 0) < _TTL:
+            got[pl] = have
+        else:
+            _LAST_FETCH[key] = _time.time()
+            got[pl] = fetch(pl, start.isoformat(), end.isoformat())
     return got
 
 
@@ -143,31 +274,44 @@ def personal(days: int = 120) -> dict:
 
 
 def compare(a: str = "Delhi", b: str = "Bengaluru", live: dict | None = None) -> dict:
-    """Two identical people, two cities: what differs and what it is estimated to cost."""
+    """Two identical people, two cities: what differs and what it is estimated to cost. Works for any of the
+    7,482 WHO cities (resolved via city_profile), not just the hardcoded India set."""
     out = []
     for c in (a, b):
-        lat, lon, alt, pm, uv, water = CITIES[c]
-        cur = live.get(c) if live else None
-        out.append({"city": c, "pm25_annual": pm, "pm25_last_week": cur, "uv_mean_max": uv, "altitude_m": alt, "water": water,
-                    "aqli_years_lost": round(max(0, pm - WHO_PM25) / 10 * 0.98, 1), "cigarettes_per_day_equiv": round(pm / 22, 1)})
+        p = city_profile(c) or {"city": c, "pm25": None}
+        pm = p.get("pm25")
+        out.append({"city": p.get("city", c), "country": p.get("country"), "pm25_annual": pm,
+                    "pm25_last_week": (live.get(c) if live else None), "pm10_annual": p.get("pm10"), "no2_annual": p.get("no2"),
+                    "uv_mean_max": p.get("uv_mean_max"), "altitude_m": p.get("altitude_m"), "water": p.get("water"),
+                    "aqli_years_lost": p.get("life_years_lost"), "cigarettes_per_day_equiv": p.get("cigarettes_per_day_equiv"),
+                    "data_year": p.get("data_year"), "source": p.get("source")})
     da, db_ = out
-    lines = [f"Same person, same habits: living in {a} vs {b} means breathing about {da['pm25_annual'] - db_['pm25_annual']:+.0f} µg/m³ more PM2.5 every day — "
-             f"like smoking {da['cigarettes_per_day_equiv']:.1f} vs {db_['cigarettes_per_day_equiv']:.1f} cigarettes a day (Berkeley Earth).",
-             f"AQLI estimates the long-term difference at ≈ {da['aqli_years_lost'] - db_['aqli_years_lost']:.1f} years of life expectancy.",
-             f"Short-term: each +10 µg/m³ PM2.5 lowers HRV and raises blood pressure within days (Pieters 2012, Heart; Liang 2014, Hypertension). "
-             f"Telomy measures this in your own data.",
-             f"UV: {b} averages a midday UV maximum near {db_['uv_mean_max']}, {a} near {da['uv_mean_max']} — vitamin D synthesis and skin photo-ageing both follow UV dose; "
-             f"{a}'s winter smog cuts UV-B further.",
-             f"Water: {a}: {da['water']} {b}: {db_['water']}"]
+    lines = []
+    if da["pm25_annual"] is not None and db_["pm25_annual"] is not None:
+        lines.append(f"Same person, same habits: living in {da['city']} vs {db_['city']} means breathing about "
+                     f"{da['pm25_annual'] - db_['pm25_annual']:+.0f} µg/m³ more PM2.5 every day — like smoking "
+                     f"{da['cigarettes_per_day_equiv']:.1f} vs {db_['cigarettes_per_day_equiv']:.1f} cigarettes a day (Berkeley Earth).")
+        if da["aqli_years_lost"] is not None and db_["aqli_years_lost"] is not None:
+            lines.append(f"AQLI estimates the long-term difference at ≈ {da['aqli_years_lost'] - db_['aqli_years_lost']:.1f} years of life expectancy.")
+        lines.append("Short-term: each +10 µg/m³ PM2.5 lowers HRV and raises blood pressure within days (Pieters 2012, Heart; "
+                     "Liang 2014, Hypertension). Telomy measures this in your own data.")
+    if da.get("uv_mean_max") and db_.get("uv_mean_max"):
+        lines.append(f"UV: {db_['city']} averages a midday UV maximum near {db_['uv_mean_max']}, {da['city']} near {da['uv_mean_max']} — "
+                     f"vitamin D synthesis and skin photo-ageing both follow UV dose.")
+    if da.get("water") or db_.get("water"):
+        lines.append(f"Water: {da['city']}: {da.get('water','—')} {db_['city']}: {db_.get('water','—')}")
     return {"cities": out, "summary": lines,
-            "sources": ["AQLI 2024 (EPIC, University of Chicago)", "Berkeley Earth — air pollution and cigarette equivalence (Muller 2015)",
+            "sources": ["WHO Ambient Air Quality Database V8.0 (2026) — 7,482 cities", "AQLI 2024 (EPIC, University of Chicago)",
+                        "Berkeley Earth — air pollution and cigarette equivalence (Muller 2015)",
                         "Pieters N et al. 2012, Heart — PM and HRV meta-analysis", "Liang R et al. 2014, Hypertension — PM2.5 and blood pressure",
                         "CGWB groundwater quality reports; Jal Jeevan Mission WQMIS", "Copernicus CAMS via Open-Meteo"]}
 
 
 def live_week() -> dict:
-    out = {}
     end = date.fromisoformat(engine.last_signal_day() or date.today().isoformat())
+    if _LIVE["v"] is not None and _LIVE["end"] == end and _time.time() - _LIVE["t"] < _TTL:
+        return _LIVE["v"]
+    out = {}
     for c in ("Delhi", "Bengaluru"):
         lat, lon = CITIES[c][:2]
         aq = _get(f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}&hourly=pm2_5"
@@ -175,4 +319,5 @@ def live_week() -> dict:
         if aq:
             v = [x for x in aq["hourly"]["pm2_5"] if x is not None]
             out[c] = round(sum(v) / len(v), 1) if v else None
+    _LIVE.update(t=_time.time(), end=end, v=out)
     return out

@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "source": "NHANES 2013-2018 (H,I,J); diet intake + demographics -> measured biomarker deficiency",
+    "features": [
+      "age",
+      "sex",
+      "race",
+      "energy",
+      "protein",
+      "fiber",
+      "folate_intake",
+      "b12_intake",
+      "vitc",
+      "vitd_intake",
+      "calcium",
+      "magnesium_intake",
+      "iron_intake",
+      "zinc_intake"
+    ],
+    "note": "diet partly predicts status; we still MEASURE (absorption/sun/genetics)"
+  },
+  "def_vitamin_d": {
+    "label": "vitamin D (<50 nmol/L)",
+    "n": 16310,
+    "prevalence": 0.313,
+    "test_AUC": 0.737,
+    "test_AP": 0.553
+  },
+  "def_iron": {
+    "label": "iron/ferritin (<30 ng/mL)",
+    "n": 6716,
+    "prevalence": 0.195,
+    "test_AUC": 0.787,
+    "test_AP": 0.414
+  },
+  "def_b12": {
+    "label": "vitamin B12 (<148 pmol/L)",
+    "n": 5447,
+    "prevalence": 0.021,
+    "test_AUC": 0.554,
+    "test_AP": 0.024
+  }
+}

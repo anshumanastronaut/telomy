@@ -4,7 +4,7 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 
 import { fmtDate, useApi } from '@/lib/api';
-import { space, usePalette } from '@/lib/theme';
+import { space, usePalette, onInk } from '@/lib/theme';
 import { Button, Card, Chip, ErrorState, Icon, Loading, Row, Screen, Section, T } from '@/ui/core';
 import { HsaiCard, VerdictChip, inr } from '@/ui/therapy';
 import { BandTools } from '@/ui/ecg';
@@ -19,21 +19,21 @@ export default function Therapy() {
   return (
     <Screen onRefresh={reload} refreshing={loading}>
       <T v="h1">Therapy</T>
-      <LinearGradient testID="centre-card" colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
+      <LinearGradient testID="centre-card" colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: onInk.hairline }}>
         <Row>
-          <T v="label" color="rgba(255,255,255,0.6)" style={{ flex: 1 }}>Your centre</T>
+          <T v="label" color={onInk.muted} style={{ flex: 1 }}>Your centre</T>
           <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(92,201,167,0.16)' }}>
             <T v="small" color="#5CC9A7" style={{ fontWeight: '600', fontSize: 12 }}>{d.membership.plan}</T>
           </View>
         </Row>
         <T v="h2" color="#fff">{d.centre.name}</T>
-        <T v="small" color="rgba(255,255,255,0.6)">{d.centre.hours} · {d.centre.address}</T>
+        <T v="small" color={onInk.muted}>{d.centre.hours} · {d.centre.address}</T>
         <View style={{ gap: 6, marginTop: space[1] }}>
           <Row>
             <T v="num" color="#fff" style={{ fontSize: 28 }}>{d.membership.sessions_this_month}</T>
-            <T v="small" color="rgba(255,255,255,0.6)" style={{ flex: 1 }}> of {d.membership.credits} sessions this month</T>
+            <T v="small" color={onInk.muted} style={{ flex: 1 }}> of {d.membership.credits} sessions this month</T>
           </Row>
-          <View style={{ height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+          <View style={{ height: 6, borderRadius: 3, backgroundColor: onInk.hairline, overflow: 'hidden' }}>
             <View style={{ width: `${Math.min(100, (100 * d.membership.sessions_this_month) / Math.max(1, d.membership.credits))}%`, height: 6, borderRadius: 3, backgroundColor: '#FF9A5A' }} />
           </View>
         </View>
@@ -124,9 +124,9 @@ function WorkingCard({ w, compact }: { w: any; compact?: boolean }) {
 function HeroAction({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}
-      style={({ pressed }) => ({ flex: 1, alignItems: 'center', gap: 6, paddingVertical: 12, borderRadius: 18, backgroundColor: pressed ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.07)' })}>
+      style={({ pressed }) => ({ flex: 1, alignItems: 'center', gap: 6, paddingVertical: 12, borderRadius: 18, backgroundColor: pressed ? onInk.track : onInk.hairline })}>
       <Icon name={icon} size={18} color="#fff" />
-      <T v="small" color="rgba(255,255,255,0.85)" style={{ fontWeight: '600', fontSize: 12 }}>{label}</T>
+      <T v="small" color={onInk.primary} style={{ fontWeight: '600', fontSize: 12 }}>{label}</T>
     </Pressable>
   );
 }

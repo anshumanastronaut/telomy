@@ -2,29 +2,35 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { api, useApi } from '@/lib/api';
+import { staffOrg } from '@/lib/staff';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, Divider, Loading, Row, Screen, Section, T, useToast } from '@/ui/core';
 
-const STATUS: Record<string, [string, string]> = { booked: ['Booked', 'info'], checked_in: ['Checked in', 'awaiting'], completed: ['Done', 'optimal'], no_show: ['No-show', 'out_of_range'], cancelled: ['Cancelled', 'none'] };
+const STATUS: Record<string, string> = { booked: 'Booked', checked_in: 'Checked in', completed: 'Done', no_show: 'No-show', cancelled: 'Cancelled' };
 
 function day(off: number) {
-  const d = new Date('2026-10-06T12:00:00');
+  const d = new Date();
   d.setDate(d.getDate() + off);
   return d.toISOString().slice(0, 10);
 }
 
 export default function Bookings() {
   const p = usePalette();
+  const org = encodeURIComponent(staffOrg());
   const [off, setOff] = useState(0);
-  const list = useApi<any[]>(`/centre/bookings?day=${day(off)}`, [off]);
-  const members = useApi<any[]>('/centre/members');
-  const services = useApi<any[]>('/centre/services');
-  const [m, setM] = useState<number | null>(null);
-  const [s, setS] = useState<string | null>(null);
+  const list = useApi<any[]>(`/mgmt/centre/schedule?org=${org}&day=${day(off)}`, [off]);
+  const members = useApi<any[]>(`/mgmt/centre/people?org=${org}`);
+  const services = useApi<any[]>(`/mgmt/catalog?org=${org}&kind=service_type`);
+  const [m, setM] = useState<any>(null);
+  const [s, setS] = useState<any>(null);
   const [hour, setHour] = useState(10);
   const { toast, show } = useToast();
-  async function setStatus(id: number, status: string) {
-    await api(`/centre/bookings/${id}/status`, { body: { status } });
+  async function checkIn(id: any) {
+    await api(`/mgmt/centre/bookings/${id}/checkin`, { method: 'POST' });
+    list.reload();
+  }
+  async function setStatus(id: any, status: string) {
+    await api(`/mgmt/centre/bookings/${id}/status`, { body: { status } });
     list.reload();
   }
   return (
@@ -49,12 +55,12 @@ export default function Bookings() {
               {i ? <Divider /> : null}
               <View style={{ paddingVertical: 10, gap: 6 }}>
                 <Row>
-                  <T v="body" style={{ width: 50, fontWeight: '600' }}>{b.ts.slice(11, 16)}</T>
-                  <View style={{ flex: 1 }}><T v="body">{b.service}</T><T v="small">{b.name} · {b.minutes} min · ₹{b.price}</T></View>
-                  <Chip label={STATUS[b.status]?.[0] ?? b.status} />
+                  <T v="body" style={{ width: 50, fontWeight: '600' }}>{b.start_ts?.slice(11, 16)}</T>
+                  <View style={{ flex: 1 }}><T v="body">{b.service_name}</T><T v="small">{b.minutes} min · ₹{b.price}</T></View>
+                  <Chip label={STATUS[b.status] ?? b.status} />
                 </Row>
                 {b.status === 'booked' ? (
-                  <Row><Button style={{ flex: 1 }} kind="secondary" title="Check in" onPress={() => setStatus(b.id, 'checked_in')} /><Button kind="ghost" title="No-show" onPress={() => setStatus(b.id, 'no_show')} /></Row>
+                  <Row><Button style={{ flex: 1 }} kind="secondary" title="Check in" onPress={() => checkIn(b.id)} /><Button kind="ghost" title="No-show" onPress={() => setStatus(b.id, 'no_show')} /></Row>
                 ) : b.status === 'checked_in' ? <Button kind="secondary" title="Mark done" onPress={() => setStatus(b.id, 'completed')} /> : null}
               </View>
             </View>
@@ -76,8 +82,8 @@ export default function Bookings() {
             </View>
             <Button title="Book" disabled={!m || !s} onPress={async () => {
               try {
-                const r = await api('/centre/bookings', { body: { patient_id: m, service_id: s, ts: `${day(off)}T${String(hour).padStart(2, '0')}:00:00` } });
-                show(r.message, 'success'); list.reload();
+                await api('/mgmt/centre/book', { body: { org: staffOrg(), member_id: m, service_id: s, start_ts: `${day(off)}T${String(hour).padStart(2, '0')}:00:00` } });
+                show('Booked.', 'success'); list.reload();
               } catch (e: any) { show(e.message, 'alert'); }
             }} />
           </Card>

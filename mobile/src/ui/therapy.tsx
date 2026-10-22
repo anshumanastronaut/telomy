@@ -107,7 +107,7 @@ export function PhaseLegend({ phases }: { phases: { phase: string; start: number
         const c = ph === 'baseline' ? p.surfaceAlt : ph === 'recovery' || ph === 'decompression' || ph === 'hyperoxic' ? p.tealSoft : p.copperSoft;
         return (
           <Row key={ph} gap={4}>
-            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: c, borderWidth: 1, borderColor: p.border }} />
+            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: c }} />
             <Text style={{ color: p.muted, fontSize: 11, fontFamily: 'Inter_500Medium' }}>{phaseName(ph)}</Text>
           </Row>
         );
@@ -121,7 +121,7 @@ export function HsaiCard({ h, onPress }: { h: any; onPress?: () => void }) {
   if (!h?.available) return null;
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Adaptability index ${h.score}`}>
-      <View style={{ backgroundColor: p.surface, borderRadius: 16, borderWidth: 1, borderColor: p.border, padding: 16, gap: 8 }}>
+      <View style={{ backgroundColor: p.surface, borderRadius: 16, padding: 16, gap: 8 }}>
         <Row>
           <View style={{ flex: 1 }}>
             <T v="label">Health-span adaptability (HSAI)</T>

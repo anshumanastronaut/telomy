@@ -5,8 +5,9 @@ import { router, Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
+import { api } from '@/lib/api';
 import { Band } from '@/lib/band';
-import { EVENT_KINDS, kindOf } from '@/lib/events';
+import { EVENT_KINDS, kindOf, localIso } from '@/lib/events';
 import { radius, space, usePalette } from '@/lib/theme';
 import { fmtClock } from '@/lib/wellness';
 import { Button, Card, Icon, Row, Screen, Section, T, useToast } from '@/ui/core';
@@ -28,7 +29,11 @@ export default function LogEvent() {
 
   function save() {
     const t = Date.now() / 1000 - ago * 60;
-    const r = Band.addUserEvent({ kind, label: (kind === 'custom' ? label.trim() : label.trim() || k.label) || 'Event', note: note.trim() || undefined, t });
+    const text = (kind === 'custom' ? label.trim() : label.trim() || k.label) || 'Event';
+    const r = Band.addUserEvent({ kind, label: text, note: note.trim() || undefined, t });
+    // Also sync to the backend Vault so it shows on the longitudinal timeline (not only the on-phone log). The ts
+    // is the device-LOCAL wall-clock, so it lands at the time the user picked regardless of the server's timezone.
+    api('/events', { body: { kind, label: text, ts: localIso(t), data: note.trim() ? { note: note.trim() } : undefined }, queue: true }).catch(() => {});
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     show(r.captureId ? `Added to your recording at ${fmtClock(t)}` : `Logged at ${fmtClock(t)}`, 'success');
     setLabel(''); setNote(''); setAgo(0); load();

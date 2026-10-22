@@ -68,11 +68,19 @@ def analyze(text: str, when: datetime | None = None) -> dict:
     chunks = [c.strip() for c in re.split(r",| and | with |\+|&|\n", t) if c.strip()]
     for chunk in chunks:
         # Prefer the most specific match: longest alias, then the composite dish (more energy) over an ingredient.
-        cands = [(max(len(a) for a in spec[0] if re.search(rf"\b{re.escape(a)}\b", chunk)), spec[1], key)
-                 for key, spec in FOODS.items() if any(re.search(rf"\b{re.escape(a)}\b", chunk) for a in spec[0])]
+        hit = lambda a: re.search(rf"\b{re.escape(a)}(s|es)?\b", chunk)  # noqa: E731 — "rotis", "idlis", "dosas"
+        cands = [(max(len(a) for a in spec[0] if hit(a)), spec[1], key) for key, spec in FOODS.items() if any(hit(a) for a in spec[0])]
         found = max(cands)[2] if cands else None
         if not found:
-            unmatched.append(chunk)
+            from . import fooddb
+            u = fooddb.best(chunk)
+            if not u:
+                unmatched.append(chunk)
+                continue
+            g = re.search(r"(\d+(?:\.\d+)?)\s*(g|gm|grams|ml)\b", chunk)
+            n = re.search(r"^\s*(\d+(?:\.\d+)?)\b(?!\s*(g|gm|grams|ml))", chunk)
+            grams = float(g.group(1)) if g else (u["portion"]["grams"] if u["portion"] else 100) * (float(n.group(1)) if n else 1)
+            items.append({"food": f"usda:{u['id']}", "name": u["name"], "grams": round(grams), "text": chunk, "usda": fooddb.nutrients_for(u, grams)})
             continue
         m = re.search(r"(\d+(?:\.\d+)?)|\b(one|two|three|four|half|an?)\b", chunk)
         qty = float(m.group(1)) if m and m.group(1) else WORDNUM.get(m.group(2), 1) if m else 1
@@ -84,18 +92,34 @@ def analyze(text: str, when: datetime | None = None) -> dict:
     tot = {"kcal": 0.0, "protein": 0.0, "carbs": 0.0, "fat": 0.0, "fibre": 0.0}
     proc = []
     alcohol = False
+    micro: dict[str, float] = {}
     for it in items:
+        if "usda" in it:
+            n = it["usda"]
+            for k in ("kcal", "protein", "carbs", "fat", "fibre"):
+                tot[k] += n.get(k, 0)
+            tot["sugar"] = tot.get("sugar", 0) + n.get("sugar", 0)
+            tot["sat_fat"] = tot.get("sat_fat", 0) + n.get("sat_fat", 0)
+            for k, v in n.items():
+                if k.endswith(("_mg", "_ug")):
+                    micro[k] = round(micro.get(k, 0) + v, 2)
+            proc.append(1)
+            continue
         s = FOODS[it["food"]]
         for i, k in enumerate(("kcal", "protein", "carbs", "fat", "fibre")):
             tot[k] += s[1 + i] * it["qty"]
         proc.append(s[6])
         alcohol = alcohol or it["food"] in ("wine", "beer", "whisky")
     for it in items:
+        if "usda" in it:
+            continue
         sug, add, sat = DETAIL.get(it["food"], (0, 0, 0))
         tot["sugar"] = tot.get("sugar", 0) + sug * it["qty"]
         tot["added_sugar"] = tot.get("added_sugar", 0) + add * it["qty"]
         tot["sat_fat"] = tot.get("sat_fat", 0) + sat * it["qty"]
     tot = {k: round(v, 1) for k, v in tot.items()}
+    if micro:
+        tot["micronutrients"] = micro
     tot["pct_daily"] = {k: round(100 * tot.get(k, 0) / v) for k, v in DAILY.items()}
     coverage = len(items) / max(len(chunks), 1)
     if not items:
@@ -129,7 +153,7 @@ def analyze(text: str, when: datetime | None = None) -> dict:
             "glycaemic_load_est": round(load), "circadian": "late (after 9 pm)" if late else "within your eating window",
             "processing": ["whole", "minimally processed", "processed", "ultra-processed"][round(sum(proc) / len(proc))],
             "tips": tips, "confidence": round(0.4 + 0.5 * coverage, 2),
-            "method": "Food table estimate per typical serving; not a lab measurement."}
+            "method": "Food table estimate per typical serving" + (" + USDA FoodData Central SR Legacy (per gram)" if micro else "") + "; not a lab measurement."}
 
 
 WEEK = [

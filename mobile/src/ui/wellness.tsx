@@ -1,4 +1,5 @@
 // Wellness visuals: hero score rings, last-night card, overnight HR chart, zones, stress strip, contributors.
+import { checkArchitecture } from '@/lib/sleeppatterns';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -7,8 +8,8 @@ import { Animated, Easing, Pressable, View, type LayoutChangeEvent } from 'react
 import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { useReducedMotion } from 'react-native-reanimated';
 
-import { radius, space, usePalette, type Palette } from '@/lib/theme';
-import { coachLine, fmtClock, fmtDur, useWellness, type Contributor, type Night, type Score, type Wellness } from '@/lib/wellness';
+import { radius, space, type, usePalette, type Palette, data, onInk } from '@/lib/theme';
+import { coachLine, fmtClock, fmtDur, hrMax, useWellness, type Contributor, type MinuteRec, type Night, type Score, type Wellness } from '@/lib/wellness';
 import { useBand } from '@/lib/band';
 import { BeatHeart } from '@/ui/ecg';
 import { Card, Icon, Row, T } from '@/ui/core';
@@ -41,16 +42,16 @@ export function ScoreRing({ value, max = 100, size = 96, stroke = 9, color, trac
             strokeDasharray={`${circ} ${circ}`} strokeDashoffset={offset as any} rotation={-90} origin={`${size / 2}, ${size / 2}`} />
         </Svg>
         <T v="num" color="#fff" style={{ fontSize: size > 140 ? 52 : size > 90 ? 28 : 22, lineHeight: size > 140 ? 60 : undefined }}>{center}</T>
-        {sub ? <T v="small" color="rgba(255,255,255,0.65)" style={{ fontSize: 11, marginTop: -2 }}>{sub}</T> : null}
+        {sub ? <T v="small" color={onInk.secondary} style={{ fontSize: 11, marginTop: -2 }}>{sub}</T> : null}
       </View>
-      {label ? <T v="small" color="rgba(255,255,255,0.85)" style={{ fontWeight: '600', letterSpacing: 0.5 }}>{label.toUpperCase()}</T> : null}
+      {label ? <T v="small" color={onInk.primary} style={{ fontWeight: '600', letterSpacing: 0.5 }}>{label.toUpperCase()}</T> : null}
     </Pressable>
   );
 }
 
 /** Stage colours (one colour = one meaning, same on every screen). */
 export const STAGE = [
-  { k: 'Awake', c: '#E0894F' }, { k: 'Light', c: '#8EA8FF' }, { k: 'Deep', c: '#4B5FD1' }, { k: 'REM', c: '#4FC8E3' },
+  { k: 'Awake', c: data.temp }, { k: 'Light', c: data.sleep }, { k: 'Deep', c: '#4B5FD1' }, { k: 'REM', c: '#4FC8E3' },
 ];
 const LANE = [0, 3, 1, 2]; // top → bottom: Awake, REM, Light, Deep (Oura/Apple order)
 
@@ -68,7 +69,7 @@ export function Hypnogram({ n, height }: { n: Night; height?: number }) {
   const plotW = Math.max(0, w - labelW);
   const X = (i: number) => labelW + (i / N) * plotW;
   const laneOf = (v: number) => (staged ? LANE.indexOf(v) : v ? 1 : 0);
-  const col = (v: number) => (staged ? STAGE[v].c : v ? '#6F8CF0' : '#E0894F');
+  const col = (v: number) => (staged ? STAGE[v].c : v ? '#6F8CF0' : data.temp);
   const Y = (v: number) => laneOf(v) * laneH + laneH * 0.18;
   const hours: number[] = [];
   for (let t = Math.ceil(n.start / 3600) * 3600; t < n.start + N * n.epochSec; t += 3600) hours.push(t);
@@ -97,7 +98,7 @@ export function Hypnogram({ n, height }: { n: Night; height?: number }) {
       {!staged ? (
         <Row gap={14}>
           <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#6F8CF0' }} /><T v="small">Asleep</T></Row>
-          <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: '#E0894F' }} /><T v="small">Awake</T></Row>
+          <Row gap={5}><View style={{ width: 10, height: 6, borderRadius: 3, backgroundColor: data.temp }} /><T v="small">Awake</T></Row>
         </Row>
       ) : null}
     </View>
@@ -116,8 +117,15 @@ export function StageBreakdown({ n }: { n: Night }) {
     { i: 1, min: n.lightMin, typical: '50–60 %' },
     { i: 2, min: n.deepMin, typical: '13–23 %' },
   ];
+  const arch = checkArchitecture(n);
   return (
     <View style={{ gap: space[3] }}>
+      {n.stageConfidence === 'low' ? (
+        <T v="small" color={p.warn}>Stages estimated from the ring's 5-minute heart rate — a coarse view. Wear the patch (or an Apple Watch) for sleep-lab-grade staging.</T>
+      ) : null}
+      {arch && !arch.ok ? (
+        <T v="small" color={p.warn}>Stage minutes are uncertain tonight: {arch.flags.join('; ')}. Total sleep and timing are unaffected.</T>
+      ) : null}
       <View style={{ flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
         {rows.map((r) => (r.min > 0 ? <View key={r.i} style={{ flex: r.min, backgroundColor: STAGE[r.i].c }} /> : null))}
       </View>
@@ -234,7 +242,7 @@ export function LastNightCard({ n, sleep, history = [], embedded }: { n: Night; 
           sub={n.lowestHrAt ? `at ${fmtClock(n.lowestHrAt)}${n.lowestHrPos != null && n.lowestHrPos > 0.66 ? ' · late' : ''}` : undefined} />
         <MiniMetric icon="waveform.path.ecg" label="Overnight HRV" value={n.sleepRmssd ? `${Math.round(n.sleepRmssd)} ms` : '—'} delta={d('sleepRmssd')} goodUp
           sub={n.lateRmssd ? `${Math.round(n.lateRmssd)} ms by morning` : undefined} />
-        <MiniMetric icon="lungs.fill" color="#6F8CF0" label="Breathing" value={n.respRate ? `${n.respRate.toFixed(1)} /min` : '—'} delta={d('respRate')} goodUp={false} sub="from your ECG" />
+        <MiniMetric icon="lungs.fill" color="#6F8CF0" label="Breathing" value={n.respRate ? `${n.respRate.toFixed(1)} /min` : '—'} delta={d('respRate')} goodUp={false} sub={n.respRate ? "from your devices" : "calibrating"} />
         <MiniMetric icon="arrow.down.heart.fill" color={p.copper} label="HR drop" value={n.hrDropPct != null ? `${Math.round(n.hrDropPct)}%` : '—'} delta={d('hrDropPct')} goodUp
           sub={n.hrDropPct != null ? 'bedtime → asleep' : 'too little time in bed'} />
       </View>
@@ -263,6 +271,36 @@ export function ContributorList({ items }: { items: Contributor[] }) {
 }
 
 const ZONE_COLORS = ['#9FC5B8', '#5FB08F', '#E2B04A', '#E58A4E', '#D3523F'];
+/** Strain's equivalent of the sleep hypnogram: one column per hour of the day, stacked by heart-rate zone minutes
+ *  (Z1 at the bottom → Z5 on top), in the zone colours. Column height = that hour's training load (zone-weighted
+ *  minutes), so a hard 40-minute session towers over a gentle walk of the same length. */
+export function StrainColumns({ mins, age }: { mins: MinuteRec[]; age: number }) {
+  const p = usePalette();
+  const max = hrMax(age);
+  const hours = Array.from({ length: 24 }, () => [0, 0, 0, 0, 0]);
+  for (const m of mins) {
+    if (!m.hr || m.quality === 'poor' || m.quality === 'no_contact') continue;
+    const f = m.hr / max; if (f < 0.5) continue;
+    const h = new Date(m.ts).getHours(); hours[h][Math.min(4, Math.floor((f - 0.5) * 10))] += 1;
+  }
+  const load = hours.map((z) => z.reduce((s, v, i) => s + v * (i + 1), 0));
+  const peak = Math.max(1, ...load), H = 120, now = new Date().getHours();
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: H, gap: 2 }}>
+        {hours.map((z, h) => (
+          <View key={h} style={{ flex: 1, height: Math.max(2, (load[h] / peak) * H), borderRadius: 3, overflow: 'hidden', backgroundColor: p.surfaceAlt, flexDirection: 'column-reverse', opacity: h > now ? 0.35 : 1 }}>
+            {load[h] ? z.map((v, i) => (v ? <View key={i} style={{ flex: v * (i + 1), backgroundColor: ZONE_COLORS[i] }} /> : null)) : null}
+          </View>
+        ))}
+      </View>
+      <Row>
+        {['00', '06', '12', '18', '24'].map((l, i) => <T key={l} v="small" style={{ flex: i === 4 ? 0 : 1, fontSize: type.micro }} color={p.faint}>{l}</T>)}
+      </Row>
+    </View>
+  );
+}
+
 export function ZoneBar({ zones }: { zones: number[] }) {
   const p = usePalette();
   const total = zones.reduce((a, b) => a + b, 0);
