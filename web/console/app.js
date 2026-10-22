@@ -241,7 +241,7 @@ V.patients = async () => {
   v.appendChild(el('p', 'muted small', 'Your panel. Intake a new patient, chart them, and assign them to a wellness centre for therapy delivery.'));
   const c = el('div', 'card table-card');
   c.appendChild(tableOf(['Name', 'Age', 'Sex', 'City', ''], (panel || []).map(p => [`<b>${p.name || ('#' + p.id)}</b>`, p.age ? Math.round(p.age) : '—', p.sex || '—', p.city || '—',
-    spanActions([btn('Chart', 'sm', () => openChart(p.id, p.name)), btn('→ Centre', 'sm', () => assignCentre(p.id))])]), 'No patients yet — intake one.'));
+    spanActions([btn('360', 'sm', () => openPatientSummary(p.id, p.name)), btn('Chart', 'sm', () => openChart(p.id, p.name)), btn('→ Centre', 'sm', () => assignCentre(p.id))])]), 'No patients yet — intake one.'));
   v.appendChild(c);
 };
 function spanActions(btns) { const d = el('div', 'row'); btns.forEach(b => d.appendChild(b)); return d; }
@@ -746,6 +746,57 @@ function macroCard(m) {
   return c;
 }
 
+function overviewCard(ov) {
+  const node = el('div');
+  if (!ov || ov.error) { node.appendChild(empty((ov && ov.error) || 'No summary')); return node; }
+  const p = ov.patient || {};
+  // AI summary
+  const ai = el('div', 'card');
+  ai.innerHTML = `<div class="row between top"><div class="section-title" style="margin:0">AI summary</div><span class="badge">draft · grounded</span></div>
+    <p style="margin:8px 0 6px">${(ov.ai_summary || {}).text || ''}</p>
+    <div class="small muted">${(ov.ai_summary || {}).drafted_by || ''}. ${(ov.ai_summary || {}).disclaimer || ''}</div>`;
+  node.appendChild(ai);
+  // signal KPIs (recovery / resting HR / nocturnal SpO2 / steps)
+  const rc = ov.recovery_sleep || {}, vt = ov.vitals || {}, hb = ov.habits || {}, rm = ov.risk_models || {};
+  const sv = (x, u) => x == null ? '—' : (x + (u || ''));
+  node.appendChild(kpis([
+    ['Recovery', rc.recovery_pct != null ? rc.recovery_pct + '%' : '—', rc.interpretation || 'HRV vs baseline'],
+    ['Resting HR', sv(vt.resting_hr, ' bpm'), '7-day'],
+    ['Nocturnal SpO₂ min', sv(vt.nocturnal_spo2_min, '%'), 'sleep oxygen dip'],
+    ['Steps', hb.steps_per_day_7d != null ? Math.round(hb.steps_per_day_7d) : '—', 'per day, 7-day'],
+  ]));
+  // risk KPIs
+  const cvd = (rm.cvd || {}).risk, dm = (rm.diabetes || {}), liver = (rm.liver || {}).score;
+  node.appendChild(kpis([
+    ['10-yr CVD', cvd != null ? cvd + '%' : '—', 'PCE'],
+    ['5-yr diabetes', dm.already ? 'in range' : (dm.risk != null ? dm.risk + '%' : '—'), ''],
+    ['FIB-4 (liver)', liver != null ? liver : '—', ''],
+    ['Reports', (ov.data_sources || {}).reports ?? 0, 'on file'],
+  ]));
+  // latest labs
+  const raw = (ov.biomarkers || {}).raw || [];
+  if (raw.length) {
+    const c = el('div', 'card'); c.appendChild(el('div', 'section-title', `Latest labs ${ov.as_of ? '· as of ' + ov.as_of : ''}`));
+    c.appendChild(tableOf(['Marker', 'Value', 'Date'], raw.slice(0, 16).map(r => [r.marker, r.value, r.day || '—']), 'No labs on file.'));
+    node.appendChild(c);
+  }
+  // reports
+  if ((ov.reports || []).length) {
+    const c = el('div', 'card'); c.appendChild(el('div', 'section-title', 'Reports'));
+    c.appendChild(tableOf(['Report', 'Panel', 'Date', 'Flagged'], ov.reports.map(r => [r.title, r.panel_title || '—', r.collected_on, r.flagged || 0]), ''));
+    node.appendChild(c);
+  }
+  // data sources
+  const ds = ov.data_sources || {};
+  node.appendChild(el('div', 'small muted', `Sources — labs: ${ds.biomarkers}; vitals: ${ds.vitals ? 'live' : 'none'}; recovery: ${ds.recovery ? 'live' : 'none'}; habits: ${ds.habits ? 'live' : 'none'}; reports: ${ds.reports}.`));
+  return node;
+}
+
+async function openPatientSummary(pid, name) {
+  try { const ov = await api('/mgmt/clinic/patients/' + pid + '/overview'); drawer('Patient 360 — ' + (name || '#' + pid), overviewCard(ov), [{ label: 'Close', onClick: closeDrawer }]); }
+  catch (e) { toast(e.message); }
+}
+
 V.longevity = async () => {
   setTitle('Longevity Rx');
   const v = view();
@@ -764,15 +815,31 @@ V.longevity = async () => {
   const sexSel = selectOf('Sex', [['', '—'], ['M', 'Male'], ['F', 'Female']]);
   const actSel = selectOf('Activity', [['sedentary', 'Sedentary'], ['light', 'Light'], ['moderate', 'Moderate'], ['active', 'Active'], ['athlete', 'Athlete']]);
   actSel.input.value = 'moderate';
+  const pull = btn('↓ Pull from record', '', pullFromRecord);
   const run = btn('Run assessment', 'primary', doRun);
   const topRow = el('div', 'grid cols-4'); [pSel, goals, sexSel, actSel].forEach(s => topRow.appendChild(s.wrap));
-  ctl.appendChild(topRow); ctl.appendChild(el('div', 'section-title', 'Biomarkers (optional — the more you add, the sharper the fix)')); ctl.appendChild(bmGrid);
-  const runWrap = el('div', 'row'); runWrap.style.marginTop = '12px'; runWrap.appendChild(run); ctl.appendChild(runWrap);
+  ctl.appendChild(topRow); ctl.appendChild(el('div', 'section-title', 'Biomarkers (auto-filled from the patient’s record, or enter manually)')); ctl.appendChild(bmGrid);
+  const runWrap = el('div', 'row gap'); runWrap.style.marginTop = '12px'; runWrap.appendChild(pull); runWrap.appendChild(run); ctl.appendChild(runWrap);
   v.appendChild(ctl);
+  const ovBox = el('div'); ovBox.id = 'laOverview'; v.appendChild(ovBox);
   const out = el('div'); out.id = 'laOut'; v.appendChild(out);
 
   // prefill age/sex from chosen patient
   pSel.input.onchange = () => { const p = patients.find(x => String(x.id) === pSel.input.value); if (p) { if (p.age) bmInputs.age.value = p.age; if (p.sex) sexSel.input.value = String(p.sex).toUpperCase()[0]; } };
+
+  async function pullFromRecord() {
+    const pid = pSel.input.value; if (!pid) { toast('Select a patient first'); return; }
+    ovBox.innerHTML = ''; ovBox.appendChild(skeletonRow(4));
+    try {
+      const [bio, ov] = await Promise.all([api('/mgmt/clinic/patients/' + pid + '/biomarkers'), api('/mgmt/clinic/patients/' + pid + '/overview')]);
+      const mk = bio.markers || {};
+      Object.entries(bmInputs).forEach(([k, i]) => { if (mk[k] != null) i.value = mk[k]; });
+      if (mk.sex) sexSel.input.value = String(mk.sex).toUpperCase()[0];
+      if (mk.age != null) bmInputs.age.value = Math.round(mk.age);
+      toast(`Pulled ${Object.keys(mk).filter(k => typeof mk[k] === 'number').length} values (${bio.source})`);
+      ovBox.innerHTML = ''; ovBox.appendChild(overviewCard(ov));
+    } catch (e) { ovBox.innerHTML = ''; ovBox.appendChild(empty(e.message)); }
+  }
 
   async function doRun() {
     const panel = {}; Object.entries(bmInputs).forEach(([k, i]) => { if (i.value !== '') panel[k] = Number(i.value); });

@@ -231,6 +231,14 @@ def me_macros(intake: dict = Body(default={}), gut: dict = Body(default={}), act
     return _m.prescribe(profile, _panel(), intake, gut)
 
 
+@router.get("/overview")
+def me_overview():
+    """The signed-in member's own 360 — labs + vitals + recovery/sleep + habits + reports + a grounded AI summary,
+    the same combined view the clinic sees. Read from the member's own bound Vault."""
+    from . import patient_data
+    return patient_data.overview_me()
+
+
 @router.get("/health")
 def me_ml_health():
     try:

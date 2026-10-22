@@ -2360,6 +2360,23 @@ def mgmt_clinic_catalog(intervention_id: str = "", authorization: str = _Hdr(def
     return geroprotectors.lookup(intervention_id) if intervention_id else geroprotectors.corpus_summary()
 
 
+@app.get("/mgmt/clinic/patients/{pid}/biomarkers")
+def mgmt_patient_biomarkers(pid: int, authorization: str = _Hdr(default="")):
+    """Intake auto-fill: a patient's latest stored biomarkers (engine-keyed), pulled from their own record — so the
+    Longevity Rx / macro screens never retype values."""
+    _require_staff(authorization)
+    from . import patient_data
+    return patient_data.biomarkers(pid)
+
+
+@app.get("/mgmt/clinic/patients/{pid}/overview")
+def mgmt_patient_overview(pid: int, authorization: str = _Hdr(default="")):
+    """The 360: identity + risk + labs + vitals + recovery/sleep + habits + reports + a grounded AI summary."""
+    _require_staff(authorization)
+    from . import patient_data
+    return patient_data.overview(pid)
+
+
 @app.post("/mgmt/staff/{sid}/profile")
 def mgmt_staff_profile(sid: int, body: dict, authorization: str = _Hdr(default="")):
     me = _require_staff(authorization)
