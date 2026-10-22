@@ -168,6 +168,43 @@ def me_rhythm(features: list = Body(..., embed=True)):
                     "confirm symptomatic/high-probability results with a clinician/12-lead."}
 
 
+@router.post("/longevity")
+def me_longevity(goals: list = Body(default=["longevity"]), include_experimental: bool = Body(default=True)):
+    """Right-therapy steering for the signed-in member: evidence-graded, safety-screened longevity interventions
+    (lifestyle protocols → approved drugs → consumer supplements → experimental), tiered and ranked, built from
+    the member's profile + latest biomarkers. Everything clinical/experimental is flagged doctor-gated."""
+    from .llx import geroprotectors as _g
+    prof = (db.one("SELECT data FROM profile WHERE id=1") or {}).get("data")
+    import json as _j
+    p = (_j.loads(prof) if isinstance(prof, str) else prof) or {}
+    profile = {"age": p.get("age"),
+               "sex": ("M" if str(p.get("sex", "")).lower().startswith("m") else ("F" if p.get("sex") else None)),
+               "goals": goals or p.get("goals") or ["longevity"],
+               "conditions": p.get("conditions") or [], "medications": p.get("medications") or [],
+               "devices": p.get("devices") or []}
+    return _g.recommend(profile, _panel(), include_experimental=include_experimental)
+
+
+@router.post("/longevity/trial")
+def me_longevity_trial(intervention_id: str = Body(..., embed=True)):
+    """Design a proper n-of-1 self-experiment for one intervention on the signed-in member — baseline, course,
+    tracked markers, washout/re-challenge, stopping rules and a response rule — so a trial is run, not a guess."""
+    from .llx import geroprotectors as _g
+    prof = (db.one("SELECT data FROM profile WHERE id=1") or {}).get("data")
+    import json as _j
+    p = (_j.loads(prof) if isinstance(prof, str) else prof) or {}
+    profile = {"age": p.get("age"), "conditions": p.get("conditions") or [], "medications": p.get("medications") or [],
+               "devices": p.get("devices") or []}
+    return _g.design_trial(intervention_id, profile)
+
+
+@router.get("/longevity/catalog")
+def me_longevity_catalog(intervention_id: str | None = None):
+    """Browse the evidence-graded longevity corpus — the whole catalog summary, or one intervention's full record."""
+    from .llx import geroprotectors as _g
+    return _g.lookup(intervention_id) if intervention_id else _g.corpus_summary()
+
+
 @router.get("/health")
 def me_ml_health():
     try:

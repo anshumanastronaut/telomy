@@ -24,6 +24,10 @@ try:
     from . import fusion as _fusion
 except Exception:  # noqa: BLE001
     _fusion = None
+try:
+    from . import geroprotectors as _gero   # the longevity-therapeutics corpus (drugs/peptides/sups/protocols)
+except Exception:  # noqa: BLE001
+    _gero = None
 
 # condition key -> candidate interventions a doctor reviews. type: lifestyle | referral | medication_class |
 # monitoring | procedure. grade: A/B/C/D. "action" is framed as a consideration, not an order.
@@ -176,6 +180,22 @@ def assess(panel: dict | None = None, profile: dict | None = None,
         except Exception:  # noqa: BLE001
             supplements = {"note": "supplement engine error"}
 
+    # ---- LONGEVITY (geroprotector corpus) — the proactive side: right therapies/sups/drugs/protocols ----
+    longevity = None
+    if _gero is not None:
+        try:
+            bm = {**(features or {}), **(panel or {}), **(wearable or {})}
+            gprofile = {"age": (profile or {}).get("age") or (panel or {}).get("age"),
+                        "sex": ("M" if str((profile or {}).get("sex") or (panel or {}).get("sex") or "").upper().startswith(("M", "1")) else
+                                ("F" if (profile or {}).get("sex") or (panel or {}).get("sex") else None)),
+                        "goals": (profile or {}).get("goals") or ["longevity"],
+                        "conditions": (profile or {}).get("conditions") or [],
+                        "medications": (profile or {}).get("medications") or [],
+                        "devices": (profile or {}).get("devices") or []}
+            longevity = _gero.recommend(gprofile, bm)
+        except Exception:  # noqa: BLE001
+            longevity = {"note": "longevity corpus unavailable"}
+
     # ---- RETEST ----
     retest = []
     if _has_bloods(panel):
@@ -190,6 +210,7 @@ def assess(panel: dict | None = None, profile: dict | None = None,
         "treatments": treatments,
         "therapies": therapies,
         "supplements": supplements,
+        "longevity": longevity,
         "retest_plan": retest,
         "doctor_gate": {"status": "pending_validation",
                         "message": "Clinician review required before anything reaches the member.",
