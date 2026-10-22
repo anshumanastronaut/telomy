@@ -1362,7 +1362,9 @@ def marker(mid: str):
 
 @app.get("/vault/timeline")
 def timeline(start: str | None = None, end: str | None = None, kinds: str | None = None):
-    end = end or today()
+    # End at the real local date, not just the last day with wearable signal — otherwise anything logged
+    # today (before today's first signal arrives) falls outside the window and never shows on the timeline.
+    end = end or max(today(), engine._local_now().date().isoformat())
     start = start or (date.fromisoformat(end) - timedelta(days=30)).isoformat()
     ev = db.rows("SELECT * FROM events WHERE ts >= ? AND ts <= ? ORDER BY ts DESC", (start, end + "T23:59:59"))
     if kinds:
