@@ -78,6 +78,16 @@ export default function Home() {
       ) : null}
 
       <T v="label" style={{ marginTop: space[2] }}>Your Vault</T>
+      <Card tone="teal" onPress={() => router.push('/overview')} accessibilityLabel="Your health summary">
+        <Row>
+          <Icon name="doc.text.magnifyingglass" size={20} color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="h3">Your health summary</T>
+            <T v="small">Labs, vitals, recovery, habits and reports — combined, with a grounded AI summary. The same view your clinician sees.</T>
+          </View>
+          <Icon name="chevron.right" size={16} color={p.muted} />
+        </Row>
+      </Card>
       <Card onPress={() => router.push('/longevity')} testID="dial" accessibilityLabel="Longevity age details">
         <Row>
           <T v="label">Longevity age</T>
