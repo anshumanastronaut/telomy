@@ -119,6 +119,7 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
   const o = useApi<any>('/twin');
   const mir = useApi<any>('/twin/mirror');
   const proj = useApi<any>('/twin/projections');
+  const organs = useApi<any>('/me/organs');
   const [preset, setPreset] = useState<string>('telomy_plan');
   const [years, setYears] = useState(5);
   const [sim, setSim] = useState<any>(null);
@@ -149,6 +150,24 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
         <OrganRail selected={organSel} onSelect={setOrganSel} />
       </View>
       <OrganPanel systems={d.systems} organ={organSel} onClear={() => setOrganSel(null)} />
+      {organs.data?.organs?.length ? (
+        <Section title="How each system is aging">
+          <Card style={{ paddingVertical: 4 }}>
+            {organs.data.organs.map((o: any, i: number) => {
+              const accel = o.age_acceleration_years;
+              const c = accel > 2 ? p.danger : accel < -2 ? p.success : p.muted;
+              return (
+                <Row key={o.organ} style={{ paddingVertical: 8, borderTopWidth: i ? 1 : 0, borderTopColor: p.border }}>
+                  <T v="body" style={{ flex: 1 }}>{o.label}</T>
+                  <T v="small" style={{ width: 70, textAlign: 'right' }}>age {o.organ_age}</T>
+                  <T v="num" style={{ fontSize: 14, width: 52, textAlign: 'right' }} color={c}>{accel > 0 ? '+' : ''}{accel}y</T>
+                </Row>
+              );
+            })}
+          </Card>
+          <T v="small">Each system's age vs your real age, from your blood panel. A relative signal (which system ages faster), not a precise number.</T>
+        </Section>
+      ) : null}
       <T v="small">{d.about}</T>
       <Row style={{ flexWrap: 'wrap' }}>
         <Chip label={`PhenoAge ${d.risk_now.phenoage} at ${d.risk_now.age}`} fg={p.teal} bg={p.tealSoft} />

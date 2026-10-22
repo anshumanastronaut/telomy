@@ -12,6 +12,7 @@ const CITIES = ['Delhi', 'Bengaluru', 'Mumbai', 'Chennai', 'Kolkata', 'Hyderabad
 export default function Environment() {
   const p = usePalette();
   const me = useApi<any>('/environment');
+  const expo = useApi<any>('/me/environment');
   const [a, setA] = useState('Delhi');
   const [b, setB] = useState('Bengaluru');
   const cmp = useApi<any>(`/environment/compare?a=${a}&b=${b}`, [a, b]);
@@ -29,6 +30,24 @@ export default function Environment() {
     <Screen edges={[]}>
       <Stack.Screen options={{ title: 'Environment' }} />
       <T v="h1">What your city does to you</T>
+      {expo.data?.factors?.length ? (
+        <Section title="Your exposome (all factors)">
+          {expo.data.factors.map((f: any) => {
+            const line = f.factor === 'air_quality' ? `PM2.5 ${f.pm25} µg/m³ · ≈${f.life_years_lost ?? '—'} yr lost (AQLI)`
+              : f.factor === 'social_connection' ? `${f.lonely_pct}% loneliness context · isolation ≈ +26% mortality (Holt-Lunstad)`
+              : f.factor === 'noise' ? `~${f.lden_db_estimated} dB · +${f.coronary_disease_risk_increase_pct}% coronary risk`
+              : f.factor === 'uv' ? `UV max ~${f.uv_mean_max}` : f.factor === 'food_quality' ? 'From your diet log (NOVA), not your postcode' : (f.note ?? '');
+            const label = { air_quality: 'Air quality', social_connection: 'Social connection', noise: 'Noise', uv: 'UV', water: 'Water', food_quality: 'Food quality' }[f.factor as string] ?? f.factor;
+            return (
+              <Card key={f.factor} style={{ paddingVertical: 10 }}>
+                <Row><T v="body" style={{ flex: 1, fontWeight: '600' }}>{label}</T>{f.confidence ? <Chip label={f.confidence} /> : null}</Row>
+                <T v="small">{line}</T>
+              </Card>
+            );
+          })}
+          <T v="small">{expo.data.honesty}</T>
+        </Section>
+      ) : null}
       {!me.data ? <Loading what="Downloading your air and UV history…" /> : me.data.available ? (
         <>
           <Card tone="teal">
