@@ -2338,6 +2338,28 @@ def mgmt_clinic_validate(body: _ClinicValidate, authorization: str = _Hdr(defaul
                                   doctor=me.get("name", ""), note=body.note)
 
 
+class _ClinicTrial(BaseModel):
+    intervention_id: str
+    profile: dict | None = None
+
+
+@app.post("/mgmt/clinic/trial")
+def mgmt_clinic_trial(body: _ClinicTrial, authorization: str = _Hdr(default="")):
+    """Doctor-side: design a proper n-of-1 trial for one longevity intervention on a patient (baseline, course,
+    tracked markers + FAERS watchlist, washout/re-challenge, stopping & response rules). Clinician-gated."""
+    _require_staff(authorization)
+    from .llx import geroprotectors
+    return geroprotectors.design_trial(body.intervention_id, body.profile or {})
+
+
+@app.get("/mgmt/clinic/catalog")
+def mgmt_clinic_catalog(intervention_id: str = "", authorization: str = _Hdr(default="")):
+    """Doctor-side: browse the longevity corpus (summary) or one intervention's full evidence record."""
+    _require_staff(authorization)
+    from .llx import geroprotectors
+    return geroprotectors.lookup(intervention_id) if intervention_id else geroprotectors.corpus_summary()
+
+
 @app.post("/mgmt/staff/{sid}/profile")
 def mgmt_staff_profile(sid: int, body: dict, authorization: str = _Hdr(default="")):
     me = _require_staff(authorization)

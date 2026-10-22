@@ -111,3 +111,29 @@ hr.sep { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
 
 @media (max-width: 1024px) { .app { grid-template-columns: 64px 1fr; } .brand span, .ws-switch, .nav a span, .nav .sect, .sidebar .foot { display: none; } .nav a { justify-content: center; } .cols-4 { grid-template-columns: 1fr 1fr; } .cols-3 { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) { .app { grid-template-columns: 1fr; } .sidebar { position: fixed; bottom: 0; left: 0; right: 0; top: auto; height: 56px; flex-direction: row; border-top: 1px solid var(--border); border-right: 0; z-index: 30; } .brand, .ws-switch, .sidebar .foot { display: none; } .nav { flex-direction: row; justify-content: space-around; width: 100%; padding: 0; } .nav a span { display: none; } .cols-2, .cols-3, .cols-4 { grid-template-columns: 1fr; } .content { padding: 16px; } .drawer { width: 100vw; } }
+
+/* ---- Longevity Rx (doctor): evidence-graded interventions + macro fix ---- */
+.section-title.big { font-size: 16px; margin-top: 22px; }
+.row.gap, .gap { gap: 8px; } .row.wrap, .wrap { flex-wrap: wrap; } .row.top { align-items: flex-start; }
+.bm .field span { font-size: 11px; }
+.num.big { font-size: 18px; font-weight: 650; letter-spacing: -.01em; }
+
+.grade { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; font-size: 11px; font-weight: 700; color: #fff; }
+.grade-a { background: var(--ok); } .grade-b { background: var(--primary); } .grade-c { background: var(--copper); } .grade-d { background: var(--faint); }
+
+.ivgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 8px; }
+.ivcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 13px 14px; }
+.ivcard .ivname { display: flex; align-items: center; gap: 8px; }
+.ivcard .scope { margin: 4px 0 6px; }
+.ivcard .ivfoot { margin-top: 10px; }
+.tier { margin-top: 14px; } .tier-h { padding: 6px 2px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+
+.why { margin-top: 8px; } .why > summary { cursor: pointer; color: var(--primary); font-size: 12.5px; font-weight: 600; }
+.why[open] > summary { margin-bottom: 6px; } .why ul { margin: 4px 0 0 16px; } .why li { margin: 2px 0; }
+
+.faers-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.faers-lab { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+.faers { font-size: 11px; background: var(--danger-soft); color: var(--danger); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+
+.macro .fix { margin: 8px 0 6px 16px; } .macro .fix li { margin: 3px 0; }
+.macro { display: flex; flex-direction: column; }

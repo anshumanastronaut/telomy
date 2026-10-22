@@ -65,6 +65,7 @@ const NAV = {
   ],
   doctor: [
     { sect: 'Clinic' }, { id: 'inbox', ic: '◈', label: 'Inbox' }, { id: 'patients', ic: '👤', label: 'Patients' },
+    { id: 'longevity', ic: '✦', label: 'Longevity Rx' },
     { id: 'tasks', ic: '✓', label: 'Tasks' }, { id: 'orders', ic: '℞', label: 'Prescriptions & orders' },
     { sect: 'Configure' }, { id: 'templates', ic: '▤', label: 'Note templates' },
   ],
@@ -676,6 +677,167 @@ function catalogDetail(kind, d) { if (kind === 'service_type') return `${d.minut
 function inputEl(type) { const i = el('input'); i.type = type; return i; }
 function labeled(label, input) { const w = el('label', 'field'); w.appendChild(el('span', null, label)); w.appendChild(input); return { wrap: w, input }; }
 function selectOf(label, pairs) { const s = el('select'); pairs.forEach(([v, t]) => { const o = el('option', null, t); o.value = v; s.appendChild(o); }); return { ...labeled(label, s), input: s }; }
+
+// ---- views (doctor): Longevity Rx — evidence-graded interventions + macro fix, grounded & gated ----
+const GRADE_TXT = { A: 'strong evidence', B: 'moderate', C: 'limited/mixed', D: 'weak/contested' };
+const TIER_META = {
+  foundation: ['Foundation', 'Lifestyle — strongest evidence, lowest risk. Do first.'],
+  clinical: ['Clinical', 'Approved drugs / hormones — for an indication, prescriber-led.'],
+  optional: ['Optional', 'Consumer supplements — mostly a biomarker-level benefit.'],
+  experimental: ['Experimental', 'Off-label / investigational — informed consent, trial-grade.'],
+};
+const gradeChip = (g) => `<span class="grade grade-${(g || 'D').toLowerCase()}" title="${GRADE_TXT[g] || ''}">${g}</span>`;
+
+function faersChips(fs) {
+  if (!fs || !fs.top_signals || !fs.top_signals.length) return '';
+  const chips = fs.top_signals.slice(0, 5).map(s => `<span class="faers" title="ROR ${s.ror} (95% CI ${s.ror_95ci[0]}–${s.ror_95ci[1]}), ${s.reports.toLocaleString()} reports">${s.reaction} · ROR ${s.ror}</span>`).join('');
+  return `<div class="faers-row"><span class="faers-lab">FAERS signals (of ${(fs.n_reports || 0).toLocaleString()} reports)</span>${chips}</div>`;
+}
+
+function ivCard(it, patientProfile) {
+  const c = el('div', 'ivcard');
+  const gate = it.doctor_gate ? '<span class="badge warn" title="Prescriber decision">Rx-gated</span>' : '';
+  const flags = (it.safety_flags || []).map(f => `<span class="badge danger" title="${f}">${f.split(':')[0]}</span>`).join(' ');
+  c.innerHTML = `<div class="row between top"><div class="ivname">${gradeChip(it.grade)} <b>${it.name}</b></div><div class="row center gap">${flags} ${gate}</div></div>
+    <div class="small muted scope">${it.scope}</div>
+    ${it.faers_safety ? faersChips(it.faers_safety) : ''}
+    <details class="why"><summary>Why & evidence</summary><div class="small">${it.rationale || it.effect}</div></details>`;
+  const foot = el('div', 'row gap wrap ivfoot');
+  foot.appendChild(btn('Design n-of-1 trial', 'sm', () => designTrial(it, patientProfile)));
+  c.appendChild(foot);
+  return c;
+}
+
+async function designTrial(it, profile) {
+  try {
+    const t = await api('/mgmt/clinic/trial', { method: 'POST', body: { intervention_id: it.id, profile: profile || {} } });
+    const node = el('div');
+    const watch = (t.faers_watch || []).map(w => `<span class="faers">${w}</span>`).join('') || '<span class="small muted">no FAERS signal</span>';
+    node.innerHTML = `
+      <div class="row gap"><b>${t.intervention.name}</b> ${gradeChip(t.intervention.grade)} ${t.eligible ? '' : '<span class="badge danger">ineligible</span>'}</div>
+      <p class="small muted">${t.intervention.scope}</p>
+      <div class="section-title">Protocol</div>
+      <div class="card pad-sm small"><b>Design:</b> ${t.design}<br><b>Baseline:</b> ${t.baseline.repeats}<br>
+        <b>Course:</b> ${t.intervention_arm.dose} · <b>${t.intervention_arm.duration_weeks} weeks</b> · ${t.intervention_arm.adherence}<br>
+        <b>Washout / re-challenge:</b> ${t.washout_rechallenge}<br><b>Retest at:</b> week ${t.retest_at_weeks}</div>
+      <div class="section-title">Track</div><div class="row gap wrap">${(t.primary_markers || []).map(m => `<span class="chip">${m}</span>`).join('')}</div>
+      <div class="section-title">FAERS watchlist</div><div class="faers-row">${watch}</div>
+      <div class="section-title">Stopping rules</div><ul class="small">${(t.stopping_rules || []).map(s => `<li>${s}</li>`).join('')}</ul>
+      <div class="section-title">Response rule</div><p class="small">${t.response_rule}</p>
+      <p class="small muted">${t.disclaimer}</p>`;
+    drawer('n-of-1 trial', node, [{ label: 'Close', onClick: closeDrawer }]);
+  } catch (e) { toast(e.message); }
+}
+
+function macroCard(m) {
+  if (!m) return el('div');
+  const c = el('div', 'card macro');
+  let target = '';
+  if (m.nutrient === 'protein') target = `${m.target_g_per_day[0]}–${m.target_g_per_day[1]} g/day <span class="muted small">(${m.target_g_per_kg[0]}–${m.target_g_per_kg[1]} g/kg)</span>`;
+  else if (m.nutrient === 'fibre') target = `${m.target_g_per_day} g/day` + (m.current_g_per_day != null ? ` <span class="muted small">(now ~${m.current_g_per_day} g)</span>` : '');
+  else target = `${m.target_pct_kcal[0]}–${m.target_pct_kcal[1]}% of calories`;
+  const fixes = (m.fix || m.emphasis || []).map(x => `<li>${x}</li>`).join('');
+  c.innerHTML = `<div class="row between top"><h3 style="text-transform:capitalize">${m.nutrient}${m.doctor_gate ? ' <span class="badge warn">Rx-gated</span>' : ''}</h3><div class="num big">${target}</div></div>
+    ${m.per_meal_g ? `<div class="small muted">~${m.per_meal_g} g/meal · ${m.meals}</div>` : ''}
+    ${m.titration ? `<div class="small" style="color:var(--copper)">${m.titration}</div>` : ''}
+    <ul class="small fix">${fixes}</ul>
+    <div class="small muted">Sources: ${(m.sources || []).join(', ')}</div>
+    <details class="why"><summary>Rationale</summary><ul class="small">${(m.rationale || []).map(r => `<li>${r}</li>`).join('')}</ul></details>`;
+  return c;
+}
+
+V.longevity = async () => {
+  setTitle('Longevity Rx');
+  const v = view();
+  v.appendChild(el('p', 'muted small', 'Evidence-graded longevity interventions and a curated protein/fibre/fat fix for a patient — grounded, safety-screened against ~20.7M FAERS reports, and gated to your sign-off. Nothing here claims to extend lifespan.'));
+  let patients = [];
+  try { patients = await api('/mgmt/doctor/patients'); } catch (e) { /* may be empty */ }
+
+  // controls
+  const ctl = el('div', 'card');
+  const pSel = selectOf('Patient', [['', '— select —'], ...patients.map(p => [String(p.id), `${p.name}${p.age ? ', ' + p.age : ''}${p.sex ? ' ' + p.sex : ''}`])]);
+  const goals = selectOf('Primary goal', [['longevity', 'Longevity'], ['metabolic', 'Metabolic'], ['muscle', 'Muscle / strength'], ['cardiovascular', 'Cardiovascular'], ['cognitive', 'Cognitive'], ['inflammation', 'Inflammation']]);
+  const bmGrid = el('div', 'grid cols-4 bm');
+  const BM = [['age', 'Age'], ['weight_kg', 'Weight kg'], ['height_cm', 'Height cm'], ['vo2max', 'VO₂max'], ['hba1c', 'HbA1c %'], ['apob', 'ApoB'], ['ldl', 'LDL'], ['trig', 'Triglycerides'], ['crp_mgL', 'hs-CRP'], ['vitamin_d_25oh', 'Vit D'], ['albumin', 'Albumin'], ['almi', 'ALMI'], ['total_testosterone', 'Testosterone'], ['egfr', 'eGFR'], ['omega3_index', 'Omega-3 idx'], ['fibre_g_per_day', 'Fibre g now']];
+  const bmInputs = {};
+  BM.forEach(([k, lab]) => { const f = labeled(lab, inputEl('number')); f.input.dataset.bm = k; bmInputs[k] = f.input; bmGrid.appendChild(f.wrap); });
+  const sexSel = selectOf('Sex', [['', '—'], ['M', 'Male'], ['F', 'Female']]);
+  const actSel = selectOf('Activity', [['sedentary', 'Sedentary'], ['light', 'Light'], ['moderate', 'Moderate'], ['active', 'Active'], ['athlete', 'Athlete']]);
+  actSel.input.value = 'moderate';
+  const run = btn('Run assessment', 'primary', doRun);
+  const topRow = el('div', 'grid cols-4'); [pSel, goals, sexSel, actSel].forEach(s => topRow.appendChild(s.wrap));
+  ctl.appendChild(topRow); ctl.appendChild(el('div', 'section-title', 'Biomarkers (optional — the more you add, the sharper the fix)')); ctl.appendChild(bmGrid);
+  const runWrap = el('div', 'row'); runWrap.style.marginTop = '12px'; runWrap.appendChild(run); ctl.appendChild(runWrap);
+  v.appendChild(ctl);
+  const out = el('div'); out.id = 'laOut'; v.appendChild(out);
+
+  // prefill age/sex from chosen patient
+  pSel.input.onchange = () => { const p = patients.find(x => String(x.id) === pSel.input.value); if (p) { if (p.age) bmInputs.age.value = p.age; if (p.sex) sexSel.input.value = String(p.sex).toUpperCase()[0]; } };
+
+  async function doRun() {
+    const panel = {}; Object.entries(bmInputs).forEach(([k, i]) => { if (i.value !== '') panel[k] = Number(i.value); });
+    const profile = { age: panel.age, sex: sexSel.input.value || null, weight_kg: panel.weight_kg, height_cm: panel.height_cm,
+      activity: actSel.input.value, goals: [goals.input.value], intake: panel.fibre_g_per_day != null ? { fibre_g_per_day: panel.fibre_g_per_day } : {} };
+    out.innerHTML = ''; out.appendChild(skeletonRow(4)); run.disabled = true;
+    try {
+      const a = await api('/mgmt/clinic/assess', { method: 'POST', body: { panel, profile, risk_threshold: 0.2 } });
+      renderAssessment(out, a, profile);
+    } catch (e) { out.innerHTML = ''; out.appendChild(empty(e.message)); }
+    run.disabled = false;
+  }
+};
+
+function renderAssessment(out, a, profile) {
+  out.innerHTML = '';
+  const L = a.longevity || {}; const T = L.tiers || {};
+  const risks = (a.flagged_risks || []).length;
+  out.appendChild(kpis([
+    ['Flagged risks', risks, 'above threshold'],
+    ['Foundation', (T.foundation || []).length, 'lifestyle, grade A/B first'],
+    ['Clinical (Rx-gated)', (T.clinical || []).length + (T.experimental || []).length, 'needs prescriber'],
+    ['Supplements', (T.optional || []).length, 'biomarker-driven'],
+  ]));
+
+  // flagged risks (compact)
+  if (risks) {
+    const r = el('div', 'card'); r.appendChild(el('div', 'section-title', 'Flagged risks (decision-support, not a diagnosis)'));
+    r.appendChild(tableOf(['Condition', 'Probability'], a.flagged_risks.map(x => [x.condition.replace(/_/g, ' '), (x.probability * 100).toFixed(0) + '%']), ''));
+    out.appendChild(r);
+  }
+
+  // macros fix
+  if (a.macros && a.macros.protein) {
+    out.appendChild(el('div', 'section-title big', 'Macronutrient fix — protein · fibre · fat'));
+    out.appendChild(el('div', 'small muted', `Maintenance ≈ ${a.macros.energy.maintenance_kcal} kcal (${a.macros.energy.basis}). ${a.macros.disclaimer}`));
+    const g = el('div', 'grid cols-3'); [a.macros.protein, a.macros.fibre, a.macros.fat].forEach(m => g.appendChild(macroCard(m))); out.appendChild(g);
+  }
+
+  // longevity tiers
+  if (L.ordering) {
+    out.appendChild(el('div', 'section-title big', 'Longevity interventions'));
+    L.ordering.forEach(tier => {
+      const items = T[tier] || []; if (!items.length) return;
+      const [label, sub] = TIER_META[tier];
+      const sec = el('div', 'tier'); sec.appendChild(el('div', 'tier-h', `<b>${label}</b> <span class="small muted">${sub}</span>`));
+      const grid = el('div', 'ivgrid'); items.forEach(it => grid.appendChild(ivCard(it, profile))); sec.appendChild(grid);
+      out.appendChild(sec);
+    });
+    if ((L.blocked_by_contraindication || []).length) {
+      out.appendChild(el('div', 'card', `<div class="section-title">Blocked by contraindication</div><div class="small muted">${L.blocked_by_contraindication.map(b => b.name).join(', ')}</div>`));
+    }
+    if (L.disclaimer) out.appendChild(el('p', 'small muted', L.disclaimer));
+  }
+
+  // doctor sign-off gate
+  const gate = el('div', 'card');
+  gate.innerHTML = `<div class="section-title">Clinician sign-off</div><p class="small muted">Nothing reaches the member until you validate it. Record a note to sign off.</p>`;
+  const note = labeled('Validation note', inputEl('text')); gate.appendChild(note.wrap);
+  const row = el('div', 'row gap'); row.style.marginTop = '8px';
+  row.appendChild(btn('Validate & record', 'primary', async () => {
+    try { await api('/mgmt/clinic/validate', { method: 'POST', body: { assessment: a, approved: ['longevity', 'macros'], note: note.input.value || 'reviewed' } }); toast('Signed off'); } catch (e) { toast(e.message); }
+  }));
+  gate.appendChild(row); out.appendChild(gate);
+}
 
 // ---- router ----
 function route() {

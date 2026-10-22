@@ -134,6 +134,24 @@ as FAERS grows.
 - Grades describe evidence for a **scope**, which is usually a biomarker. Human lifespan extension is unproven
   for every entry, and the corpus states this in its disclaimer.
 
+## Macronutrient fix (protein · fibre · fat)
+
+[`backend/app/llx/macros.py`](../../backend/app/llx/macros.py) — `prescribe(profile, biomarkers, intake, gut)`
+returns personalised protein/fibre/fat targets, the current-vs-target gap ("the fix"), food swaps, routine fit
+and a retest plan, each with a biomarker+guideline rationale. Protein scales with age/goal/training/albumin/ALMI
+and is **restricted to 0.6–0.8 g/kg (KDIGO) and clinician-gated** in reduced kidney function; fibre tunes soluble
+vs insoluble to ApoB/LDL, HbA1c and gut (constipation, IBS/low-FODMAP) with a +5 g/week titration; fat quality
+follows ApoB/LDL (sat→MUFA), triglycerides (carbs/alcohol + omega-3) and the omega-3 index. Grounded in
+PROT-AGE/ESPEN, US DGA, AHA/ADA, KDIGO; sources adapt to the member's diet. Served `POST /me/macros`, and in the
+doctor assessment (`/mgmt/clinic/assess` → `macros` block).
+
+## Rationales & serving
+Every geroprotector recommendation now carries a synthesized `rationale` (the person's trigger + mechanism/
+hallmark + evidence scope + tier + caveat). The doctor **Longevity Rx** console view (`backend/webconsole`)
+renders the tiers, evidence-grade chips, FAERS safety chips, rationale-on-demand and the macro fix, with a
+clinician sign-off gate (`/mgmt/clinic/trial`, `/mgmt/clinic/catalog` back it). Design rationale in
+`backend/webconsole/DESIGN.md`.
+
 ## Extending the corpus
 Add a record to `INTERVENTIONS` with the full schema (grade, scope, hallmarks, mechanism, effect with named
 trials, dose, monitor markers, contra, interactions, triggers, one honest caution). Tests in

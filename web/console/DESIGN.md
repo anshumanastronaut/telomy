@@ -27,3 +27,12 @@ Oura/WHOOP web (health warmth). Not flashy; legible first.
   appears automatically. Disabled modules don't render.
 - **Trust:** every number shows its source/time; medical actions are clearly gated; nothing invented.
 - **Fast:** keyboard-first, optimistic where safe, skeletons not spinners.
+
+## Clinical decision-support patterns (Longevity Rx view)
+Grounded in CDS/EHR UX research (alert-fatigue reviews; clinician preference for colour-coded risk + graphs+tables; inline over interruptive):
+- **Tiered, passive, never a pop-up.** Recommendations group into Foundation → Clinical → Optional → Experimental and render inline. Interruptive alerts cause fatigue; we surface, we don't nag.
+- **One evidence-grade chip, consistent everywhere.** `A` green (ok) · `B` teal (primary) · `C` copper (warn) · `D` grey (faint). The grade is always paired with its *scope* (what the grade is for — usually a biomarker, never "lifespan").
+- **Rationale on demand.** Each item has a `<details>` "Why & evidence" — the reasoning is one click away, not shouting on the card. Reduces cognitive load.
+- **Safety is data-backed and visible.** FAERS disproportionality signals (ROR + 95% CI, from ~20.7M reports) show as chips on drugs — a watchlist, not a block. Hard contraindications/interactions show as red badges; Rx-gated items are badged.
+- **Source + gate on everything.** Every number carries its basis; medical items are clearly prescriber-gated; a clinician sign-off step closes the view. Nothing invented.
+- Mirror of these tokens/patterns lives in `web/console` (identical copy); the deployed console is `backend/webconsole`.
