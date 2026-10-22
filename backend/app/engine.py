@@ -6,7 +6,7 @@ were missing, a confidence in [0, 1] and a method/version string ("receipts").
 import hashlib
 import math
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from statistics import mean, pstdev
 
 from . import db
@@ -94,10 +94,24 @@ def last_signal_day() -> str | None:
     return r["d"] if r else None
 
 
+def _local_now() -> datetime:
+    """Current time in the app's timezone (default Asia/Kolkata) — NOT the server's clock. The Oracle VM runs in
+    UTC, so datetime.now() there is UTC; event timestamps are stored as naive ISO and the app parses naive ISO as
+    the *device's* local time, so a UTC stamp shows ~5.5 h early in IST. Stamp in the app tz to stay consistent."""
+    import os
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(os.environ.get("TELOMY_TZ", "Asia/Kolkata")))
+    except Exception:  # noqa: BLE001  (zoneinfo/tzdata missing — fall back to a fixed IST offset)
+        return datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+
+
 def now_iso() -> str:
-    """App clock: the Vault's current day with the wall-clock time, so timestamps never run ahead of the data."""
-    day = last_signal_day() or date.today().isoformat()
-    return f"{day}T{datetime.now().strftime('%H:%M:%S')}"
+    """App clock: the Vault's current day with the local wall-clock time (app timezone), so timestamps match what
+    the member sees and never run ahead of the data."""
+    n = _local_now()
+    day = last_signal_day() or n.date().isoformat()
+    return f"{day}T{n.strftime('%H:%M:%S')}"
 
 # ---------------------------------------------------------------- confidence
 
