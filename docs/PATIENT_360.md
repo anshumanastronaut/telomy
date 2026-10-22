@@ -43,7 +43,24 @@ domains with no data show "—"/"not linked", never invented numbers.
 
 The same 360 opens from **Patients → 360** for any patient.
 
-## Member side ("as before")
-`/me/overview` gives the member the identical combined view of their own data — the existing report/vitals screens
-plus the AI summary — so the patient and clinic see the same picture. (Mobile wiring to this endpoint is the next
-step; the backend is live.)
+## Member side (mobile app)
+The member sees the same picture on their own phone:
+
+- **Health summary** (`mobile/src/app/overview.tsx`, `telomy://overview`) → `/me/overview`: the grounded AI
+  summary, recovery/vitals, risk, habits, latest labs and reports — **plus** organ clocks (`/me/organs`, "How
+  each system is aging", linked to the twin) and the exposome (`/me/environment`, "What your city does to you",
+  with confidence chips). Linked from a "Your health summary" card on the Today tab.
+- **Your plan** (`mobile/src/app/plan.tsx`, `telomy://plan`) → `/me/longevity` + `/me/macros`: the protein/fibre/
+  fat fix (Indian-adapted sources), lifestyle foundations (grade-chipped), supplements to consider, and a
+  clearly-walled-off "Talk to your clinician" card for prescriber-gated items. Linked from the Today tab and the
+  health summary.
+
+Every member screen degrades honestly (missing domains show "—"), carries the no-lifespan/clinician-reviewed
+framing, and anything prescriber-gated is never presented as self-start.
+
+## Mac-independent build
+The app ships pointed at the Oracle cloud backend (`mobile/.env`: `EXPO_PUBLIC_API_URL=https://129-225-98-159.sslip.io`),
+so it works anywhere with no Mac/LAN dependency — all `/me/*` features are deployed there. Oracle is multi-user,
+so the member signs in (the app's unlock flow) and sees their own data. For local/dev builds, point
+`EXPO_PUBLIC_API_URL` at the Mac's Bonjour host instead. iOS build note: CocoaPods on Ruby 4.0 needs
+`LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8` before `expo run:ios`.
