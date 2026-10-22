@@ -1,19 +1,6 @@
 {
-  "def_vitamin_d": {
-    "label": "vitamin D (<50 nmol/L)",
-    "n": 10646,
-    "prevalence": 0.314,
-    "test_AUC": 0.718,
-    "test_AP": 0.541
-  },
-  "def_iron": {
-    "label": "iron/ferritin (<30 ng/mL)",
-    "n": 6716,
-    "prevalence": 0.195,
-    "test_AUC": 0.768,
-    "test_AP": 0.404
-  },
   "_meta": {
+    "source": "NHANES 2013-2018 (H,I,J); diet intake + demographics -> measured biomarker deficiency",
     "features": [
       "age",
       "sex",
@@ -27,21 +14,30 @@
       "vitd_intake",
       "calcium",
       "magnesium_intake",
-      "iron_intake"
+      "iron_intake",
+      "zinc_intake"
     ],
-    "cycles": "NHANES 2015-2018 (I,J)",
-    "intake_vars": {
-      "DR1TKCAL": "energy",
-      "DR1TPROT": "protein",
-      "DR1TFIBE": "fiber",
-      "DR1TFOLA": "folate_intake",
-      "DR1TVB12": "b12_intake",
-      "DR1TVC": "vitc",
-      "DR1TVD": "vitd_intake",
-      "DR1TCALC": "calcium",
-      "DR1TMAGN": "magnesium_intake",
-      "DR1TIRON": "iron_intake"
-    },
-    "note": "diet partially predicts deficiency; modest AUC is the honest rationale to MEASURE, not just estimate from diet"
+    "note": "diet partly predicts status; we still MEASURE (absorption/sun/genetics)"
+  },
+  "def_vitamin_d": {
+    "label": "vitamin D (<50 nmol/L)",
+    "n": 16310,
+    "prevalence": 0.313,
+    "test_AUC": 0.737,
+    "test_AP": 0.553
+  },
+  "def_iron": {
+    "label": "iron/ferritin (<30 ng/mL)",
+    "n": 6716,
+    "prevalence": 0.195,
+    "test_AUC": 0.787,
+    "test_AP": 0.414
+  },
+  "def_b12": {
+    "label": "vitamin B12 (<148 pmol/L)",
+    "n": 5447,
+    "prevalence": 0.021,
+    "test_AUC": 0.554,
+    "test_AP": 0.024
   }
 }
