@@ -11,9 +11,21 @@ import { Card, Chip, Divider, ErrorState, ListRow, Loading, Row, Screen, Section
 
 const n = (x: any, u = '') => (x == null ? '—' : `${x}${u}`);
 
+const ENV_LABEL: Record<string, string> = { air_quality: 'Air quality', social_connection: 'Social connection', noise: 'Noise', uv: 'UV', water: 'Water', food_quality: 'Food quality' };
+function envLine(f: any): string {
+  if (f.factor === 'air_quality') return `PM2.5 ${f.pm25} µg/m³ · ≈${f.life_years_lost ?? '—'} yr lost (AQLI)`;
+  if (f.factor === 'social_connection') return `${f.lonely_pct}% loneliness context · isolation ≈ +26% mortality`;
+  if (f.factor === 'noise') return `~${f.lden_db_estimated} dB · +${f.coronary_disease_risk_increase_pct}% coronary risk`;
+  if (f.factor === 'uv') return `UV max ~${f.uv_mean_max ?? '—'}`;
+  if (f.factor === 'food_quality') return 'From your diet log (NOVA), not your postcode';
+  return f.note ?? '';
+}
+
 export default function OverviewScreen() {
   const p = usePalette();
   const { data, error, reload } = useApi<any>('/me/overview');
+  const organs = useApi<any>('/me/organs');
+  const env = useApi<any>('/me/environment');
 
   if (error) return <Screen edges={[]}><Stack.Screen options={{ title: 'Health summary' }} /><ErrorState message={error} onRetry={reload} /></Screen>;
   if (!data) return <Screen edges={[]}><Stack.Screen options={{ title: 'Health summary' }} /><Loading what="Pulling your record together…" /></Screen>;
@@ -115,6 +127,49 @@ export default function OverviewScreen() {
               right={<T v="small" color={r.flagged ? p.copper : p.muted}>{r.flagged ? `${r.flagged} flagged` : 'clear'}</T>}
               onPress={() => router.push(`/report/${r.id}`)} />
           ))}
+        </Section>
+      ) : null}
+
+      {/* organ clocks */}
+      {organs.data?.organs?.length ? (
+        <Section title="How each system is aging" action="Open twin" onAction={() => router.push('/body')}>
+          <Card style={{ gap: 0 }}>
+            {organs.data.organs.map((o: any, i: number) => {
+              const acc = o.age_acceleration_years;
+              const col = acc == null ? p.text : acc >= 2 ? p.copper : acc <= -1 ? p.teal : p.text;
+              return (
+                <View key={o.organ}>
+                  {i ? <Divider /> : null}
+                  <Row style={{ justifyContent: 'space-between', paddingVertical: 8 }}>
+                    <T v="body" style={{ flex: 1 }}>{o.label}</T>
+                    <T v="num" style={{ fontSize: 18, marginRight: 8 }} color={col}>{o.organ_age != null ? Math.round(o.organ_age) : '—'}</T>
+                    {acc != null ? <T v="small" color={col}>{acc > 0 ? '+' : ''}{acc}y</T> : null}
+                  </Row>
+                </View>
+              );
+            })}
+          </Card>
+          <T v="small" color={p.muted}>{organs.data.note}</T>
+        </Section>
+      ) : null}
+
+      {/* environment / exposome */}
+      {env.data?.factors?.length ? (
+        <Section title="What your city does to you" action="Details" onAction={() => router.push('/environment')}>
+          <Card style={{ gap: 0 }}>
+            {env.data.factors.map((f: any, i: number) => (
+              <View key={f.factor}>
+                {i ? <Divider /> : null}
+                <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 8 }}>
+                  <View style={{ flex: 1 }}>
+                    <T v="body" style={{ fontWeight: '600' }}>{ENV_LABEL[f.factor] ?? f.factor}</T>
+                    <T v="small" color={p.muted}>{envLine(f)}</T>
+                  </View>
+                  {f.confidence ? <Chip label={f.confidence} /> : null}
+                </Row>
+              </View>
+            ))}
+          </Card>
         </Section>
       ) : null}
 

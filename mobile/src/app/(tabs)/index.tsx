@@ -88,6 +88,16 @@ export default function Home() {
           <Icon name="chevron.right" size={16} color={p.muted} />
         </Row>
       </Card>
+      <Card onPress={() => router.push('/plan')} accessibilityLabel="Your longevity plan">
+        <Row>
+          <Icon name="checklist" size={20} color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="h3">Your longevity plan</T>
+            <T v="small">Evidence-graded interventions and your protein · fibre · fat fix, grounded in your own numbers.</T>
+          </View>
+          <Icon name="chevron.right" size={16} color={p.muted} />
+        </Row>
+      </Card>
       <Card onPress={() => router.push('/longevity')} testID="dial" accessibilityLabel="Longevity age details">
         <Row>
           <T v="label">Longevity age</T>
