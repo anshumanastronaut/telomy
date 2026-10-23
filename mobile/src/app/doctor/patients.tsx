@@ -1,5 +1,6 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
 import { useApi } from '@/lib/api';
 import { radius, space, usePalette } from '@/lib/theme';
@@ -22,14 +23,17 @@ export default function Patients() {
       {!data ? <Loading what="Loading panel…" /> : null}
       <View style={{ gap: space[3] }}>
         {list.map((x) => (
-          <Card key={x.id}>
-            <Row>
-              <View style={{ flex: 1 }}>
-                <T v="h3">{x.name || `#${x.id}`}</T>
-                <T v="small">{[x.age ? `${Math.round(x.age)}y` : null, x.sex, x.city].filter(Boolean).join(' · ') || '—'}</T>
-              </View>
-            </Row>
-          </Card>
+          <Pressable key={x.id} onPress={() => router.push(`/patient/${x.id}` as any)} accessibilityRole="button">
+            <Card>
+              <Row>
+                <View style={{ flex: 1 }}>
+                  <T v="h3">{x.name || `#${x.id}`}</T>
+                  <T v="small">{[x.age ? `${Math.round(x.age)}y` : null, x.sex, x.city].filter(Boolean).join(' · ') || '—'}</T>
+                </View>
+                <Icon name="chevron.right" size={16} color={p.faint} />
+              </Row>
+            </Card>
+          </Pressable>
         ))}
         {data && !list.length ? <Card><T v="small">No patients on your panel yet.</T></Card> : null}
       </View>
