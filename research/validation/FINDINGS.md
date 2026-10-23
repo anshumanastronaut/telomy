@@ -52,3 +52,16 @@ older ages) — a quadratic/isotonic correction would tighten it further (iterat
 
 longevity Rx (geroprotectors), macros, circadian (on real rhythm data), Sinc retrieval grounding, bioage
 clocks, exposome. Same pattern: archetype in → assert expected direction → perturb × N → catalogue deviations.
+
+---
+# Iteration 2 — longevity Rx + macros (research/validation/longevity_macros.py)
+
+**7/7 checks pass.** Longevity Rx: foundation tier always present; a condition adds clinical interventions
+(healthy clinical 3 → diabetic 6); claims firewall holds. Macros: protein tracks 1.2–1.6 g/kg (75kg→90–120,
+92kg→110–147 g/day), scales with weight, and **renal impairment caps protein to 0.6–0.8 g/kg + gates to a
+doctor** (key safety behaviour, verified). Note: the engine's language is appropriately precise — "treat the
+apnoea" and "detoxification pathways (clinical outcomes preliminary)" are legitimate, not overclaims.
+
+Still open from iteration 1: **chronic-ML skin_cancer probability calibration** (healthy → 36.6% vs 9%
+prevalence). skin_cancer.joblib exists; the BRFSS training pipeline is in research/chronicmodel/ — fix is a
+per-condition probability calibrator (Platt/isotonic), a focused retraining pass.
