@@ -162,6 +162,19 @@ def user_for_token(token: str) -> int | None:
         return None
 
 
+def user_for_email(email: str) -> int | None:
+    """Resolve an email to its user id, querying the (separate) accounts DB. Used by the care graph to link a
+    clinical patient (user_ref = email) to that person's own data DB."""
+    if not email:
+        return None
+    try:
+        with _acc() as c:
+            r = c.execute("SELECT id FROM users WHERE lower(email) = ?", (email.strip().lower(),)).fetchone()
+        return r["id"] if r else None
+    except sqlite3.OperationalError:
+        return None
+
+
 def logout(token: str):
     with _acc() as c:
         c.execute("DELETE FROM tokens WHERE token = ?", (token,))

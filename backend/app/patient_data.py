@@ -49,10 +49,9 @@ def _resolve_user_id(pid: int):
             return None
         if str(ref).isdigit():
             return int(ref)
-        # user_ref may be an email — resolve via accounts
+        # user_ref may be an email — resolve via the (separate) accounts DB, NOT the currently-bound one
         if acctmod.enabled():
-            row = db.one("SELECT id FROM users WHERE email = ?", (str(ref).lower(),))  # accounts DB is separate; try best-effort
-            return row["id"] if row else None
+            return acctmod.user_for_email(str(ref))
     except Exception:  # noqa: BLE001
         return None
     return None
