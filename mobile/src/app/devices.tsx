@@ -44,7 +44,7 @@ export default function Devices() {
                   <Button kind="secondary" title="Connect"
                     onPress={() => {
                       if (dev.id === 'ring') { Ring.scan(); show('Searching for your ring…'); }
-                      else if (dev.id === 'health') connectHealth().then((r) => show(r.ok ? `${HEALTH_LABEL} connected.` : 'Not connected.', r.ok ? 'success' : 'alert'));
+                      else if (dev.id === 'health') connectHealth().then((r) => show(r.ok ? `${HEALTH_LABEL} connected.` : (r.error || 'Not connected.'), r.ok ? 'success' : 'alert'));
                       else router.push('/monitor');
                     }} />
                 ) : <Icon name="checkmark.circle.fill" color={p.success} />}

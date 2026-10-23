@@ -17,7 +17,7 @@ export const HEALTH_AVAILABLE = Platform.OS === 'ios';
 export const HEALTH_LABEL = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
 
 export async function connectHealth(): Promise<{ ok: boolean; error?: string }> {
-  if (!HEALTH_AVAILABLE) return { ok: false, error: 'Phone health sync is available on iPhone only for now.' };
+  if (!HEALTH_AVAILABLE) return { ok: false, error: 'Health Connect sync (Samsung Health / Google Fit) is coming soon on Android. For now, connect the Telomy patch, ring or WHOOP.' };
   const r = await Band.healthAuthorize();
   if (r.ok) await AsyncStorage.setItem(KEY, '1');
   return r;
