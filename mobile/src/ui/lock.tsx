@@ -2,7 +2,7 @@
 // phone, so it asks only once). A server still in single-user mode shows the access-password field instead; creating an
 // account on it turns on multi-user and the first account inherits the existing Vault.
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { authStatus, login, signup, unlock } from '@/lib/api';
 import { radius, space, type, usePalette } from '@/lib/theme';
 import { Button, T } from '@/ui/core';
@@ -45,8 +45,10 @@ export function LockScreen() {
     : 'Sign in to your Telomy.';
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: p.bg, justifyContent: 'center', padding: space[6], gap: space[4] }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: p.bg }}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space[6], gap: space[4] }}>
       <View style={{ alignItems: 'center' }}><ThinkingOrb state="shaping" size={64} /></View>
       <View style={{ gap: space[2], alignItems: 'center' }}>
         <T v="h1" style={{ textAlign: 'center' }}>{title}</T>
@@ -83,6 +85,7 @@ export function LockScreen() {
           <T v="small" color={p.teal} style={{ textAlign: 'center' }}>Set up accounts instead (keeps your current data)</T>
         </Pressable>
       ) : null}
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
