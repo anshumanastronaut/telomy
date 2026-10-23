@@ -33,7 +33,7 @@ let pending: Promise<void> | null = null;
 const reloaders = new Set<() => void>();
 
 export function useWellness(ageHint?: number | null): Wellness {
-  const [state, setState] = useState<{ nights: Night[]; minutes: MinuteRec[]; age: number; sessions: DayEvent[]; userEvents: UserEventRec[]; whoopDay?: WhoopDay } | null>(null);
+  const [state, setState] = useState<{ nights: Night[]; minutes: MinuteRec[]; age: number; sessions: DayEvent[]; userEvents: UserEventRec[]; whoopDay?: WhoopDay; recoveryDaily?: any } | null>(null);
   const load = useCallback(async () => {
     const caps = bandAvailable ? Band.listCaptures() : [];
     // nights recorded before the night metrics existed: re-analyse once (in the background) so they get them.
@@ -68,11 +68,13 @@ export function useWellness(ageHint?: number | null): Wellness {
     const ro = ringOwnNights(await ringSleepRecords(Date.now() - 22 * 86400000, Date.now()).catch(() => []));
     const nights = fuseNights(nightsFrom(caps), healthNights(segs), ring, phone, wn, ro);
     const whoopDay = await api<WhoopDay>('/whoop/day').catch(() => undefined);
+    // Fallback recovery from daily rhr/hrv/sleep signals, used when there's no fresh worn-device night to score.
+    const recoveryDaily = await api<any>('/wellness/recovery-daily').catch(() => undefined);
     // real daily summaries → server (Vault, insights, twin, predictions run on them); throttled, queued offline
     const hdays = await healthConnected().then((c) => (c && bandAvailable ? Band.healthDaily(14) : [])).catch(() => []);
     syncDaily(nights, hdays);
     syncVitals();                               // upload the continuous patch/ring vitals to the longitudinal record
-    setState({ nights, minutes, age: age!, sessions, userEvents, whoopDay: whoopDay?.ok ? whoopDay : undefined });
+    setState({ nights, minutes, age: age!, sessions, userEvents, whoopDay: whoopDay?.ok ? whoopDay : undefined, recoveryDaily });
   }, [ageHint]);
   useEffect(() => { reloaders.add(load); load(); return () => { reloaders.delete(load); }; }, [load]);
 
@@ -96,7 +98,13 @@ export function useWellness(ageHint?: number | null): Wellness {
   const sleep = fresh ? sleepScore(fresh, nights, needLast.needMin, sri) : null;
   const dayTrimps = Array.from({ length: 8 }, (_, i) => localDate(Date.now() / 1000 - (7 - i) * 86400))
     .map((k) => byDay(k)).filter((d) => d.length >= 60).map((d) => zonesFor(d, age).trimp);
-  const recovery = recoveryScore(fresh, nights, sleep, dayTrimps.length && byDay(yKey).length >= 60 ? dayTrimps : []);
+  const recoveryNight = recoveryScore(fresh, nights, sleep, dayTrimps.length && byDay(yKey).length >= 60 ? dayTrimps : []);
+  const rd = state?.recoveryDaily;
+  // No worn-device night to score? fall back to the daily-signals recovery from the server (rhr/hrv/sleep).
+  const recovery: Score = recoveryNight.score != null ? recoveryNight
+    : (rd && rd.score != null
+        ? { score: rd.score, label: rd.label, contributors: rd.contributors ?? [], confidence: 'calibrating', calibrating: rd.note }
+        : recoveryNight);
   const tm = byDay(todayKey);
   const { zones, trimp } = zonesFor(tm, age);
   const restings = mins.map((m) => m.resting).filter(Boolean) as number[];

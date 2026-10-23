@@ -905,6 +905,47 @@ def whoop_nights(days: int = 30):
     return {**fused, "daily": whoop.daily(days)}
 
 
+@app.get("/wellness/recovery-daily")
+def recovery_daily(days: int = 30):
+    """Fallback recovery when there's no worn-device night to score: compute it from the daily rhr/hrv/sleep
+    signals (what the Vault already has) vs the person's own recent baseline, so the Home card isn't blank when
+    a device hasn't been worn overnight. Higher HRV, lower resting HR and a better sleep score → higher recovery.
+    Same logistic shape as the on-device score (a normal day ≈ 60). Returns null when there isn't enough data."""
+    import math
+    def series(m):
+        return [v for _, v in (engine.series(m) or []) if v is not None][-days:]
+    hrv, rhr, slp = series("hrv"), series("rhr"), series("sleep_score")
+    if len(hrv) < 2 and len(rhr) < 2 and len(slp) < 1:
+        return {"score": None, "reason": "not enough daily signals yet"}
+    def z(vals, higher_is_better=True):
+        if len(vals) < 2:
+            return None
+        base, latest = vals[:-1], vals[-1]
+        mu = sum(base) / len(base)
+        sd = (sum((x - mu) ** 2 for x in base) / len(base)) ** 0.5 or (abs(mu) * 0.1 or 1.0)
+        zz = (latest - mu) / sd
+        return zz if higher_is_better else -zz
+    parts, w = [], []
+    zh = z(hrv, True)
+    if zh is not None: parts.append(0.5 * zh); w.append(0.5)
+    zr = z(rhr, False)
+    if zr is not None: parts.append(0.25 * zr); w.append(0.25)
+    if slp:
+        parts.append(0.25 * ((slp[-1] - 65) / 20)); w.append(0.25)   # sleep score 65 ≈ neutral, ~20-pt SD
+    if not w:
+        return {"score": None, "reason": "not enough daily signals yet"}
+    zc = sum(parts) / sum(w)
+    score = round(100 / (1 + math.exp(-(0.4 + 1.1 * zc))))
+    label = "Go for it" if score >= 80 else "Ready" if score >= 67 else "Pace yourself" if score >= 34 else "Recover"
+    contrib = []
+    if hrv: contrib.append({"key": "hrv", "label": "HRV", "value": f"{round(hrv[-1])} ms"})
+    if rhr: contrib.append({"key": "rhr", "label": "Resting HR", "value": f"{round(rhr[-1])} bpm"})
+    if slp: contrib.append({"key": "sleep", "label": "Sleep", "value": f"{round(slp[-1])}"})
+    return {"score": score, "label": label, "confidence": "daily",
+            "source": "daily signals (no worn-device night)", "contributors": contrib,
+            "note": "Estimated from your daily resting HR, HRV and sleep vs your recent average — wear the patch, ring or WHOOP overnight for a full HRV-based recovery."}
+
+
 # ------------------------------------------------------------------ Sinc voice (any language, say anything)
 
 @app.post("/voice/audio")
