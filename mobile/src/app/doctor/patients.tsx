@@ -23,7 +23,7 @@ export default function Patients() {
       {!data ? <Loading what="Loading panel…" /> : null}
       <View style={{ gap: space[3] }}>
         {list.map((x) => (
-          <Pressable key={x.id} onPress={() => router.push(`/patient/${x.id}` as any)} accessibilityRole="button">
+          <Pressable key={x.id} onPress={() => router.push(`/doctor/patient/${x.id}` as any)} accessibilityRole="button">
             <Card>
               <Row>
                 <View style={{ flex: 1 }}>
