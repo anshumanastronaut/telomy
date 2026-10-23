@@ -2,12 +2,19 @@
 // Read on the phone; never written back. Connection state is remembered on the device.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { Band, bandAvailable } from './band';
 import type { HealthDay } from '../../modules/ky-ecg';
 
 const KEY = 'telomy.health.connected';
 
+// Phone health sync (steps/activity/sleep from the OS) is implemented for Apple Health on iOS only. There is no
+// Android (Health Connect / Samsung Health) integration yet, so we gate the UI off this flag rather than show a
+// non-functional "Connect Apple Health" card on Android.
+export const HEALTH_AVAILABLE = Platform.OS === 'ios';
+
 export async function connectHealth(): Promise<{ ok: boolean; error?: string }> {
+  if (!HEALTH_AVAILABLE) return { ok: false, error: 'Phone health sync is available on iPhone only for now.' };
   const r = await Band.healthAuthorize();
   if (r.ok) await AsyncStorage.setItem(KEY, '1');
   return r;

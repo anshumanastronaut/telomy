@@ -13,7 +13,7 @@ import { useBand } from '@/lib/band';
 import { radius, space, type, usePalette, data, onInk } from '@/lib/theme';
 import { coachLine, fmtClock, fmtDur, useWellness, type Wellness } from '@/lib/wellness';
 import { phoneActivity } from '../../modules/ky-ecg';
-import { useHealth } from '@/lib/health';
+import { HEALTH_AVAILABLE, useHealth } from '@/lib/health';
 import { useDevices } from '@/lib/devices';
 import { BeatHeart } from '@/ui/ecg';
 import { Icon, Row, T } from '@/ui/core';
@@ -212,6 +212,7 @@ function ActivityCard() {
   const p = usePalette();
   const h = useHealth(14);
   const [busy, setBusy] = useState(false);
+  if (!HEALTH_AVAILABLE) return null;        // no Android health integration yet — don't show "Connect Apple Health"
   if (h.connected === null) return null;
   if (!h.connected) {
     return (

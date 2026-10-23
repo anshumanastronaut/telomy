@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Pressable, Switch, TextInput, View } from 'react-native';
 
 import { api, useApi } from '@/lib/api';
-import { connectHealth } from '@/lib/health';
+import { HEALTH_AVAILABLE, connectHealth } from '@/lib/health';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Button, Card, Icon, Row, Screen, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
@@ -83,7 +83,7 @@ export default function Onboarding() {
           <T v="h1">Connect a wearable</T>
           <T v="body" color={p.muted}>Heart rate, HRV, sleep and activity make Sinc's reads much sharper. You can skip and connect later.</T>
           {[
-            { t: 'Apple Health', d: 'Steps, workouts, Apple Watch sleep stages and vitals', icon: 'heart.fill' as const, go: async () => { const r = await connectHealth(); setHealthOk(r.ok); } },
+            ...(HEALTH_AVAILABLE ? [{ t: 'Apple Health', d: 'Steps, workouts, Apple Watch sleep stages and vitals', icon: 'heart.fill' as const, go: async () => { const r = await connectHealth(); setHealthOk(r.ok); } }] : []),
             { t: 'Telomy patch & ring', d: 'ECG, HRV and sleep: pair them on the Devices screen', icon: 'waveform.path.ecg' as const, go: () => router.push('/devices') },
             { t: 'WHOOP (via NOOP)', d: 'All-day heart rate and motion, pushed to your Telomy server', icon: 'figure.run' as const, go: () => router.push('/devices') },
           ].map((w) => (
