@@ -69,6 +69,7 @@ export default function Profile() {
       </Group>
 
       <Group title="Care">
+        <ListRow icon="cross.case.fill" title="Emergency & home care" subtitle="Ambulance, home nursing, elder & baby care, lab pickup" onPress={() => router.push('/assistance' as any)} />
         <ListRow icon="stethoscope" title="Clinicians & appointments" subtitle="Book, prepare a pre-clinic brief" onPress={() => router.push('/care')} />
         <ListRow icon="doc.richtext" title="Specialist pack" subtitle="PDF + FHIR for cardiology, endocrinology…" onPress={() => router.push('/brief')} />
         <ListRow icon="checkmark.seal" title="Review queue (Telomy Care)" subtitle="Sinc drafts awaiting sign-off" onPress={() => router.push('/queue')} />
