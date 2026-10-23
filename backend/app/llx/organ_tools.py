@@ -50,6 +50,24 @@ def _model(organ):
     return _CACHE[organ]
 
 
+_CALIB = None
+
+
+def _calibration() -> dict:
+    """Per-organ age-bias correction (research/ageclock/calibrate_organ_clocks.py). The age-prediction models
+    regress toward the population mean (over-age the young, under-age the old); this linear correction removes
+    that age-dependent bias so age_acceleration is meaningful at any age. Empty dict if the file is absent."""
+    global _CALIB
+    if _CALIB is None:
+        import json
+        p = os.path.join(ASSETS, "organ_calibration.json")
+        try:
+            _CALIB = json.load(open(p)) if os.path.exists(p) else {}
+        except Exception:  # noqa: BLE001
+            _CALIB = {}
+    return _CALIB
+
+
 def organ_ages(panel: dict, chronological_age: float | None = None) -> dict:
     """Return per-organ age + age-acceleration from a blood panel. `sex`: 1 male / 2 female."""
     import pandas as pd
@@ -63,6 +81,9 @@ def organ_ages(panel: dict, chronological_age: float | None = None) -> dict:
         if sum(np.isfinite(list(row.values()))) < max(3, (len(feats) - 1) // 2):
             continue                                   # not enough of this organ's markers measured
         pred = float(_model(organ).predict(pd.DataFrame([row], columns=feats))[0])
+        cal = _calibration().get(organ)
+        if cal and age:                                # remove the age-dependent regression-to-mean bias
+            pred = pred - (cal["a"] + cal["b"] * age)
         accel = round(pred - age, 1) if age else None
         out.append({"organ": organ, "label": LABEL[organ], "organ_age": round(pred, 1),
                     "age_acceleration_years": accel,
