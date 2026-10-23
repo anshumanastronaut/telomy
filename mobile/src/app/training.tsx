@@ -1,4 +1,4 @@
-// Exercise & training — every session from Apple Health (80+ types), iPhone motion detection and the Telomy patch,
+// Exercise & training — every session from your phone's health app (80+ types), iPhone motion detection and the Telomy patch,
 // each with its load (heart-rate zones when the patch/ring was worn), and a training status from how this week's
 // load compares with your last four weeks. See lib/training.ts for the method.
 import { router, Stack } from 'expo-router';
@@ -72,14 +72,14 @@ export default function Training() {
         {recent.length ? recent.map((s) => <SessionRow key={s.id} s={s} />) : (
           <Card>
             <T v="h3">No sessions yet</T>
-            <T v="small">Workouts from Apple Health appear here automatically (your iPhone, Apple Watch or any gym app that writes to Health). Walks, runs and rides of 10 minutes or more are detected by your iPhone on their own.</T>
+            <T v="small">Workouts sync from your phone's health app (Apple Health on iPhone; Health Connect — Samsung Health & Google Fit — on Android). Walks, runs and rides of 10 minutes or more are detected by your iPhone on their own.</T>
           </Card>
         )}
       </Section>
 
       <Card>
         <T v="label">What Telomy recognises</T>
-        <T v="small">{WORKOUT_TYPE_COUNT} activity types from Apple Health, from running, cycling, swimming and strength to yoga, HIIT, badminton, cricket and pickleball. Your iPhone's motion chip detects walks, runs and rides automatically; heart-rate zones from the patch or ring measure how hard every session was, whatever its type.</T>
+        <T v="small">{WORKOUT_TYPE_COUNT} activity types from your phone's health app, from running, cycling, swimming and strength to yoga, HIIT, badminton, cricket and pickleball. Your iPhone's motion chip detects walks, runs and rides automatically; heart-rate zones from the patch or ring measure how hard every session was, whatever its type.</T>
       </Card>
     </Screen>
   );

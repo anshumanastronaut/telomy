@@ -6,10 +6,10 @@ import { useEffect, useState } from 'react';
 import { Band, bandAvailable, useBand } from './band';
 import { Ring, type RingStatus } from '../../modules/ky-ecg';
 import { startRingHistory } from './ringhistory';
-import { useHealth } from './health';
+import { HEALTH_LABEL, useHealth } from './health';
 
 export type SourceId = 'patch' | 'ring' | 'health';
-export const SOURCE_LABEL: Record<SourceId, string> = { patch: 'Chest ECG patch', ring: 'Smart ring', health: 'Apple Health' };
+export const SOURCE_LABEL: Record<SourceId, string> = { patch: 'Chest ECG patch', ring: 'Smart ring', health: HEALTH_LABEL };
 
 // Which sources can provide each metric, best first. "patch" = KY-E-B1 single-lead ECG (gold for HR/HRV/rhythm),
 // "ring" = PPG + IMU + temp, "health" = Apple Watch / iPhone via HealthKit.

@@ -4,7 +4,7 @@
 import { router, Stack } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
-import { connectHealth } from '@/lib/health';
+import { HEALTH_LABEL, connectHealth } from '@/lib/health';
 import { METRIC_SOURCES, SOURCE_LABEL, useDevices, type SourceId } from '@/lib/devices';
 import { hrHrvCorrelation, useRingHistory } from '@/lib/ringhistory';
 import { Band, Ring } from '../../modules/ky-ecg';
@@ -44,7 +44,7 @@ export default function Devices() {
                   <Button kind="secondary" title="Connect"
                     onPress={() => {
                       if (dev.id === 'ring') { Ring.scan(); show('Searching for your ring…'); }
-                      else if (dev.id === 'health') connectHealth().then((r) => show(r.ok ? 'Apple Health connected.' : 'Not connected.', r.ok ? 'success' : 'alert'));
+                      else if (dev.id === 'health') connectHealth().then((r) => show(r.ok ? `${HEALTH_LABEL} connected.` : 'Not connected.', r.ok ? 'success' : 'alert'));
                       else router.push('/monitor');
                     }} />
                 ) : <Icon name="checkmark.circle.fill" color={p.success} />}
@@ -122,7 +122,7 @@ export default function Devices() {
 
         <Card>
           <T v="label">How sources are ranked</T>
-          <T v="small">Heart rate & HRV: ECG patch is most accurate, then the ring (optical), then Apple Health. SpO₂ & skin temperature: the ring. Steps, workouts & VO₂max: Apple Health. Rhythm screening & sleep stages: the ECG patch. When two devices disagree a lot, Telomy flags the lower-quality one.</T>
+          <T v="small">Heart rate & HRV: ECG patch is most accurate, then the ring (optical), then phone health (Apple Health / Health Connect). SpO₂ & skin temperature: the ring. Steps, workouts & VO₂max: phone health. Rhythm screening & sleep stages: the ECG patch. When two devices disagree a lot, Telomy flags the lower-quality one.</T>
         </Card>
       </Screen>
       {toast}

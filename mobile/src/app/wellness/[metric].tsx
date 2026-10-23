@@ -112,7 +112,7 @@ export default function WellnessDetail() {
             <Trends w={w} kind="sleep" />
             {w.last.source === 'patch' ? <Button kind="secondary" title="Open the full session" icon="folder" onPress={() => router.push('/captures')} /> : null}
           </>
-        ) : <Empty title="No night yet" body="Wear the patch or ring to bed (Telomy detects sleep on its own), or connect Apple Health to use your Apple Watch's sleep." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />
+        ) : <Empty title="No night yet" body="Wear the patch or ring to bed (Telomy detects sleep on its own), or connect your phone's health app for its sleep." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />
       ) : null}
 
       {metric === 'strain' ? (

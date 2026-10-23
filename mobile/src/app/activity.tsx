@@ -105,7 +105,7 @@ export default function Activity() {
                 </View>
               );
             })}
-            <T v="small" style={{ fontSize: type.micro }} color={p.faint}>From Apple Health · goals {GOALS.steps.toLocaleString('en-IN')} steps, {GOALS.kcal} kcal, {GOALS.exercise} min</T>
+            <T v="small" style={{ fontSize: type.micro }} color={p.faint}>From your phone's health · goals {GOALS.steps.toLocaleString('en-IN')} steps, {GOALS.kcal} kcal, {GOALS.exercise} min</T>
           </Card>
         </Section>
       ) : null}

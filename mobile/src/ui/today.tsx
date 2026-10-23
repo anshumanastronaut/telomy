@@ -13,7 +13,7 @@ import { useBand } from '@/lib/band';
 import { radius, space, type, usePalette, data, onInk } from '@/lib/theme';
 import { coachLine, fmtClock, fmtDur, useWellness, type Wellness } from '@/lib/wellness';
 import { phoneActivity } from '../../modules/ky-ecg';
-import { HEALTH_AVAILABLE, useHealth } from '@/lib/health';
+import { HEALTH_AVAILABLE, HEALTH_LABEL, useHealth } from '@/lib/health';
 import { useDevices } from '@/lib/devices';
 import { BeatHeart } from '@/ui/ecg';
 import { Icon, Row, T } from '@/ui/core';
@@ -329,7 +329,7 @@ export function WellnessToday({ age }: { age?: number | null }) {
     bioage: <BodyTile icon="hourglass" color={data.age} title="Biological age" value="View" sub="Blood · heart · muscle · fitness ages" onPress={() => router.push('/age')} />,
     longevity: <LongevityTile />,
     activity: <ActivityCard />,
-    devices: <BodyTile icon="sensor.tag.radiowaves.forward" color={data.temp} title="Devices" value="Manage" sub="Patch · ring · Apple Health" onPress={() => router.push('/devices')} />,
+    devices: <BodyTile icon="sensor.tag.radiowaves.forward" color={data.temp} title="Devices" value="Manage" sub={`Patch · ring · ${HEALTH_LABEL}`} onPress={() => router.push('/devices')} />,
   };
 
   return (

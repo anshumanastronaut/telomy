@@ -56,7 +56,7 @@ export default function AgeScreen() {
             <T v="small">{deltaText(ac.overall.delta)}{ac.chrono ? ` · you are ${ac.chrono}` : ''} · {ac.overall.confidence} confidence</T>
           </View>
         ) : (
-          <T v="small">Connect the ring, patch or Apple Health to see your wearable biological age.</T>
+          <T v="small">Connect the ring, patch or your phone's health app to see your wearable biological age.</T>
         )}
       </Card>
       </Section>
@@ -85,7 +85,7 @@ export default function AgeScreen() {
 
       <Card>
         <T v="label">How to sharpen these</T>
-        <T v="small">A measured VO₂max from Apple Health makes Fitness age far more accurate than the resting-HR estimate. For Recovery age, wear the ECG patch or ring at rest or overnight so HRV is measured cleanly. Readings taken while moving are noisier and count less.</T>
+        <T v="small">A measured VO₂max from your phone's health app makes Fitness age far more accurate than the resting-HR estimate. For Recovery age, wear the ECG patch or ring at rest or overnight so HRV is measured cleanly. Readings taken while moving are noisier and count less.</T>
       </Card>
     </Screen>
   );

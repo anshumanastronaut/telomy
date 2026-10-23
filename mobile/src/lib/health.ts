@@ -12,6 +12,9 @@ const KEY = 'telomy.health.connected';
 // Android (Health Connect / Samsung Health) integration yet, so we gate the UI off this flag rather than show a
 // non-functional "Connect Apple Health" card on Android.
 export const HEALTH_AVAILABLE = Platform.OS === 'ios';
+// User-facing name for the phone's health store: Apple Health on iOS; on Android the equivalent is Health
+// Connect (which Samsung Health and Google Fit sync into). Use this instead of hardcoding "Apple Health".
+export const HEALTH_LABEL = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
 
 export async function connectHealth(): Promise<{ ok: boolean; error?: string }> {
   if (!HEALTH_AVAILABLE) return { ok: false, error: 'Phone health sync is available on iPhone only for now.' };

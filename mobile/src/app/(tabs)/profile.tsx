@@ -58,7 +58,7 @@ export default function Profile() {
         <ListRow icon="figure.stand" title="Whole-body scan & tests" subtitle="Blood panels, imaging, genetics — what to test next" onPress={() => router.push('/tests')} />
         <ListRow icon="figure.run" title="Exercise & training" subtitle="Every workout, its load and your training status" onPress={() => router.push('/training' as any)} />
         <ListRow icon="bolt.heart" title="Therapy" subtitle="Sessions, plans and recorded therapies" onPress={() => router.push('/therapy' as any)} />
-        <ListRow icon="waveform.path.ecg" title="Live ECG & devices" subtitle="Patch, ring, Apple Health — connect and monitor" onPress={() => router.push('/devices')} />
+        <ListRow icon="waveform.path.ecg" title="Live ECG & devices" subtitle="Patch, ring, phone health — connect and monitor" onPress={() => router.push('/devices')} />
       </Group>
 
       <Group title="Plan & doctor">
