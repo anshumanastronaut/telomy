@@ -62,6 +62,11 @@ clocks, exposome. Same pattern: archetype in → assert expected direction → p
 doctor** (key safety behaviour, verified). Note: the engine's language is appropriately precise — "treat the
 apnoea" and "detoxification pathways (clinical outcomes preliminary)" are legitimate, not overclaims.
 
-Still open from iteration 1: **chronic-ML skin_cancer probability calibration** (healthy → 36.6% vs 9%
-prevalence). skin_cancer.joblib exists; the BRFSS training pipeline is in research/chronicmodel/ — fix is a
-per-condition probability calibrator (Platt/isotonic), a focused retraining pass.
+**Correction on the iteration-1 skin_cancer note.** The 36.6% for a healthy white male is likely NOT a
+mis-calibration: BRFSS skin_cancer is *"ever told you had skin cancer"* (lifetime history), and for older
+white males lifetime non-melanoma skin cancer genuinely runs 20–40% — so the number may be correctly
+calibrated. It reads alarming because lifetime history is surfaced like imminent risk → a **presentation/UX**
+issue (label it "lifetime history", separate from forward risk), not clearly a model bug. Verifying properly
+needs a reliability curve on held-out BRFSS, but `megaset.parquet` is not present locally (the raw dir is
+empty); confirming/recalibrating would require re-downloading the BRFSS megaset via
+research/chronicmodel/build_megaset.py. Left as a verify-first item, not a blind fix.
