@@ -146,7 +146,14 @@ function applyHrOnset(grid: number[], start: number, hr5: [number, number, numbe
   for (const [ts, hr] of hr5) {
     if (hr <= floor) { run++; if (run >= 3 && onsetTs == null) onsetTs = ts - 2 * 300; } else run = 0;
   }
-  if (onsetTs == null) return grid;
+  if (onsetTs == null) {
+    // HR covered the session but never sustained a drop into the sleeping band → lying still but awake, not asleep.
+    // Motion/stages over-call wake as sleep (wake specificity <60%); HR is the discriminator, so with good HR coverage
+    // and no drop we mark the whole session wake rather than asserting a phantom night. Sparse HR → leave it to motion.
+    const coverage = (hr5.length * 10) / Math.max(1, grid.length);   // hr5 ≈ 5-min samples; grid ≈ 30-s epochs
+    if (coverage >= 0.5) for (let i = 0; i < grid.length; i++) if (grid[i] > 0) grid[i] = 0;
+    return grid;
+  }
   const onsetEpoch = Math.min(grid.length, Math.max(0, Math.floor((onsetTs - start) / EPOCH)));
   for (let i = 0; i < onsetEpoch; i++) if (grid[i] > 0) grid[i] = 0;   // pre-onset "sleep" → wake (in bed, not asleep)
   return grid;
@@ -171,6 +178,11 @@ export function whoopNights(list: WhoopNightIn[]): Night[] {
     applyHrOnset(grid, w.start, w.hr5, w.restingHr);       // correct WHOOP's too-early onset using heart rate
     const sm = summarise(grid, w.start, staged);
     if (!sm) continue;
+    // A WHOOP overnight block under ~3 h asleep is a fragment of lying-still, not a scored main night. WHOOP/motion
+    // over-detect onset, so a short still spell after midnight (e.g. 00:43–01:48 while awake) was being shown as
+    // "last night". Parity with healthNights' ≥3 h main-night rule; shorter spells fall back to the daily-signals
+    // recovery instead of a false night. (Daytime naps are handled by the nap gate above.)
+    if (sm.tstMin < 180) continue;
     out.push({ ...sm, id: `whoop-${w.start}`, date: localDate(sm.end), hr5: w.hr5 ?? [], hrv5: [], events: [], source: 'whoop', sourceName: 'WHOOP',
       lowestHr: w.restingHr, lowestHrAt: w.restingHrAt, lowestHrPos: w.restingHrAt ? (w.restingHrAt - w.start) / (w.end - w.start) : undefined,
       sleepHr: w.sleepHr, skinTemp: w.skinTemp, tempSrc: w.skinTemp != null ? 'whoop' : undefined });
