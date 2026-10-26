@@ -9,41 +9,66 @@ import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T }
 import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
 import type { OrganId } from '@/twin3d/scene';
 
-// Organ tap-labels, placed on the left and right of the body at roughly their anatomical height (y: 0 top → 1
-// bottom). Tapping a name flies the camera to that organ (same `selected` state as tapping the 3D mesh). Balanced
-// two-sided layout so the labels frame the body instead of crowding one edge.
+// Organ callouts, placed on the left and right of the body at roughly their anatomical height (y: 0 top → 1
+// bottom). Each is a label at the margin tied to the body by a thin leader line and a status dot — the anatomical-
+// atlas convention (Complete Anatomy / Visible Body). The dot's colour is the system's health, so the rail reads as
+// an at-a-glance body map. Tapping a name flies the camera to that organ (same `selected` state as a mesh tap).
 const ORGAN_POS: { id: OrganId; label: string; side: 'l' | 'r'; y: number }[] = [
-  { id: 'brain', label: 'Brain', side: 'l', y: 0.02 },
-  { id: 'lungs', label: 'Lungs', side: 'r', y: 0.10 },
-  { id: 'heart', label: 'Heart', side: 'l', y: 0.19 },
-  { id: 'vessels', label: 'Vessels', side: 'r', y: 0.28 },
-  { id: 'stomach', label: 'Stomach', side: 'l', y: 0.38 },
-  { id: 'liver', label: 'Liver', side: 'r', y: 0.45 },
-  { id: 'kidneys', label: 'Kidneys', side: 'l', y: 0.56 },
-  { id: 'pancreas', label: 'Pancreas', side: 'r', y: 0.60 },
-  { id: 'intestines', label: 'Gut', side: 'r', y: 0.73 },
+  { id: 'brain', label: 'Brain', side: 'l', y: 0.04 },
+  { id: 'lungs', label: 'Lungs', side: 'r', y: 0.12 },
+  { id: 'heart', label: 'Heart', side: 'l', y: 0.21 },
+  { id: 'vessels', label: 'Vessels', side: 'r', y: 0.30 },
+  { id: 'stomach', label: 'Stomach', side: 'l', y: 0.39 },
+  { id: 'liver', label: 'Liver', side: 'r', y: 0.47 },
+  { id: 'kidneys', label: 'Kidneys', side: 'l', y: 0.57 },
+  { id: 'pancreas', label: 'Pancreas', side: 'r', y: 0.64 },
+  { id: 'intestines', label: 'Gut', side: 'r', y: 0.78 },
   { id: 'bladder', label: 'Bladder', side: 'l', y: 0.75 },
-  { id: 'skeleton', label: 'Skeleton', side: 'l', y: 0.92 },
+  { id: 'skeleton', label: 'Skeleton', side: 'l', y: 0.93 },
 ];
 
-function OrganRail({ selected, onSelect }: { selected: OrganId | null; onSelect: (o: OrganId | null) => void }) {
+const LEADER = 20; // px length of the connector line from label to the anchor dot
+
+function OrganRail({ systems, selected, onSelect }: { systems: any[]; selected: OrganId | null; onSelect: (o: OrganId | null) => void }) {
   const p = usePalette();
+  const statusColor = (st?: string) => (st === 'high' ? p.danger : st === 'watch' ? p.warn : st === 'ok' ? p.success : p.faint);
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {ORGAN_POS.map(({ id, label, side, y }) => {
         const on = selected === id;
+        const sys = systems.find((s) => s.name === systemOfOrgan(id));
+        const st = sys?.status as string | undefined;
+        const dot = statusColor(st);
+        const flagged = st === 'high' || st === 'watch';
+        const tag = (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6,
+            paddingVertical: 5, paddingHorizontal: 10, borderRadius: 999,
+            backgroundColor: on ? p.teal : p.surface,
+            borderWidth: on ? 0 : StyleSheet.hairlineWidth, borderColor: p.border,
+            shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 }}>
+            {side === 'r' ? <StatusDot color={on ? p.onAccent : dot} flagged={flagged} /> : null}
+            <T v="small" color={on ? p.onAccent : p.text} style={{ fontSize: 11.5, fontWeight: flagged && !on ? '600' : '400' }}>{label}</T>
+            {side === 'l' ? <StatusDot color={on ? p.onAccent : dot} flagged={flagged} /> : null}
+          </View>
+        );
+        const leader = <View style={{ width: LEADER, height: on ? 1.5 : StyleSheet.hairlineWidth, backgroundColor: on ? p.teal : p.border }} />;
+        const anchor = <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: on ? p.teal : dot }} />;
         return (
-          <Pressable key={id} onPress={() => onSelect(on ? null : id)} hitSlop={6} accessibilityRole="button" accessibilityLabel={`Focus ${label}`}
-            style={{ position: 'absolute', top: `${y * 100}%`, ...(side === 'l' ? { left: 8 } : { right: 8 }),
-              paddingVertical: 5, paddingHorizontal: 11, borderRadius: 999,
-              backgroundColor: on ? p.teal : p.surface, borderWidth: on ? 0 : StyleSheet.hairlineWidth, borderColor: p.border,
-              shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 }}>
-            <T v="small" color={on ? p.onAccent : p.text} style={{ fontSize: 11 }}>{label}</T>
+          <Pressable key={id} onPress={() => onSelect(on ? null : id)} hitSlop={8} accessibilityRole="button"
+            accessibilityLabel={`Focus ${label}${st ? `, ${st === 'high' ? 'out of range' : st === 'watch' ? 'watch' : 'in range'}` : ''}`}
+            style={{ position: 'absolute', top: `${y * 100}%`, transform: [{ translateY: -13 }],
+              flexDirection: side === 'l' ? 'row' : 'row-reverse', alignItems: 'center',
+              ...(side === 'l' ? { left: 6 } : { right: 6 }) }}>
+            {tag}{leader}{anchor}
           </Pressable>
         );
       })}
     </View>
   );
+}
+
+function StatusDot({ color, flagged }: { color: string; flagged: boolean }) {
+  return <View style={{ width: flagged ? 7 : 6, height: flagged ? 7 : 6, borderRadius: 4, backgroundColor: color }} />;
 }
 
 function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'], xLabel = (x: number) => `${Math.round(x / 365 * 10) / 10}y` }:
@@ -158,8 +183,16 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
       <T v="h1">{inTab ? 'Your twin' : 'Your digital twin'}</T>
       <View style={{ position: 'relative' }}>
         <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} onInteract={setTouching3d} />
-        <OrganRail selected={organSel} onSelect={setOrganSel} />
+        <OrganRail systems={d.systems} selected={organSel} onSelect={setOrganSel} />
       </View>
+      <Row gap={14} style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
+        {[['In range', p.success], ['Watch', p.warn], ['Out of range', p.danger]].map(([t, c]) => (
+          <Row key={t as string} gap={5}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c as string }} />
+            <T v="small" color={p.muted} style={{ fontSize: 11 }}>{t as string}</T>
+          </Row>
+        ))}
+      </Row>
       <OrganPanel systems={d.systems} organ={organSel} onClear={() => setOrganSel(null)} />
       {organs.data?.organs?.length ? (
         <Section title="How each system is aging">
