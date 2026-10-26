@@ -1,7 +1,7 @@
 import { router, Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { api, useApi } from '@/lib/api';
 import { radius, space, usePalette } from '@/lib/theme';
@@ -9,66 +9,92 @@ import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T }
 import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
 import type { OrganId } from '@/twin3d/scene';
 
-// Organ callouts, placed on the left and right of the body at roughly their anatomical height (y: 0 top → 1
-// bottom). Each is a label at the margin tied to the body by a thin leader line and a status dot — the anatomical-
-// atlas convention (Complete Anatomy / Visible Body). The dot's colour is the system's health, so the rail reads as
-// an at-a-glance body map. Tapping a name flies the camera to that organ (same `selected` state as a mesh tap).
-const ORGAN_POS: { id: OrganId; label: string; side: 'l' | 'r'; y: number }[] = [
-  { id: 'brain', label: 'Brain', side: 'l', y: 0.04 },
-  { id: 'lungs', label: 'Lungs', side: 'r', y: 0.12 },
-  { id: 'heart', label: 'Heart', side: 'l', y: 0.21 },
-  { id: 'vessels', label: 'Vessels', side: 'r', y: 0.30 },
-  { id: 'stomach', label: 'Stomach', side: 'l', y: 0.39 },
-  { id: 'liver', label: 'Liver', side: 'r', y: 0.47 },
-  { id: 'kidneys', label: 'Kidneys', side: 'l', y: 0.57 },
-  { id: 'pancreas', label: 'Pancreas', side: 'r', y: 0.64 },
-  { id: 'intestines', label: 'Gut', side: 'r', y: 0.78 },
-  { id: 'bladder', label: 'Bladder', side: 'l', y: 0.75 },
-  { id: 'skeleton', label: 'Skeleton', side: 'l', y: 0.93 },
-];
+// Organ callouts — a proper anatomical-atlas labelling system rather than floating pills.
+// Research notes (Nature Methods scientific-labelling guidance + anatomy-app teardowns): plan labels into the figure,
+// space them evenly, keep callout origins consistent, never let leader lines cross, avoid decorative bubbles, and
+// attach each label to the real structure ("the body itself is the browsing mechanism"). So: fixed-width flat glass
+// labels at the margins with a shared leader origin, a short stub + single line to an anchor dot placed OVER the real
+// organ position (ax, ay as fractions of the stage), ordered top→bottom on each side so leaders fan without crossing.
+// Status colour is carried on both the chip dot and the body anchor, making the rail an at-a-glance body map.
+const STAGE_H = 460; // keep in sync with the Twin3D height
+const LBL_W = 98;    // fixed label width → leader origins line up vertically
+const MARGIN = 8;
+const STUB = 12;     // short horizontal run off the label before the line angles to the organ
+const INK = '#F4F4EF';
 
-const LEADER = 20; // px length of the connector line from label to the anchor dot
+type Slot = { id: OrganId; label: string; side: 'l' | 'r'; y: number; ax: number; ay: number };
+// y = label slot height; (ax, ay) = anchor over the organ. Left/right lists stay in anchor order (ay ascending) so
+// the connector lines never cross.
+const SLOTS: Slot[] = [
+  { id: 'brain', label: 'Brain', side: 'l', y: 0.07, ax: 0.50, ay: 0.075 },
+  { id: 'heart', label: 'Heart', side: 'l', y: 0.24, ax: 0.47, ay: 0.265 },
+  { id: 'stomach', label: 'Stomach', side: 'l', y: 0.41, ax: 0.45, ay: 0.40 },
+  { id: 'kidneys', label: 'Kidneys', side: 'l', y: 0.58, ax: 0.55, ay: 0.47 },
+  { id: 'bladder', label: 'Bladder', side: 'l', y: 0.75, ax: 0.50, ay: 0.62 },
+  { id: 'skeleton', label: 'Skeleton', side: 'l', y: 0.92, ax: 0.49, ay: 0.82 },
+  { id: 'vessels', label: 'Vessels', side: 'r', y: 0.12, ax: 0.53, ay: 0.185 },
+  { id: 'lungs', label: 'Lungs', side: 'r', y: 0.30, ax: 0.57, ay: 0.235 },
+  { id: 'liver', label: 'Liver', side: 'r', y: 0.48, ax: 0.58, ay: 0.40 },
+  { id: 'pancreas', label: 'Pancreas', side: 'r', y: 0.66, ax: 0.53, ay: 0.45 },
+  { id: 'intestines', label: 'Gut', side: 'r', y: 0.84, ax: 0.50, ay: 0.55 },
+];
 
 function OrganRail({ systems, selected, onSelect }: { systems: any[]; selected: OrganId | null; onSelect: (o: OrganId | null) => void }) {
   const p = usePalette();
-  const statusColor = (st?: string) => (st === 'high' ? p.danger : st === 'watch' ? p.warn : st === 'ok' ? p.success : p.faint);
+  const [w, setW] = useState(360);
+  const H = STAGE_H;
+  const statusColor = (st?: string) => (st === 'high' ? p.danger : st === 'watch' ? p.warn : st === 'ok' ? p.success : '#8A8A82');
+  const geom = (s: Slot) => {
+    const oy = s.y * H;
+    const ox = s.side === 'l' ? MARGIN + LBL_W : w - MARGIN - LBL_W;
+    const stub = s.side === 'l' ? ox + STUB : ox - STUB;
+    return { oy, ox, stub, axPx: s.ax * w, ayPx: s.ay * H };
+  };
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {ORGAN_POS.map(({ id, label, side, y }) => {
-        const on = selected === id;
-        const sys = systems.find((s) => s.name === systemOfOrgan(id));
-        const st = sys?.status as string | undefined;
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none" onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+      {/* leader lines + body anchors (non-interactive) */}
+      <Svg width={w} height={H} style={StyleSheet.absoluteFill} pointerEvents="none">
+        {SLOTS.map((s) => {
+          const on = selected === s.id;
+          // once an organ is focused the camera zooms, so the other stage-pinned anchors would scatter over the mesh —
+          // show only the selected callout's line + dot while a selection is active.
+          if (selected && !on) return null;
+          const st = systems.find((x) => x.name === systemOfOrgan(s.id))?.status as string | undefined;
+          const c = on ? p.teal : statusColor(st);
+          const g = geom(s);
+          return (
+            <React.Fragment key={s.id}>
+              <Path d={`M${g.ox},${g.oy} L${g.stub},${g.oy} L${g.axPx},${g.ayPx}`} stroke={c} strokeWidth={on ? 1.6 : 1}
+                strokeOpacity={on ? 1 : 0.5} fill="none" strokeLinejoin="round" strokeLinecap="round" />
+              <Circle cx={g.axPx} cy={g.ayPx} r={on ? 4.5 : 3} fill={c} fillOpacity={on ? 1 : 0.9} />
+              {on ? <Circle cx={g.axPx} cy={g.ayPx} r={1.8} fill={INK} /> : null}
+            </React.Fragment>
+          );
+        })}
+      </Svg>
+      {/* labels (interactive) */}
+      {SLOTS.map((s) => {
+        const on = selected === s.id;
+        const st = systems.find((x) => x.name === systemOfOrgan(s.id))?.status as string | undefined;
         const dot = statusColor(st);
         const flagged = st === 'high' || st === 'watch';
-        const tag = (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6,
-            paddingVertical: 5, paddingHorizontal: 10, borderRadius: 999,
-            backgroundColor: on ? p.teal : p.surface,
-            borderWidth: on ? 0 : StyleSheet.hairlineWidth, borderColor: p.border,
-            shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 }}>
-            {side === 'r' ? <StatusDot color={on ? p.onAccent : dot} flagged={flagged} /> : null}
-            <T v="small" color={on ? p.onAccent : p.text} style={{ fontSize: 11.5, fontWeight: flagged && !on ? '600' : '400' }}>{label}</T>
-            {side === 'l' ? <StatusDot color={on ? p.onAccent : dot} flagged={flagged} /> : null}
-          </View>
-        );
-        const leader = <View style={{ width: LEADER, height: on ? 1.5 : StyleSheet.hairlineWidth, backgroundColor: on ? p.teal : p.border }} />;
-        const anchor = <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: on ? p.teal : dot }} />;
         return (
-          <Pressable key={id} onPress={() => onSelect(on ? null : id)} hitSlop={8} accessibilityRole="button"
-            accessibilityLabel={`Focus ${label}${st ? `, ${st === 'high' ? 'out of range' : st === 'watch' ? 'watch' : 'in range'}` : ''}`}
-            style={{ position: 'absolute', top: `${y * 100}%`, transform: [{ translateY: -13 }],
-              flexDirection: side === 'l' ? 'row' : 'row-reverse', alignItems: 'center',
-              ...(side === 'l' ? { left: 6 } : { right: 6 }) }}>
-            {tag}{leader}{anchor}
+          <Pressable key={s.id} onPress={() => onSelect(on ? null : s.id)} hitSlop={8} accessibilityRole="button"
+            accessibilityLabel={`Focus ${s.label}${st ? `, ${st === 'high' ? 'out of range' : st === 'watch' ? 'watch' : 'in range'}` : ''}`}
+            style={{ position: 'absolute', top: s.y * H - 13, width: LBL_W,
+              ...(s.side === 'l' ? { left: MARGIN } : { right: MARGIN }),
+              flexDirection: s.side === 'l' ? 'row' : 'row-reverse', alignItems: 'center', gap: 6,
+              paddingVertical: 5, paddingHorizontal: 9, borderRadius: 9,
+              backgroundColor: on ? p.teal : 'rgba(16,18,17,0.55)',
+              borderWidth: StyleSheet.hairlineWidth, borderColor: on ? p.teal : 'rgba(255,255,255,0.16)' }}>
+            <View style={{ width: flagged ? 7 : 6, height: flagged ? 7 : 6, borderRadius: 4, backgroundColor: on ? INK : dot }} />
+            <T numberOfLines={1} style={{ flex: 1, fontFamily: 'Geist_500Medium', fontSize: 10, letterSpacing: 0.4,
+              textAlign: s.side === 'l' ? 'left' : 'right', color: on ? p.onAccent : INK }}>{s.label.toUpperCase()}</T>
           </Pressable>
         );
       })}
     </View>
   );
-}
-
-function StatusDot({ color, flagged }: { color: string; flagged: boolean }) {
-  return <View style={{ width: flagged ? 7 : 6, height: flagged ? 7 : 6, borderRadius: 4, backgroundColor: color }} />;
 }
 
 function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'], xLabel = (x: number) => `${Math.round(x / 365 * 10) / 10}y` }:
@@ -182,7 +208,7 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
       {inTab ? null : <Stack.Screen options={{ title: 'Digital twin' }} />}
       <T v="h1">{inTab ? 'Your twin' : 'Your digital twin'}</T>
       <View style={{ position: 'relative' }}>
-        <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} onInteract={setTouching3d} />
+        <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} onInteract={setTouching3d} height={STAGE_H} />
         <OrganRail systems={d.systems} selected={organSel} onSelect={setOrganSel} />
       </View>
       <Row gap={14} style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
