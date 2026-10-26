@@ -29,7 +29,7 @@ export function T({ v = 'body', color, style, ...rest }: TextProps & { v?: V; co
     // Editorial hierarchy: Fraunces carries every headline and number, Inter carries reading and UI. Tight negative
     // tracking on large serif sizes, generous line-height on body, one quiet micro-label style.
     // Telomy brand face is a hero-only accent (h1 = each screen's title). display carries big numbers → mono.
-    display: { fontFamily: fonts.mono, fontSize: 44, lineHeight: 50, color: p.text, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
+    display: { fontFamily: fonts.mono, fontSize: 44, color: p.text, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
     h1: { fontFamily: fonts.display, fontSize: 32, lineHeight: 38, color: p.text, letterSpacing: 0.5 },
     h2: { fontSize: 23, fontWeight: '600', lineHeight: 29, color: p.text, letterSpacing: -0.2 },
     h3: { fontSize: 17, fontWeight: '600', lineHeight: 23, color: p.text, letterSpacing: -0.2 },

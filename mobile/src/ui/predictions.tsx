@@ -2,9 +2,10 @@
 // rationale: exactly which of your values drove it (flagged against reference ranges), the risk enhancers and
 // caveats the equation can't see, and the citation. Tap a card to open the full "why this number".
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
-import { usePalette } from '@/lib/theme';
+import { fonts, usePalette } from '@/lib/theme';
 import { Card, Chip, Divider, Row, Section, T } from './core';
 
 const LBL: Record<string, string> = { total_cvd: 'Any cardiovascular disease', ascvd: 'Heart attack or stroke', heart_failure: 'Heart failure', chd: 'Coronary heart disease', stroke: 'Stroke' };
@@ -48,9 +49,9 @@ function Drivers({ keys, inputs }: { keys: string[]; inputs: any }) {
         if (typeof v === 'boolean') return <Row key={k}><T v="body" style={{ flex: 1 }}>{NAME[k] ?? k}</T><Chip label={v ? 'yes' : 'no'} fg={v && (k === 'smoker') ? p.danger : p.muted} bg={p.surfaceAlt} /></Row>;
         const f = flag(k, v);
         return (
-          <Row key={k}>
-            <T v="body" style={{ flex: 1 }}>{NAME[k] ?? k}</T>
-            <T v="num" style={{ width: 70, textAlign: 'right' }}>{typeof v === 'number' ? Math.round(v * 10) / 10 : v}{UNIT[k] ?? ''}</T>
+          <Row key={k} style={{ alignItems: 'center' }}>
+            <T v="body" style={{ flex: 1 }} numberOfLines={1}>{NAME[k] ?? k}</T>
+            <T numberOfLines={1} style={{ fontFamily: fonts.mono, fontSize: 14, textAlign: 'right', marginRight: 8 }} color={f ? tone(f.level) : p.text}>{typeof v === 'number' ? Math.round(v * 10) / 10 : v}{UNIT[k] ?? ''}</T>
             {f ? <Chip label={f.note} fg={tone(f.level)} bg={p.surfaceAlt} /> : <View style={{ width: 8 }} />}
           </Row>
         );
@@ -59,10 +60,37 @@ function Drivers({ keys, inputs }: { keys: string[]; inputs: any }) {
   );
 }
 
+function bandColor(p: any, s?: string) {
+  const t = (s || '').toLowerCase();
+  return /high|severe|extensive/.test(t) ? p.danger : /moder|borderline|elevated|stage|indeterm|prediab/.test(t) ? p.warn : p.success;
+}
 function band(p: any, s: string | undefined) {
   const t = (s || '').toLowerCase();
-  const c = /high|severe|extensive/.test(t) ? { fg: p.danger, bg: p.dangerSoft } : /moder|borderline|elevated|stage|indeterm|prediab/.test(t) ? { fg: p.warn, bg: p.warnSoft } : { fg: p.success, bg: p.surfaceAlt };
-  return s ? <Chip label={s} fg={c.fg} bg={c.bg} /> : null;
+  const fg = bandColor(p, s);
+  const bg = /high|severe|extensive/.test(t) ? p.dangerSoft : /moder|borderline|elevated|stage|indeterm|prediab/.test(t) ? p.warnSoft : p.surfaceAlt;
+  return s ? <Chip label={s} fg={fg} bg={bg} /> : null;
+}
+
+/** One disease on the risk map: a ring filled by risk level, colour-coded by band, value in the centre. Tappable. */
+function RiskDial({ value, label, frac, color, active, onPress }: { value: string; label: string; frac: number; color: string; active: boolean; onPress: () => void }) {
+  const p = usePalette();
+  const size = 72, sw = 6, r = (size - sw) / 2, c = 2 * Math.PI * r;
+  const off = c * (1 - Math.max(0.04, Math.min(1, frac || 0)));
+  return (
+    <Pressable onPress={onPress} style={{ alignItems: 'center', width: 78, paddingVertical: 4 }} accessibilityRole="button" accessibilityLabel={`${label.replace('\n', ' ')}: ${value}`}>
+      <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <Svg width={size} height={size}>
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke={p.surfaceAlt} strokeWidth={sw} fill="none" />
+          <Circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={sw} fill="none" strokeLinecap="round"
+            strokeDasharray={`${c} ${c}`} strokeDashoffset={off} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+        </Svg>
+        <View style={{ position: 'absolute', alignItems: 'center' }}>
+          <T style={{ fontFamily: fonts.mono, fontSize: value.length > 4 ? 14 : 18 }} color={color}>{value}</T>
+        </View>
+      </View>
+      <T v="small" numberOfLines={2} style={{ textAlign: 'center', marginTop: 4, color: active ? p.text : p.muted }}>{label}</T>
+    </Pressable>
+  );
 }
 
 export function PredictionCards({ models, inputs = {} }: { models: any; inputs?: any }) {
@@ -73,8 +101,24 @@ export function PredictionCards({ models, inputs = {} }: { models: any; inputs?:
     <Card onPress={() => setOpen((s) => ({ ...s, [id]: !s[id] }))}>{children}</Card>
   );
 
+  const dmodel = models.diabetes || {}, lmodel = models.liver || {}, kmodel = models.kidney || {};
+  const cvd10 = pv?.ten_year?.total_cvd, cvd30 = pv?.thirty_year?.total_cvd;
+  const dials = [
+    { id: 'prevent', label: 'Cardio\n10-yr', value: cvd10 != null ? `${cvd10}%` : '—', frac: (cvd10 || 0) / 20, color: cvd30 >= 20 ? p.danger : cvd30 >= 7.5 ? p.warn : p.success },
+    { id: 'diabetes', label: 'Diabetes\n5-yr', value: dmodel.already ? 'now' : dmodel.risk != null ? `${dmodel.risk}%` : '—', frac: (dmodel.risk || 0) / 30, color: bandColor(p, dmodel.band) },
+    { id: 'liver', label: 'Liver\nFIB-4', value: lmodel.score != null ? `${lmodel.score}` : '—', frac: /high/.test((lmodel.band || '').toLowerCase()) ? 0.9 : /indeterm|moder/.test((lmodel.band || '').toLowerCase()) ? 0.55 : 0.3, color: bandColor(p, lmodel.band) },
+    { id: 'kidney', label: 'Kidney\n5-yr', value: kmodel.risk != null ? `${kmodel.risk}%` : (kmodel.band && /not applic|above the CKD/.test(kmodel.band) ? 'ok' : '—'), frac: (kmodel.risk || 0) / 10, color: bandColor(p, kmodel.band) },
+  ];
   return (
     <>
+      <Card>
+        <T v="label" color={p.muted}>Your risk map</T>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 8, rowGap: 8 }}>
+          {dials.map((d) => <RiskDial key={d.id} value={d.value} label={d.label} frac={d.frac} color={d.color} active={!!open[d.id]} onPress={() => setOpen((s) => ({ ...s, [d.id]: !s[d.id] }))} />)}
+        </View>
+        <T v="small" color={p.faint} style={{ marginTop: 8 }}>Tap a ring to open its full breakdown below. Fill shows how high the risk is; colour shows the band.</T>
+      </Card>
+
       <Section title="Cardiovascular · AHA PREVENT (2024)">
         <Tog id="prevent">
           {pv.ten_year ? (

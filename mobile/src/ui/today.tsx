@@ -305,6 +305,7 @@ function RingStrip() {
 
 /** Home block from the band alone (works when the Telomy server is unreachable). */
 export function WellnessToday({ age }: { age?: number | null }) {
+  const p = usePalette();
   const w = useWellness(age ?? null);
   // refresh when coming back (e.g. after logging an event or finishing a session)
   const first = useRef(true);
@@ -339,7 +340,7 @@ export function WellnessToday({ age }: { age?: number | null }) {
       ))}
       <Pressable onPress={() => router.push('/home-settings' as any)} accessibilityRole="button"
         style={{ alignSelf: 'center', paddingVertical: space[2] }}>
-        <Row gap={6}><Icon name="slider.horizontal.3" size={13} color={onInk.muted} /><T v="small" color={onInk.muted}>Customise home</T></Row>
+        <Row gap={6}><Icon name="slider.horizontal.3" size={13} color={p.muted} /><T v="small" color={p.muted}>Customise home</T></Row>
       </Pressable>
     </View>
   );

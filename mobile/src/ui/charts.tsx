@@ -114,7 +114,7 @@ export function LineChart({
             {ticks.map((t, i) => (
               <G key={i}>
                 <Line x1={pad.l} x2={w - pad.r} y1={sy(t)} y2={sy(t)} stroke={p.border} strokeWidth={1} opacity={0.4} />
-                <SvgText x={pad.l - 6} y={sy(t) + 3} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Inter_400Regular">
+                <SvgText x={pad.l - 6} y={sy(t) + 3} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Geist_400Regular">
                   {Math.abs(t) >= 10 || Number.isInteger(t) ? Math.round(t) : t.toFixed(decimals)}
                 </SvgText>
               </G>
@@ -135,10 +135,10 @@ export function LineChart({
                 <Circle cx={sx(xs[sel!])} cy={sy(s.y)} r={4} fill={p.copper} />
               </G>
             ) : null}
-            <SvgText x={pad.l} y={height - 6} fontSize={9} fill={p.muted} fontFamily="Inter_400Regular">
+            <SvgText x={pad.l} y={height - 6} fontSize={9} fill={p.muted} fontFamily="Geist_400Regular">
               {points[0].x.slice(5, 10)}
             </SvgText>
-            <SvgText x={w - pad.r} y={height - 6} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Inter_400Regular">
+            <SvgText x={w - pad.r} y={height - 6} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Geist_400Regular">
               {points[points.length - 1].x.slice(5, 10)}
             </SvgText>
           </Svg>
@@ -149,7 +149,7 @@ export function LineChart({
           {s ? `${s.x.slice(0, 10)} · ${s.y.toFixed(decimals)} ${unit}` : caption ?? `n = ${points.length}`}
         </T>
         <Pressable onPress={() => setTable(!table)} hitSlop={8} accessibilityRole="button">
-          <Text style={{ color: p.teal, fontSize: 12, fontFamily: 'Inter_600SemiBold' }}>{table ? 'View as chart' : 'View as table'}</Text>
+          <Text style={{ color: p.teal, fontSize: 12, fontFamily: 'Geist_600SemiBold' }}>{table ? 'View as chart' : 'View as table'}</Text>
         </Pressable>
       </Row>
     </View>
@@ -205,10 +205,10 @@ export function Dial({ value, chrono, size = 210, confidence }: { value: number 
       <Path d={arc(-220, 40)} stroke={p.surfaceAlt} strokeWidth={12} fill="none" strokeLinecap="round" />
       {value != null ? <Path d={arc(-220, ang(value))} stroke={fill} strokeWidth={12} fill="none" strokeLinecap="round" opacity={0.4 + 0.6 * (confidence ?? 1)} /> : null}
       {chrono != null ? <Line x1={tx0} y1={ty0} x2={tx1} y2={ty1} stroke={p.text} strokeWidth={2} /> : null}
-      <SvgText x={c} y={c - 2} fontSize={46} fill={p.text} textAnchor="middle" fontFamily="Fraunces_500Medium">
+      <SvgText x={c} y={c - 2} fontSize={46} fill={p.text} textAnchor="middle" fontFamily="GeistMono_500Medium">
         {value != null ? value.toFixed(1) : '—'}
       </SvgText>
-      <SvgText x={c} y={c + 22} fontSize={12} fill={p.muted} textAnchor="middle" fontFamily="Inter_400Regular">
+      <SvgText x={c} y={c + 22} fontSize={12} fill={p.muted} textAnchor="middle" fontFamily="Geist_400Regular">
         {value != null && chrono != null ? `${Math.abs(value - chrono).toFixed(1)} y ${younger ? 'younger' : 'older'} than ${chrono.toFixed(1)}` : 'Needs a blood panel'}
       </SvgText>
     </Svg>
@@ -237,7 +237,7 @@ export function Ring({ value, size = 56, stroke = 6, color, label }: { value: nu
           origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
-      <Text style={{ fontSize: size > 50 ? 15 : 12, fontFamily: 'Inter_600SemiBold', color: p.text, fontVariant: ['tabular-nums'] }}>{value == null ? '—' : label ?? Math.round(v)}</Text>
+      <Text style={{ fontSize: size > 50 ? 15 : 12, fontFamily: 'Geist_600SemiBold', color: p.text, fontVariant: ['tabular-nums'] }}>{value == null ? '—' : label ?? Math.round(v)}</Text>
     </View>
   );
 }

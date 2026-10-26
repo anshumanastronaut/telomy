@@ -36,7 +36,7 @@ export default function Profile() {
           <Ring value={comp.data?.score ?? null} size={52} />
           <View style={{ flex: 1 }}>
             <T v="h3">Vault completeness</T>
-            <T v="small">{comp.data ? `${comp.data.items.filter((i: any) => !i.done).length} things would make Sinc's reads sharper` : ''}</T>
+            <T v="small">{comp.data ? (() => { const n = comp.data.items.filter((i: any) => !i.done).length; return n === 0 ? 'Your Vault is complete' : `${n} thing${n === 1 ? '' : 's'} would make Sinc's reads sharper`; })() : ''}</T>
           </View>
         </Row>
       </Card>

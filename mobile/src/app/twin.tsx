@@ -1,6 +1,6 @@
 import { router, Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { api, useApi } from '@/lib/api';
@@ -9,24 +9,35 @@ import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T }
 import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
 import type { OrganId } from '@/twin3d/scene';
 
-// Edge tap-list: on a small screen, orbiting to a precise organ is fiddly — tapping a name flies the camera to it
-// (drives the same `selected` state as tapping the 3D mesh). Short labels so they fit the side rail.
-const ORGAN_EDGE: [OrganId, string][] = [
-  ['brain', 'Brain'], ['lungs', 'Lungs'], ['heart', 'Heart'], ['vessels', 'Vessels'], ['liver', 'Liver'],
-  ['stomach', 'Stomach'], ['pancreas', 'Pancreas'], ['kidneys', 'Kidneys'], ['intestines', 'Gut'],
-  ['bladder', 'Bladder'], ['skeleton', 'Skeleton'],
+// Organ tap-labels, placed on the left and right of the body at roughly their anatomical height (y: 0 top → 1
+// bottom). Tapping a name flies the camera to that organ (same `selected` state as tapping the 3D mesh). Balanced
+// two-sided layout so the labels frame the body instead of crowding one edge.
+const ORGAN_POS: { id: OrganId; label: string; side: 'l' | 'r'; y: number }[] = [
+  { id: 'brain', label: 'Brain', side: 'l', y: 0.02 },
+  { id: 'lungs', label: 'Lungs', side: 'r', y: 0.10 },
+  { id: 'heart', label: 'Heart', side: 'l', y: 0.19 },
+  { id: 'vessels', label: 'Vessels', side: 'r', y: 0.28 },
+  { id: 'stomach', label: 'Stomach', side: 'l', y: 0.38 },
+  { id: 'liver', label: 'Liver', side: 'r', y: 0.45 },
+  { id: 'kidneys', label: 'Kidneys', side: 'l', y: 0.56 },
+  { id: 'pancreas', label: 'Pancreas', side: 'r', y: 0.60 },
+  { id: 'intestines', label: 'Gut', side: 'r', y: 0.73 },
+  { id: 'bladder', label: 'Bladder', side: 'l', y: 0.75 },
+  { id: 'skeleton', label: 'Skeleton', side: 'l', y: 0.92 },
 ];
 
 function OrganRail({ selected, onSelect }: { selected: OrganId | null; onSelect: (o: OrganId | null) => void }) {
   const p = usePalette();
   return (
-    <View style={{ position: 'absolute', right: 2, top: 6, bottom: 6, justifyContent: 'center', gap: 4 }} pointerEvents="box-none">
-      {ORGAN_EDGE.map(([id, label]) => {
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      {ORGAN_POS.map(({ id, label, side, y }) => {
         const on = selected === id;
         return (
           <Pressable key={id} onPress={() => onSelect(on ? null : id)} hitSlop={6} accessibilityRole="button" accessibilityLabel={`Focus ${label}`}
-            style={{ paddingVertical: 4, paddingHorizontal: 9, borderRadius: 999, alignSelf: 'flex-end',
-              backgroundColor: on ? p.teal : p.surface + 'E6', borderWidth: 1, borderColor: on ? p.teal : p.border }}>
+            style={{ position: 'absolute', top: `${y * 100}%`, ...(side === 'l' ? { left: 8 } : { right: 8 }),
+              paddingVertical: 5, paddingHorizontal: 11, borderRadius: 999,
+              backgroundColor: on ? p.teal : p.surface, borderWidth: on ? 0 : StyleSheet.hairlineWidth, borderColor: p.border,
+              shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 }}>
             <T v="small" color={on ? p.onAccent : p.text} style={{ fontSize: 11 }}>{label}</T>
           </Pressable>
         );
@@ -56,13 +67,13 @@ function Dual({ a, b, unit, height = 120, labels = ['Current path', 'Scenario'],
         {[lo, (lo + hi) / 2, hi].map((v, i) => (
           <React.Fragment key={i}>
             <Line x1={pad.l} x2={w - pad.r} y1={sy(v)} y2={sy(v)} stroke={p.border} opacity={0.5} />
-            <SvgText x={pad.l - 4} y={sy(v) + 3} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Inter_400Regular">{f(v)}</SvgText>
+            <SvgText x={pad.l - 4} y={sy(v) + 3} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Geist_400Regular">{f(v)}</SvgText>
           </React.Fragment>
         ))}
         <Path d={path(a)} stroke={p.muted} strokeWidth={1.4} fill="none" strokeDasharray={b ? '4,3' : undefined} />
         {b ? <Path d={path(b)} stroke={p.teal} strokeWidth={2} fill="none" /> : null}
-        <SvgText x={pad.l} y={height - 4} fontSize={9} fill={p.muted} fontFamily="Inter_400Regular">{xLabel(x0)}</SvgText>
-        <SvgText x={w - pad.r} y={height - 4} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Inter_400Regular">{xLabel(x1)}</SvgText>
+        <SvgText x={pad.l} y={height - 4} fontSize={9} fill={p.muted} fontFamily="Geist_400Regular">{xLabel(x0)}</SvgText>
+        <SvgText x={w - pad.r} y={height - 4} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Geist_400Regular">{xLabel(x1)}</SvgText>
       </Svg>
       {b ? <T v="small" color={p.muted}>– – {labels[0]}  ·  ━ {labels[1]} ({unit})</T> : <T v="small" color={p.muted}>{unit}</T>}
     </View>
