@@ -115,7 +115,7 @@ export function LineChart({
               <G key={i}>
                 <Line x1={pad.l} x2={w - pad.r} y1={sy(t)} y2={sy(t)} stroke={p.border} strokeWidth={1} opacity={0.4} />
                 <SvgText x={pad.l - 6} y={sy(t) + 3} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Geist_400Regular">
-                  {Math.abs(t) >= 10 || Number.isInteger(t) ? Math.round(t) : t.toFixed(decimals)}
+                  {t.toFixed(step >= 1 ? 0 : step >= 0.1 ? 1 : 2)}
                 </SvgText>
               </G>
             ))}

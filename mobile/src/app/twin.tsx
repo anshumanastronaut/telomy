@@ -171,7 +171,7 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
 
   return (
     <Screen edges={inTab ? ['top'] : []} scrollEnabled={!touching3d}>
-      {inTab ? null : <Stack.Screen options={{ title: 'Digital twin' }} />}
+      {inTab ? null : <Stack.Screen options={{ title: '' }} />}
       <T v="h1">{inTab ? 'Your twin' : 'Your digital twin'}</T>
       <View style={{ position: 'relative' }}>
         <Twin3D systems={d.systems} selected={organSel} onSelect={setOrganSel} onInteract={setTouching3d} height={STAGE_H} />

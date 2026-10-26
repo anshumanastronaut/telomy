@@ -30,7 +30,7 @@ export default function Tests() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Tests & scans' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">Tests & scans</T>
 
         {(ordered.data ?? []).length ? (

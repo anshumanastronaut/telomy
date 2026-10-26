@@ -38,7 +38,7 @@ export default function TherapyPlan() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Build a therapy plan' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">Build a therapy plan</T>
         <T v="label">Your goal</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>

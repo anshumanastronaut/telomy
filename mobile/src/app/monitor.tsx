@@ -59,7 +59,7 @@ export default function Monitor() {
   if (!bandAvailable) {
     return (
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Live ECG' }} />
+        <Stack.Screen options={{ title: '' }} />
         <Empty title="ECG band needs the Telomy app" body="Live ECG uses Bluetooth through Telomy's native app. It isn't available in Expo Go or on the web." />
       </Screen>
     );
@@ -88,7 +88,7 @@ export default function Monitor() {
     return (
       <View style={{ flex: 1 }}>
         <Screen edges={[]}>
-          <Stack.Screen options={{ title: 'Live ECG' }} />
+          <Stack.Screen options={{ title: '' }} />
           <T v="h1">{remembered ? 'Reconnecting…' : 'Connect your ECG band'}</T>
           {remembered ? (
             <Card tone="teal">
@@ -128,7 +128,7 @@ export default function Monitor() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Live ECG' }} />
+        <Stack.Screen options={{ title: '' }} />
         <Row style={{ flexWrap: 'wrap' }}>
           <Chip label={s?.deviceName ?? 'ECG band'} icon="waveform.path.ecg" fg={p.teal} bg={p.tealSoft} />
           {s?.battery != null ? <Chip label={`Battery ${s.battery}`} icon="battery.50percent" /> : null}

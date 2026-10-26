@@ -23,7 +23,7 @@ export default function Signal() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: s.label }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">{s.label}</T>
         <Segmented options={RANGES.map((k) => ({ key: k, label: k === 'W' ? 'Week' : k === 'M' ? 'Month' : k }))} value={range} onChange={setRange} />
         <Card>

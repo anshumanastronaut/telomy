@@ -199,7 +199,9 @@ function BodyTile({ icon, color, title, value, unit, sub, onPress }: { icon: SFS
         <Icon name="chevron.right" size={11} color={p.faint} />
       </Row>
       <Row gap={4} style={{ alignItems: 'baseline' }}>
-        <T v="num" style={{ fontSize: type.h1 }}>{value}</T>
+        {/\d/.test(value)
+          ? <T v="num" style={{ fontSize: type.h1 }}>{value}</T>
+          : <T v="h3">{value}</T>}
         {unit ? <T v="small">{unit}</T> : null}
       </Row>
       <T v="small" numberOfLines={2}>{sub}</T>

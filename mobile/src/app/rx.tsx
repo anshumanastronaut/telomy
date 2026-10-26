@@ -61,7 +61,7 @@ export default function Rx() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Supplements & Rx' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">Your personal stack</T>
         <Segmented options={[{ key: 'build', label: 'Build' }, { key: 'plans', label: `Plans · ${plans.data?.length ?? 0}` }, { key: 'tracking', label: 'Is it working?' }]} value={tab} onChange={setTab} />
         {tab === 'build' ? (

@@ -28,7 +28,7 @@ export default function Environment() {
   );
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'Environment' }} />
+      <Stack.Screen options={{ title: '' }} />
       <T v="h1">What your city does to you</T>
       {expo.data?.factors?.length ? (
         <Section title="Your exposome (all factors)">

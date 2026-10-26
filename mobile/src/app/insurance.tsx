@@ -35,7 +35,7 @@ export default function Insurance() {
 
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'Insurance' }} />
+      <Stack.Screen options={{ title: '' }} />
       <View style={{ alignItems: 'center', gap: space[2], paddingVertical: space[4] }}>
         <Icon name="shield.checkered" size={40} color={p.teal} />
         <T v="h1" style={{ textAlign: 'center' }}>Make yourself fully insured.</T>

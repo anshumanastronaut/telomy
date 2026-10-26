@@ -16,7 +16,7 @@ export default function EcgStripScreen() {
   if (!data) return <Screen edges={[]}><Loading what="Opening ECG…" /></Screen>;
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'ECG' }} />
+      <Stack.Screen options={{ title: '' }} />
       <T v="h1">{fmtDate(data.ts)} · {data.ts.slice(11, 16)}</T>
       <Card>
         <Row>

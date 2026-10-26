@@ -112,7 +112,7 @@ export default function Voice() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Talk to Sinc' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">Talk to Sinc</T>
         <T v="small">Say anything, in any language — meals, drinks, cigarettes, coffee, how you feel, a workout, a therapy, a question, or your whole routine. Sinc logs it and answers.</T>
         <View style={{ alignItems: 'center', paddingVertical: 12, gap: 10 }}>

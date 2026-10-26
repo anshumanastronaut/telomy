@@ -25,7 +25,7 @@ export default function Review() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: s.panel_title }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">{s.report.title}</T>
         <T v="small">{fmtDate(s.report.collected_on, true)} · {s.report.source}{s.report.is_test_data ? ' · TEST DATA' : ''}</T>
         <Card tone="teal">

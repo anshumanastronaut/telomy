@@ -25,7 +25,7 @@ export default function Activities() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'My activities' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">My activities</T>
         <T v="small">Track any activity the way you care about it — a bowling spell, a golf round, a padel match. Telomy builds your own baselines and shows what changes them.</T>
         {data.mine.map((a: any) => (

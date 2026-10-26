@@ -27,8 +27,8 @@ export default function OverviewScreen() {
   const organs = useApi<any>('/me/organs');
   const env = useApi<any>('/me/environment');
 
-  if (error) return <Screen edges={[]}><Stack.Screen options={{ title: 'Health summary' }} /><ErrorState message={error} onRetry={reload} /></Screen>;
-  if (!data) return <Screen edges={[]}><Stack.Screen options={{ title: 'Health summary' }} /><Loading what="Pulling your record together…" /></Screen>;
+  if (error) return <Screen edges={[]}><Stack.Screen options={{ title: '' }} /><ErrorState message={error} onRetry={reload} /></Screen>;
+  if (!data) return <Screen edges={[]}><Stack.Screen options={{ title: '' }} /><Loading what="Pulling your record together…" /></Screen>;
 
   const ai = data.ai_summary ?? {};
   const rc = data.recovery_sleep ?? {};
@@ -44,7 +44,7 @@ export default function OverviewScreen() {
 
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'Health summary' }} />
+      <Stack.Screen options={{ title: '' }} />
       <T v="h1">Your health, in one view</T>
 
       {/* grounded AI summary */}

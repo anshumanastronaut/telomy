@@ -101,7 +101,7 @@ export default function Capture() {
     return () => { clearInterval(h); release.current?.(); };
   }, []);
 
-  if (!bandAvailable) return <Screen edges={[]}><Stack.Screen options={{ title: 'Therapy capture' }} /><Empty title="Needs the Telomy app" body="Therapy capture uses the ECG band through Telomy's native app." /></Screen>;
+  if (!bandAvailable) return <Screen edges={[]}><Stack.Screen options={{ title: '' }} /><Empty title="Needs the Telomy app" body="Therapy capture uses the ECG band through Telomy's native app." /></Screen>;
 
   const m = b.metrics;
   const connected = b.status?.state === 'streaming' || b.status?.state === 'connected';
@@ -132,7 +132,7 @@ export default function Capture() {
     return (
       <View style={{ flex: 1 }}>
         <Screen edges={[]}>
-          <Stack.Screen options={{ title: 'Therapy capture' }} />
+          <Stack.Screen options={{ title: '' }} />
           <T v="h1">Record a therapy session</T>
           <T v="small">Everything is saved on this phone, so it works without internet at the centre. Share sessions with your team from Saved sessions.</T>
           <Card tone={connected ? 'teal' : 'copper'} onPress={() => router.push('/monitor')}>
@@ -185,7 +185,7 @@ export default function Capture() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: therapy?.name ?? 'Recording' }} />
+        <Stack.Screen options={{ title: '' }} />
         <Card tone="teal">
           <Row>
             <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: p.danger }} />

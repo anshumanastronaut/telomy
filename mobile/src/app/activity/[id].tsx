@@ -29,7 +29,7 @@ export default function Activity() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: d.type.name }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">{d.type.name}</T>
         <Row><Chip label={d.type.category} /><Chip label={`${d.sessions.length} sessions`} fg={p.teal} bg={p.tealSoft} /></Row>
         {d.insights.length ? <Card tone="teal">{d.insights.map((i: string) => <T key={i} v="body">• {i}</T>)}</Card> : null}

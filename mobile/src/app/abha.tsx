@@ -31,13 +31,13 @@ export default function Abha() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={['top']} onRefresh={() => { st.reload(); rec.reload(); }} refreshing={st.loading}>
-        <Stack.Screen options={{ title: 'ABHA · Health ID' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">ABHA</T>
         <T v="small" color={p.muted}>Your Ayushman Bharat Health Account — India's national health ID. Link it to bring your records from any hospital or lab into your Telomy Vault, with your consent.</T>
 
         <Row style={{ marginTop: 8 }}>
-          <Chip label={s.configured ? 'ABDM connected' : 'ABDM not yet connected'} fg={s.configured ? p.teal : p.warn} bg={s.configured ? p.tealSoft : p.warnSoft} />
-          {s.linked ? <Chip label="ABHA linked" fg={p.teal} bg={p.tealSoft} /> : null}
+          {s.linked ? <Chip label="ABHA ID linked" fg={p.teal} bg={p.tealSoft} /> : null}
+          <Chip label={s.configured ? 'Records: connected' : 'Records: pending clinic setup'} fg={s.configured ? p.teal : p.warn} bg={s.configured ? p.tealSoft : p.warnSoft} />
         </Row>
 
         {s.linked ? (

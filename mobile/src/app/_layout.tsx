@@ -79,11 +79,11 @@ export default function RootLayout() {
         <Stack.Screen name="log" options={sheet} />
         <Stack.Screen name="upload" options={sheet} />
         <Stack.Screen name="breathe" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="insight/[id]" options={{ title: 'Insight' }} />
+        <Stack.Screen name="insight/[id]" options={{ title: '' }} />
         <Stack.Screen name="marker/[id]" options={{ title: '' }} />
         <Stack.Screen name="signal/[id]" options={{ title: '' }} />
         <Stack.Screen name="domain/[key]" options={{ title: '' }} />
-        <Stack.Screen name="report/[id]" options={{ title: 'Report' }} />
+        <Stack.Screen name="report/[id]" options={{ title: '' }} />
         <Stack.Screen name="longevity" options={{ title: 'Longevity age' }} />
         <Stack.Screen name="age" options={{ title: 'Biological age' }} />
         <Stack.Screen name="about" options={{ title: 'About you' }} />
@@ -93,7 +93,7 @@ export default function RootLayout() {
         <Stack.Screen name="muscle" options={{ title: 'Muscle age test' }} />
         <Stack.Screen name="insurance" options={{ title: 'Insurance' }} />
         <Stack.Screen name="training" options={{ title: 'Exercise & training' }} />
-        <Stack.Screen name="risks" options={{ title: "Risk map" }} />
+        <Stack.Screen name="risks" options={{ title: '' }} />
         <Stack.Screen name="menu" options={{ title: 'Weekly menu' }} />
         <Stack.Screen name="studies" options={{ title: 'N-of-1 studies' }} />
         <Stack.Screen name="marketplace" options={{ title: 'Protocol Marketplace' }} />
@@ -129,7 +129,7 @@ export default function RootLayout() {
         <Stack.Screen name="patient/[id]" options={{ title: 'Patient' }} />
         <Stack.Screen name="predict" options={{ title: 'Disease predictions' }} />
         <Stack.Screen name="plans" options={{ title: 'Plans' }} />
-        <Stack.Screen name="monthly" options={{ title: 'Monthly reports' }} />
+        <Stack.Screen name="monthly" options={{ title: '' }} />
         <Stack.Screen name="consult" options={{ title: 'Consult a doctor' }} />
         <Stack.Screen name="therapy/[id]" options={{ title: 'Therapy' }} />
         <Stack.Screen name="session/[id]" options={{ title: 'Session' }} />
@@ -145,6 +145,8 @@ export default function RootLayout() {
         <Stack.Screen name="activities" options={{ title: 'My activities' }} />
         <Stack.Screen name="activity/[id]" options={{ title: 'Activity' }} />
         <Stack.Screen name="environment" options={{ title: 'Environment' }} />
+        <Stack.Screen name="insights" options={{ title: '' }} />
+        <Stack.Screen name="assistance" options={{ title: '' }} />
       </Stack>
       {locked && !intro ? <LockScreen /> : null}
     </ThemeProvider>

@@ -32,6 +32,8 @@ export default function Insights() {
   if (error) return <Screen><ErrorState message={error} onRetry={reload} /></Screen>;
   if (!data) return <Screen><Loading what="Analysing your data…" /></Screen>;
 
+  // Backend occasionally emits raw keys like "activity:fast_bowling" — drop the kind prefix and humanise the value.
+  const pretty = (s?: string) => (s ?? '').replace(/\b[a-z]+:([a-z0-9]+(?:_[a-z0-9]+)*)/g, (_m, v) => v.replace(/_/g, ' ').replace(/^./, (c: string) => c.toUpperCase()));
   const accent = (ins: Insight) => {
     const subj = ins.title.split('→')[0] || ins.title;
     if (ins.kind === 'event_effect') {
@@ -76,10 +78,10 @@ export default function Insights() {
                   <Row gap={space[2]} style={{ alignItems: 'flex-start' }}>
                     <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: a.fg, marginTop: 6 }} />
                     <View style={{ flex: 1 }}>
-                      <T v="h3">{ins.title}</T>
+                      <T v="h3">{pretty(ins.title)}</T>
                       {isOpen ? (
                         <>
-                          <T v="body" style={{ marginTop: space[1] }}>{ins.body}</T>
+                          <T v="body" style={{ marginTop: space[1] }}>{pretty(ins.body)}</T>
                           {s ? (
                             <View style={{ marginTop: space[2] }}>
                               <Chip label={s} fg={a.fg} bg={a.bg} />

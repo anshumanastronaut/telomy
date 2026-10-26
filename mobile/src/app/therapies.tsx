@@ -15,7 +15,7 @@ export default function Therapies() {
   const cats = Array.from(new Set(data.map((m) => m.category)));
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'All therapies' }} />
+      <Stack.Screen options={{ title: '' }} />
       <T v="h1">Therapies at your centre</T>
       <T v="small">{data.length} therapies, each screened against your Vault (labs, medicines, conditions) and graded by evidence. Ozone therapy is not listed — the FDA classes ozone as a toxic gas with no proven medical use.</T>
       {cats.map((c) => (

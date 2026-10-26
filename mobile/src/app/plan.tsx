@@ -57,8 +57,8 @@ export default function PlanScreen() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  if (err) return <Screen edges={[]}><Stack.Screen options={{ title: 'Your plan' }} /><ErrorState message={err} onRetry={load} /></Screen>;
-  if (loading || !lon) return <Screen edges={[]}><Stack.Screen options={{ title: 'Your plan' }} /><Loading what="Building your plan…" /></Screen>;
+  if (err) return <Screen edges={[]}><Stack.Screen options={{ title: '' }} /><ErrorState message={err} onRetry={load} /></Screen>;
+  if (loading || !lon) return <Screen edges={[]}><Stack.Screen options={{ title: '' }} /><Loading what="Building your plan…" /></Screen>;
 
   const tiers = lon.tiers || {};
   const foundation = tiers.foundation || [];
@@ -87,7 +87,7 @@ export default function PlanScreen() {
 
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'Your plan' }} />
+      <Stack.Screen options={{ title: '' }} />
       <T v="h1">Your longevity plan</T>
       <T v="small" color={p.muted}>Evidence-graded and grounded in your own numbers. Start with the foundations — they have the best evidence and the lowest risk. Nothing here claims to extend lifespan.</T>
 

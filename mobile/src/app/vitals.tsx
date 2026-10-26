@@ -21,7 +21,7 @@ export default function Vitals() {
 
   return (
     <Screen edges={['top']} onRefresh={reload} refreshing={loading}>
-      <Stack.Screen options={{ title: 'Vitals' }} />
+      <Stack.Screen options={{ title: '' }} />
       <T v="h1">Vitals</T>
       <T v="small" color={p.muted}>Your body by system, scored 0–100 from your own labs and vitals. Deeper than a wearable — every bar traces to a marker.</T>
 

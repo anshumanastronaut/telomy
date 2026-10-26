@@ -33,7 +33,7 @@ export default function Routine() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'My routine' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">My routine</T>
         <T v="small">Describe a normal day — typed here or spoken to Sinc. Telomy turns it into a schedule, quantifies it, and learns from the days that differ.</T>
         <TextInput value={text} onChangeText={setText} multiline placeholder="e.g. I wake up around 8, coffee at 11, lunch at 1 with dal and eggs, gym Mon/Wed/Fri at 7 pm, sleep around 12…"
