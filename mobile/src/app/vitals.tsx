@@ -12,15 +12,15 @@ import { Card, Chip, ErrorState, Loading, Row, Screen, Section, T } from '@/ui/c
 export default function Vitals() {
   const p = usePalette();
   const { data, error, reload, loading } = useApi<any>('/me/scores');
-  if (error) return <Screen edges={['top']}><ErrorState message={error} onRetry={reload} /></Screen>;
-  if (!data) return <Screen edges={['top']}><Loading what="Scoring your systems…" /></Screen>;
+  if (error) return <Screen edges={[]}><ErrorState message={error} onRetry={reload} /></Screen>;
+  if (!data) return <Screen edges={[]}><Loading what="Scoring your systems…" /></Screen>;
 
   const col = (status: string) => status === 'optimal' ? p.success : status === 'good' ? p.warn : p.danger;
   const bandTone = (band: string) => /Optimal/.test(band) ? { fg: p.success, bg: p.successSoft } : /Good/.test(band) ? { fg: p.warn, bg: p.warnSoft } : { fg: p.danger, bg: p.dangerSoft };
   const ov = bandTone(data.overall_band ?? '');
 
   return (
-    <Screen edges={['top']} onRefresh={reload} refreshing={loading}>
+    <Screen edges={[]} onRefresh={reload} refreshing={loading}>
       <Stack.Screen options={{ title: '' }} />
       <T v="h1">Vitals</T>
       <T v="small" color={p.muted}>Your body by system, scored 0–100 from your own labs and vitals. Deeper than a wearable — every bar traces to a marker.</T>

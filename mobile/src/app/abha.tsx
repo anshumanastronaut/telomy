@@ -15,8 +15,8 @@ export default function Abha() {
   const rec = useApi<any>('/abha/records');
   const [abha, setAbha] = React.useState('');
   const { toast, show } = useToast();
-  if (st.error) return <Screen edges={['top']}><ErrorState message={st.error} onRetry={st.reload} /></Screen>;
-  if (!st.data) return <Screen edges={['top']}><Loading what="Checking ABHA…" /></Screen>;
+  if (st.error) return <Screen edges={[]}><ErrorState message={st.error} onRetry={st.reload} /></Screen>;
+  if (!st.data) return <Screen edges={[]}><Loading what="Checking ABHA…" /></Screen>;
   const s = st.data;
 
   async function link() {
@@ -30,7 +30,7 @@ export default function Abha() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Screen edges={['top']} onRefresh={() => { st.reload(); rec.reload(); }} refreshing={st.loading}>
+      <Screen edges={[]} onRefresh={() => { st.reload(); rec.reload(); }} refreshing={st.loading}>
         <Stack.Screen options={{ title: '' }} />
         <T v="h1">ABHA</T>
         <T v="small" color={p.muted}>Your Ayushman Bharat Health Account — India's national health ID. Link it to bring your records from any hospital or lab into your Telomy Vault, with your consent.</T>
