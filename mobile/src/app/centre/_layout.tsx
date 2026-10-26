@@ -15,6 +15,11 @@ export default function CentreLayout() {
       <Tabs.Screen name="bookings" options={{ title: 'Bookings', tabBarIcon: tabIcon('calendar', 'calendar') }} />
       <Tabs.Screen name="services" options={{ title: 'Services', tabBarIcon: tabIcon('sparkles', 'sparkles') }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person.crop.circle', 'person-circle') }} />
+      <Tabs.Screen name="member/[id]" options={{ href: null }} />
+      <Tabs.Screen name="doctors" options={{ href: null }} />
+      <Tabs.Screen name="revenue" options={{ href: null }} />
+      <Tabs.Screen name="performance" options={{ href: null }} />
+      <Tabs.Screen name="copilot" options={{ href: null }} />
     </RoleTabs>
   );
 }

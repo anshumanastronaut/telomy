@@ -17,7 +17,7 @@ export default function Patients() {
       <T v="h1">Patients</T>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: p.surface, borderRadius: radius.md, paddingHorizontal: 12 }}>
         <Icon name="magnifyingglass" size={14} color={p.muted} />
-        <TextInput value={q} onChangeText={setQ} placeholder="Search patients" placeholderTextColor={p.faint} style={{ flex: 1, paddingVertical: 10, color: p.text, fontFamily: 'Inter_400Regular' }} />
+        <TextInput value={q} onChangeText={setQ} placeholder="Search patients" placeholderTextColor={p.faint} style={{ flex: 1, paddingVertical: 10, color: p.text, fontFamily: 'HankenGrotesk_400Regular' }} />
       </View>
       <T v="small">Your panel. {list.length} patient{list.length === 1 ? '' : 's'}.</T>
       {!data ? <Loading what="Loading panel…" /> : null}

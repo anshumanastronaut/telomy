@@ -9,8 +9,11 @@ import { radius, signalColor, space, type, usePalette } from '@/lib/theme';
 import { Dial, Ring, Sparkline } from '@/ui/charts';
 import { Card, Chip, ErrorState, Icon, Loading, Prov, Row, Screen, Section, Spacer, StatusChip, T } from '@/ui/core';
 import { BandTools } from '@/ui/ecg';
+import { DoctorPlanCard } from '@/ui/doctorplan';
+import { SincBriefing } from '@/ui/sincbriefing';
 import { InsightCard } from '@/ui/insight';
 import { Logo } from '@/ui/logo';
+import { TelomyLoader } from '@/ui/loader';
 import { WellnessToday } from '@/ui/today';
 import { Band, bandAvailable } from '@/lib/band';
 
@@ -47,7 +50,7 @@ export default function Home() {
   return (
     <Wrap onRefresh={base.reload} refreshing={base.loading}>
       <Row gap={space[3]}>
-        <Logo kind="mark" width={34} />
+        <TelomyLoader size="mark" />
         <View style={{ flex: 1 }}>
           <T v="label">{rewind ? `Rewound to ${today}` : new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</T>
           <T v="h2" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{greet()}, {String(h.first_name ?? '').split(' ')[0]}</T>
@@ -68,6 +71,10 @@ export default function Home() {
       </Row>
 
       {!rewind ? <WellnessToday age={prof.data?.age} /> : null}
+
+      {!rewind ? <SincBriefing /> : null}
+
+      {!rewind ? <DoctorPlanCard /> : null}
 
       {h.is_test_profile ? <Chip label="Test profile · dummy data" fg={p.copper} bg={p.copperSoft} icon="flask" /> : null}
       {prof.data && missingAbout(prof.data).length ? (

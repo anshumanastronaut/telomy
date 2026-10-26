@@ -19,6 +19,7 @@ const WAV16: RecordingOptions = {
 const PASSAGE = 'When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colours.';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, Icon, Row, Screen, Section, Segmented, T, useToast } from '@/ui/core';
+import { TelomyLoader } from '@/ui/loader';
 
 const EXAMPLES = [
   'Had 2 boiled eggs and dal for lunch, then a cigarette',
@@ -115,12 +116,18 @@ export default function Voice() {
         <T v="h1">Talk to Sinc</T>
         <T v="small">Say anything, in any language — meals, drinks, cigarettes, coffee, how you feel, a workout, a therapy, a question, or your whole routine. Sinc logs it and answers.</T>
         <View style={{ alignItems: 'center', paddingVertical: 12, gap: 10 }}>
-          <Animated.View style={{ transform: [{ scale: pulse }] }}>
-            <Pressable onPress={() => toggle('talk')} accessibilityRole="button" accessibilityLabel={recording ? 'Stop and send' : 'Start talking'} testID="mic"
-              style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center', backgroundColor: recording ? p.copper : p.teal, opacity: busy ? 0.5 : 1 }}>
-              <Icon name={recording ? 'stop.fill' : 'mic.fill'} size={40} color={p.onAccent} />
-            </Pressable>
-          </Animated.View>
+          {busy ? (
+            <View style={{ height: 112, justifyContent: 'center' }}>
+              <TelomyLoader size="hero" />
+            </View>
+          ) : (
+            <Animated.View style={{ transform: [{ scale: pulse }] }}>
+              <Pressable onPress={() => toggle('talk')} accessibilityRole="button" accessibilityLabel={recording ? 'Stop and send' : 'Start talking'} testID="mic"
+                style={{ width: 112, height: 112, borderRadius: 56, alignItems: 'center', justifyContent: 'center', backgroundColor: recording ? p.copper : p.teal }}>
+                <Icon name={recording ? 'stop.fill' : 'mic.fill'} size={40} color={p.onAccent} />
+              </Pressable>
+            </Animated.View>
+          )}
           <T v="small">{busy ? (sp.ready[sp.model] ? 'Transcribing on this iPhone…' : 'Transcribing on your Telomy server…') : recording && mode === 'talk' ? 'Listening — tap to send' : 'Tap to talk'}</T>
           <Row>
             <Chip label={sp.ready[sp.model] ? `${MODELS[sp.model].label} · on this iPhone` : 'Whisper · Telomy server'} fg={p.teal} bg={p.tealSoft} />
@@ -131,7 +138,7 @@ export default function Voice() {
         </View>
         <Row>
           <TextInput value={text} onChangeText={setText} placeholder="…or type it" placeholderTextColor={p.faint} onSubmitEditing={() => send()} returnKeyType="send" testID="voice-text"
-            style={{ flex: 1, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
+            style={{ flex: 1, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular' }} />
           <Button title="Send" onPress={() => send()} disabled={!text.trim() || busy} />
         </Row>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>

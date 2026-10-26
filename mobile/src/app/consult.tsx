@@ -31,7 +31,7 @@ export default function Consult() {
       </Section>
       <Row>{['video', 'audio', 'chat'].map((m) => <Pressable key={m} onPress={() => setMode(m)}><Chip label={m} fg={mode === m ? p.onAccent : p.text} bg={mode === m ? p.teal : p.surfaceAlt} /></Pressable>)}</Row>
       <TextInput value={reason} onChangeText={setReason} placeholder="What would you like to discuss?" placeholderTextColor={p.faint} multiline
-        style={{ borderRadius: radius.md, padding: 12, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
+        style={{ borderRadius: radius.md, padding: 12, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular' }} />
       {done ? <Card tone="teal"><T v="body">{done}</T></Card> : null}
       <Button title="Book consultation" testID="book-consult" onPress={async () => { const r = await api('/consults', { body: { kind, mode, reason } }); setDone(r.message); list.reload(); plans.reload(); }} />
       <Section title="Your consultations">

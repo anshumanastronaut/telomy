@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telomy — Clinic Dashboard</title>
+<style>
+:root{
+  --ink:#0f1613;--ink-2:#3a4742;--muted:#6b7a74;--faint:#9aa8a2;
+  --bg:#f6f8f7;--surface:#fff;--surface-2:#f0f4f2;--border:#e4eae7;--border-2:#d6ded9;
+  --primary:#137a5f;--primary-ink:#0f5c47;--primary-soft:#e6f3ee;--copper:#c9792f;--copper-soft:#fbeede;
+  --ok:#1f9d6b;--ok-soft:#e4f5ec;--warn:#c98a1f;--warn-soft:#fbf1dc;--danger:#c7483f;--danger-soft:#fae7e5;
+  --teal:#0e8f9d;--teal-soft:#e2f3f5;
+  --shadow:0 1px 2px rgba(16,32,26,.04),0 6px 20px rgba(16,32,26,.06);
+  --radius:14px;--radius-sm:9px;
+  --font:Inter,-apple-system,"Segoe UI",Roboto,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#e8efec;--ink-2:#bcc9c3;--muted:#8b998f;--faint:#6a776f;
+  --bg:#0c110f;--surface:#121815;--surface-2:#171f1b;--border:#222b27;--border-2:#2c352f;
+  --primary:#3bbd94;--primary-ink:#4fd0a7;--primary-soft:#14271f;--copper:#e0974f;--copper-soft:#2a1f12;
+  --ok:#36b985;--ok-soft:#122018;--warn:#d6a24a;--warn-soft:#231c0e;--danger:#e06a60;--danger-soft:#241312;
+  --teal:#3bb6c2;--teal-soft:#0e2124;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--font);color:var(--ink);background:var(--bg);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;letter-spacing:-.01em;font-weight:650}
+.muted{color:var(--muted)}.faint{color:var(--faint)}.small{font-size:12.5px}
+button{font:inherit;cursor:pointer}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:12px 26px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px}
+.brand .dot{width:24px;height:24px;border-radius:8px;background:var(--primary);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700}
+.wsbadge{font-size:11.5px;font-weight:650;letter-spacing:.03em;text-transform:uppercase;padding:4px 10px;border-radius:20px;background:var(--primary-soft);color:var(--primary-ink)}
+.wsbadge.doc{background:var(--teal-soft);color:var(--teal)}
+.top .org{font-weight:600;color:var(--ink-2)}
+.top .spacer{flex:1}
+.top .switch{display:flex;gap:4px;background:var(--surface-2);border-radius:10px;padding:3px}
+.top .switch button{border:0;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;padding:6px 14px;border-radius:7px}
+.top .switch button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.linkbtn{border:1px solid var(--border);background:var(--surface);color:var(--ink-2);padding:7px 12px;border-radius:9px;font-size:12.5px;font-weight:600}
+.linkbtn:hover{border-color:var(--border-2)}
+
+.wrap{max-width:1240px;margin:0 auto;padding:24px 26px 70px}
+.pagehead{display:flex;align-items:baseline;gap:12px;margin:2px 0 18px}
+.pagehead h1{font-size:22px}
+.pagehead .sub{color:var(--faint);font-size:13px}
+
+/* KPI */
+.kpis{display:grid;gap:14px;grid-template-columns:repeat(6,1fr)}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow)}
+.kpi .label{font-size:12px;color:var(--muted);font-weight:600}
+.kpi .val{font-size:26px;font-weight:700;margin-top:3px;letter-spacing:-.02em}
+.kpi .sub{font-size:11.5px;color:var(--faint);margin-top:2px}
+.kpi.hl{background:linear-gradient(160deg,var(--primary),var(--primary-ink));border-color:transparent;color:#fff}
+.kpi.hl .label,.kpi.hl .sub{color:rgba(255,255,255,.82)}
+
+.section{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:28px 0 10px}
+.grid2{display:grid;gap:16px;grid-template-columns:1.6fr 1fr}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card .ch{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card .ch h3{font-size:14.5px}
+.card .cb{padding:6px 2px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);font-weight:650;padding:9px 16px}
+td{padding:10px 16px;border-top:1px solid var(--border)}
+tbody tr:hover{background:var(--surface-2)}
+td.r,th.r{text-align:right}
+.badge{display:inline-block;font-size:11px;font-weight:650;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.b-ok{background:var(--ok-soft);color:var(--ok)}.b-teal{background:var(--teal-soft);color:var(--teal)}
+.b-warn{background:var(--warn-soft);color:var(--warn)}.b-danger{background:var(--danger-soft);color:var(--danger)}
+.b-grey{background:var(--surface-2);color:var(--muted)}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:7px;margin:1px 3px 1px 0;background:var(--surface-2);color:var(--ink-2)}
+.chip.red{background:var(--danger-soft);color:var(--danger)}.chip.amber{background:var(--warn-soft);color:var(--warn)}
+.bar{height:7px;border-radius:5px;background:var(--surface-2);overflow:hidden;min-width:80px}
+.bar>i{display:block;height:100%;background:var(--primary);border-radius:5px}
+.pri{display:inline-grid;place-items:center;width:30px;height:24px;border-radius:7px;font-size:12px;font-weight:700;color:#fff}
+.nm{font-weight:600}
+.gw{display:flex;align-items:center;gap:10px;padding:10px 18px;border-top:1px solid var(--border)}
+.gw .nmw{width:92px;font-weight:600;text-transform:capitalize}
+.gw .bar{flex:1}
+
+/* login */
+#login{max-width:420px;margin:11vh auto;padding:28px;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow)}
+#login .brand{font-size:17px;margin-bottom:4px}
+#login p{color:var(--muted);margin:6px 0 20px;font-size:13px}
+.field{display:block;margin-bottom:12px}
+.field span{display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+.field input{width:100%;padding:10px 12px;border:1px solid var(--border-2);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.field input:focus{outline:2px solid var(--primary-soft);border-color:var(--primary)}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.quick button{padding:13px;border-radius:12px;border:1px solid var(--border-2);background:var(--surface);text-align:left}
+.quick button:hover{border-color:var(--primary);background:var(--primary-soft)}
+.quick b{display:block;font-size:13.5px}.quick small{color:var(--muted)}
+.btn{width:100%;padding:11px;border:0;border-radius:11px;background:var(--primary);color:#fff;font-weight:650;font-size:14px}
+.btn:hover{background:var(--primary-ink)}
+.err{color:var(--danger);font-size:12.5px;min-height:16px;margin-top:4px}
+.hr{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:11.5px;margin:4px 0 16px}
+.hr::before,.hr::after{content:"";flex:1;height:1px;background:var(--border)}
+.hidden{display:none!important}
+
+/* drawer */
+#scrim{position:fixed;inset:0;background:rgba(10,20,16,.42);opacity:0;pointer-events:none;transition:opacity .15s;z-index:40}
+#scrim.on{opacity:1;pointer-events:auto}
+#drawer{position:fixed;top:0;right:0;height:100%;width:min(460px,92vw);background:var(--surface);border-left:1px solid var(--border);box-shadow:-10px 0 40px rgba(0,0,0,.14);transform:translateX(100%);transition:transform .18s ease-out;z-index:50;display:flex;flex-direction:column}
+#drawer.on{transform:none}
+#drawer .dh{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between}
+#drawer .db{padding:18px 20px;overflow-y:auto}
+#drawer .x{border:0;background:var(--surface-2);width:30px;height:30px;border-radius:8px;color:var(--muted);font-size:15px}
+.kv{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);font-size:13px}
+.kv:first-child{border-top:0}
+.kv b{font-weight:650}
+.aisum{background:var(--surface-2);border-radius:12px;padding:14px;font-size:13px;line-height:1.6;color:var(--ink-2);margin:12px 0}
+
+@media(max-width:1040px){.kpis{grid-template-columns:repeat(3,1fr)}.grid2{grid-template-columns:1fr}}
+@media(max-width:620px){.kpis{grid-template-columns:repeat(2,1fr)}.wrap{padding:16px}.top{padding:10px 16px}.top .org{display:none}}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="brand"><span class="dot">T</span> Telomy — Clinic Dashboard</div>
+  <p>Centre operations and clinician triage, on live data.</p>
+  <div class="quick">
+    <button onclick="quick('centre')"><b>Centre console</b><small>Front desk & manager</small></button>
+    <button onclick="quick('doctor')"><b>Doctor console</b><small>Clinician triage</small></button>
+  </div>
+  <div class="hr">or sign in</div>
+  <label class="field"><span>Email</span><input id="email" type="email" placeholder="you@clinic.com" autocomplete="username"></label>
+  <label class="field"><span>Password</span><input id="pw" type="password" placeholder="••••••••" autocomplete="current-password"></label>
+  <div id="err" class="err"></div>
+  <button class="btn" onclick="doLogin()">Sign in</button>
+</div>
+
+<div id="shell" class="hidden">
+  <div class="top">
+    <div class="brand"><span class="dot">T</span> Telomy</div>
+    <span id="wsbadge" class="wsbadge">Centre</span>
+    <span class="org" id="orgName"></span>
+    <span class="spacer"></span>
+    <div class="switch" id="switch"></div>
+    <button class="linkbtn" onclick="location.reload()">Refresh</button>
+    <button class="linkbtn" onclick="signout()">Sign out</button>
+  </div>
+  <div class="wrap" id="view"></div>
+</div>
+
+<div id="scrim" onclick="closeDrawer()"></div>
+<div id="drawer"><div class="dh"><div id="drawerHead"></div><button class="x" onclick="closeDrawer()">✕</button></div><div class="db" id="drawerBody"></div></div>
+
+<script>
+const API = location.origin;
+let TOK = localStorage.getItem('tcd.token')||'', ME=null, ORG='';
+const DEMO = { centre:{email:'sim-centre@telomy.test',pw:'SimRig#2026'}, doctor:{email:'sim-doctor@telomy.test',pw:'SimRig#2026'} };
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const inr = n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
+const cap = s=>String(s||'').replace(/[_-]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+
+async function api(path){
+  const r = await fetch(API+path,{headers:{Authorization:'Bearer '+TOK}});
+  if(r.status===401){ signout(); throw new Error('unauthorised'); }
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+async function login(email,pw){
+  const r = await fetch(API+'/mgmt/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+  if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.detail||'Sign in failed'); }
+  return r.json();
+}
+function quick(role){ $('#email').value=DEMO[role].email; $('#pw').value=DEMO[role].pw; doLogin(); }
+async function doLogin(){
+  $('#err').textContent='';
+  try{
+    const me = await login($('#email').value.trim(), $('#pw').value);
+    TOK = me.token; localStorage.setItem('tcd.token',TOK); ME=me; ORG=me.org;
+    boot();
+  }catch(e){ $('#err').textContent=e.message; }
+}
+function signout(){ localStorage.removeItem('tcd.token'); TOK=''; location.reload(); }
+
+async function boot(){
+  if(!ME){ try{ ME = await api('/mgmt/auth/me'); ORG=ME.org; }catch(e){ return showLogin(); } }
+  $('#login').classList.add('hidden'); $('#shell').classList.remove('hidden');
+  $('#orgName').textContent = (ME.org||'').replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  const isDoc = ME.workspace==='doctor' || ME.role==='doctor';
+  const canBoth = ME.admin || isDoc; // show the switch; each view guards its own call
+  $('#switch').innerHTML = `<button data-w="centre" onclick="go('centre')">Centre</button><button data-w="doctor" onclick="go('doctor')">Doctor</button>`;
+  go(isDoc && !ME.admin ? 'doctor':'centre');
+}
+function showLogin(){ $('#shell').classList.add('hidden'); $('#login').classList.remove('hidden'); }
+
+function go(w){
+  document.querySelectorAll('#switch button').forEach(b=>b.classList.toggle('on',b.dataset.w===w));
+  const bad=$('#wsbadge'); bad.textContent = w==='doctor'?'Doctor':'Centre'; bad.className='wsbadge'+(w==='doctor'?' doc':'');
+  $('#view').innerHTML='<p class="muted">Loading…</p>';
+  (w==='doctor'?renderDoctor():renderCentre()).catch(e=>{ $('#view').innerHTML='<div class="card"><div class="cb" style="padding:22px">'+esc(e.message)+' — this account may not have access to the '+w+' workspace.</div></div>'; });
+}
+
+/* ---------------- CENTRE ---------------- */
+const SVC = {redlight:'Red-light therapy',hbot:'HBOT',blood:'Blood panel',cryo:'Cryotherapy',pemf:'PEMF',sauna:'Infrared sauna',ivdrip:'IV drip',coldplunge:'Cold plunge',bodycomp:'Body composition',consult:'Doctor consult',physio:'Physiotherapy',compression:'Compression',vibroacoustic:'Vibroacoustic',h2:'Hydrogen therapy'};
+const svcName = id => SVC[id] || cap(id);
+function statusBadge(s){ s=(s||'').toLowerCase();
+  if(s==='completed')return'<span class="badge b-ok">Completed</span>';
+  if(s==='checked_in'||s==='confirmed')return'<span class="badge b-teal">'+cap(s)+'</span>';
+  if(s==='no_show')return'<span class="badge b-danger">No-show</span>';
+  if(s==='cancelled')return'<span class="badge b-grey">Cancelled</span>';
+  return'<span class="badge b-warn">'+cap(s||'Booked')+'</span>'; }
+
+async function renderCentre(){
+  const today = new Date().toISOString().slice(0,10);
+  const [dash,rev,bill,perf,members] = await Promise.all([
+    api('/mgmt/centre/dashboard?org='+ORG),
+    api('/mgmt/centre/revenue?org='+ORG).catch(()=>({})),
+    api('/mgmt/billing/summary?org='+ORG).catch(()=>({})),
+    api('/mgmt/centre/performance?org='+ORG).catch(()=>[]),
+    api('/mgmt/centre/members?org='+ORG).catch(()=>[]),
+  ]);
+  const mName={}; members.forEach(m=>mName[m.id]=m.name);
+  const sched=(dash.schedule||[]).slice().sort((a,b)=>(a.start_ts||'').localeCompare(b.start_ts||''));
+  const gw=(bill.by_gateway||[]); const gmax=Math.max(1,...gw.map(g=>g.gross));
+  const pmax=Math.max(1,...perf.map(p=>p.booked||0));
+
+  $('#view').innerHTML = `
+  <div class="pagehead"><h1>Centre dashboard</h1><span class="sub">${esc(today)} · live</span></div>
+  <div class="kpis">
+    <div class="kpi"><div class="label">Active members</div><div class="val num">${dash.active_members??'—'}</div><div class="sub">enrolled</div></div>
+    <div class="kpi"><div class="label">Bookings today</div><div class="val num">${dash.today_bookings??'—'}</div><div class="sub">${dash.checked_in??0} checked in</div></div>
+    <div class="kpi hl"><div class="label">Revenue today</div><div class="val num">${inr(dash.revenue_today)}</div><div class="sub">invoiced & paid</div></div>
+    <div class="kpi"><div class="label">Outstanding</div><div class="val num">${inr(dash.outstanding)}</div><div class="sub">due</div></div>
+    <div class="kpi"><div class="label">Total revenue</div><div class="val num">${inr(rev.total_revenue)}</div><div class="sub">${rev.sessions_delivered??0} sessions</div></div>
+    <div class="kpi"><div class="label">Net payments</div><div class="val num">${inr(bill.net)}</div><div class="sub">${bill.payments??0} txns · fees ${inr(bill.fees)}</div></div>
+  </div>
+
+  <div class="section">Operations</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="ch"><h3>Today's schedule</h3><span class="small muted">${sched.length} sessions</span></div>
+      <div class="cb"><table><thead><tr><th>Time</th><th>Member</th><th>Service</th><th>Status</th><th class="r">Price</th></tr></thead><tbody>
+      ${sched.map(s=>`<tr><td class="num">${esc((s.start_ts||'').slice(11,16))}</td><td class="nm">${esc(mName[s.member_id]||('Member #'+s.member_id))}</td><td>${esc(svcName(s.service_id))}<div class="small faint">${s.minutes||0} min</div></td><td>${statusBadge(s.status)}</td><td class="r num">${inr(s.price)}</td></tr>`).join('')||'<tr><td colspan=5 class="muted" style="padding:20px">No sessions today.</td></tr>'}
+      </tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="ch"><h3>Revenue by gateway</h3><span class="small muted">gross ${inr(bill.gross)}</span></div>
+      <div class="cb" style="padding:4px 0 10px">
+      ${gw.map(g=>`<div class="gw"><div class="nmw">${esc(g.gateway)}</div><div class="bar"><i style="width:${Math.round(100*g.gross/gmax)}%"></i></div><div class="num small" style="width:78px;text-align:right">${inr(g.gross)}</div></div>`).join('')||'<div class="gw muted">No payments yet.</div>'}
+      <div class="gw" style="border-top:1px solid var(--border-2)"><div class="nmw"><b>MRR</b></div><div class="bar" style="background:transparent"></div><div class="num small" style="width:78px;text-align:right">${inr(bill.mrr)}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">Team performance</div>
+  <div class="card"><div class="cb"><table><thead><tr><th>Staff</th><th>Role</th><th class="r">Booked</th><th class="r">Delivered</th><th>Utilisation</th><th class="r">Revenue</th><th class="r">No-show</th></tr></thead><tbody>
+  ${perf.map(p=>`<tr><td class="nm">${esc(p.name)}</td><td class="small muted">${esc(p.label||cap(p.role))}</td><td class="r num">${p.booked||0}</td><td class="r num">${p.delivered||0}</td><td><div class="bar"><i style="width:${Math.round(100*(p.delivered||0)/Math.max(1,p.booked||0))}%"></i></div></td><td class="r num">${inr(p.revenue)}</td><td class="r num">${p.no_show||0}</td></tr>`).join('')||'<tr><td colspan=7 class="muted" style="padding:20px">No staff.</td></tr>'}
+  </tbody></table></div></div>`;
+}
+
+/* ---------------- DOCTOR ---------------- */
+function priColor(p){ return p>=65?'var(--danger)':p>=45?'var(--copper)':'var(--primary)'; }
+function flagChip(f){ const red=/CVD|Diabetes|FIB-4|Lp\(a\)|eGFR/i.test(f) && /[5-9][0-9]|1[0-9][0-9]|≥/.test(f); return `<span class="chip ${/≥|CVD|Diabetes/i.test(f)?'amber':''}">${esc(f)}</span>`; }
+
+async function renderDoctor(){
+  const inbox = await api('/mgmt/clinic/inbox?org='+ORG);
+  const pts=(inbox.patients||[]).slice().sort((a,b)=>(b.priority||0)-(a.priority||0));
+  const high=pts.filter(p=>(p.priority||0)>=60).length;
+  const awaiting=pts.reduce((s,p)=>s+(p.awaiting_reviews||0),0);
+  const cvds=pts.map(p=>p.cvd).filter(x=>typeof x==='number'); const avgCvd=cvds.length?(cvds.reduce((a,b)=>a+b,0)/cvds.length):null;
+
+  $('#view').innerHTML = `
+  <div class="pagehead"><h1>Clinician triage</h1><span class="sub">Dr. ${esc((ME.name||'').replace(/^Dr\.?\s*/,''))} · ${pts.length} patients</span></div>
+  <div class="kpis">
+    <div class="kpi"><div class="label">Patients</div><div class="val num">${pts.length}</div><div class="sub">under care</div></div>
+    <div class="kpi hl"><div class="label">High priority</div><div class="val num">${high}</div><div class="sub">priority ≥ 60</div></div>
+    <div class="kpi"><div class="label">Awaiting review</div><div class="val num">${awaiting}</div><div class="sub">Sinc drafts</div></div>
+    <div class="kpi"><div class="label">Avg 10-y CVD</div><div class="val num">${avgCvd!=null?avgCvd.toFixed(1)+'%':'—'}</div><div class="sub">PREVENT</div></div>
+    <div class="kpi"><div class="label">Members</div><div class="val num">${pts.filter(p=>p.member).length}</div><div class="sub">on a plan</div></div>
+    <div class="kpi"><div class="label">Flagged</div><div class="val num">${pts.filter(p=>(p.flags||[]).length).length}</div><div class="sub">≥1 risk flag</div></div>
+  </div>
+  <div class="section">Triage queue — highest risk first</div>
+  <div class="card"><div class="cb"><table><thead><tr><th>#</th><th>Patient</th><th>Plan</th><th>Risk flags</th><th>Last report</th><th></th></tr></thead><tbody>
+  ${pts.map(p=>`<tr style="cursor:pointer" onclick='openPatient(${p.id})'>
+    <td><span class="pri" style="background:${priColor(p.priority||0)}">${p.priority||0}</span></td>
+    <td><div class="nm">${esc(p.name)}</div><div class="small faint">${p.age?Math.round(p.age):'—'} · ${esc(p.sex||'')} · ${esc(p.city||'')}</div></td>
+    <td><span class="badge ${p.member?'b-teal':'b-grey'}">${esc(p.plan||(p.member?'Member':'—'))}</span></td>
+    <td>${(p.flags||[]).slice(0,4).map(flagChip).join('')||'<span class="small faint">—</span>'}</td>
+    <td class="small num">${esc(p.last_report||'—')}</td>
+    <td class="small" style="color:var(--primary)">Open →</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+const MOD={sauna:'Infrared / Finnish sauna',cold:'Cold plunge',redlight:'Red-light / PBM',iv:'IV micronutrient',hbot:'Hyperbaric O₂ (HBOT)',cryo:'Cryotherapy',pemf:'PEMF',compression:'Compression',coach:'Coaching',blood:'Blood draw',consult:'Consult',h2:'Hydrogen',h2_inhal:'Hydrogen inhalation',vibroacoustic:'Vibroacoustic'};
+const modName=m=>MOD[m]||cap(m);
+function num(v,suffix=''){ return (v==null||v==='')?'—':(''+v+suffix); }
+function riskRows(rm){
+  if(!rm) return '';
+  const out=[];
+  const pv=rm.prevent||{}; const t10=pv.ten_year||{}; const t30=pv.thirty_year||{};
+  if(t10.total_cvd!=null) out.push(['10-yr total CVD (PREVENT)', t10.total_cvd+'%', t10.total_cvd>=10?'red':t10.total_cvd>=5?'amber':'']);
+  if(t10.ascvd!=null) out.push(['10-yr ASCVD', t10.ascvd+'%','']);
+  if(t30.total_cvd!=null) out.push(['30-yr total CVD', t30.total_cvd+'%','']);
+  const dia=rm.diabetes||{}; if(dia.five_year!=null||dia.value!=null) out.push(['5-yr diabetes', (dia.five_year??dia.value)+'%', (dia.five_year??dia.value)>=20?'amber':'']);
+  const liv=rm.liver||{}; if(liv.fib4!=null||liv.value!=null) out.push(['FIB-4 (liver)', (liv.fib4??liv.value), (liv.fib4??liv.value)>=1.3?'amber':'']);
+  const kid=rm.kidney||{}; if(kid.value!=null||kid.kfre!=null) out.push(['Kidney (KFRE)', (kid.kfre??kid.value)+'%','']);
+  return out.map(([l,v,c])=>`<div class="kv"><span>${esc(l)}</span><b class="num" ${c?'style="color:var(--'+(c==='red'?'danger':'warn')+')"':''}>${esc(v)}</b></div>`).join('');
+}
+async function openPatient(id){
+  $('#drawerHead').innerHTML='<h3>Loading…</h3>'; $('#drawerBody').innerHTML='<p class="small muted">Opening patient-360…</p>'; openDrawer();
+  try{
+    const o = await api('/mgmt/clinic/patients/'+id+'/overview?org='+ORG);
+    const p=o.patient||{}, bm=o.biomarkers||{}, raw=bm.raw||[], organs=(o.organs&&o.organs.organs)||[];
+    const th=o.therapies||{}, dev=o.devices||{}, meds=o.medications||[], reports=o.reports||[], rm=o.risk_models;
+    const mods=(th.by_modality||[]); const mmax=Math.max(1,...mods.map(m=>m.n));
+    $('#drawerHead').innerHTML=`<div><h3>${esc(p.name)}</h3><div class="small faint">${p.age?Math.round(p.age):'—'} · ${esc(p.sex||'')} · ${esc(p.city||'')} · ${p.linked?'<span style="color:var(--primary)">live record</span>':'lab record'}</div></div>`;
+    $('#drawerBody').innerHTML = `
+      ${o.ai_summary&&o.ai_summary.text?`<div class="aisum"><div style="font-weight:650;color:var(--ink);margin-bottom:6px">AI summary · Sinc draft</div>${esc(o.ai_summary.text)}${o.ai_summary.disclaimer?`<div class="small faint" style="margin-top:8px">${esc(o.ai_summary.disclaimer)}</div>`:''}</div>`:''}
+
+      ${(p.conditions&&p.conditions.length)?`<div class="section">Conditions</div><div>${p.conditions.map(c=>`<span class="chip red">${esc(c)}</span>`).join('')}</div>`:''}
+
+      ${rm?`<div class="section">Risk models</div><div class="card" style="box-shadow:none"><div class="cb" style="padding:4px 14px 8px">${riskRows(rm)||'<div class="small faint" style="padding:8px 0">—</div>'}</div></div>`:''}
+
+      ${organs.length?`<div class="section">Organ ages</div><div class="card" style="box-shadow:none"><div class="cb" style="padding:4px 14px 8px">${organs.map(g=>`<div class="kv"><span>${esc(g.label||cap(g.organ))}</span><b class="num">${g.organ_age!=null?g.organ_age+' y':'—'}${g.age_acceleration_years!=null?` <span class="small" style="color:${g.age_acceleration_years>2?'var(--danger)':g.age_acceleration_years<-2?'var(--primary)':'var(--muted)'}">${g.age_acceleration_years>0?'+':''}${g.age_acceleration_years}y</span>`:''}</b></div>`).join('')}</div></div>`:''}
+
+      ${th&&th.total?`<div class="section">Therapies · ${th.total} sessions</div>
+        <div class="card" style="box-shadow:none"><div class="cb" style="padding:6px 0">
+        ${mods.map(m=>`<div class="gw"><div class="nmw" style="width:150px">${esc(modName(m.modality))}</div><div class="bar"><i style="width:${Math.round(100*m.n/mmax)}%"></i></div><div class="num small" style="width:84px;text-align:right">${m.n}× · ${Math.round(m.minutes/60)}h</div></div>`).join('')}
+        </div></div>
+        ${(th.protocols&&th.protocols.length)?`<div style="margin-top:8px">${th.protocols.map(pr=>`<span class="chip ${pr.active?'':''}" ${pr.active?'style="background:var(--primary-soft);color:var(--primary-ink)"':''}>${esc(pr.name)}${pr.active?' · active':''}</span>`).join('')}</div>`:''}`:''}
+
+      ${(dev&&((dev.wearables&&dev.wearables.length)||(dev.equipment_used&&dev.equipment_used.length)))?`<div class="section">Devices</div>
+        ${(dev.wearables||[]).length?`<div style="margin-bottom:8px">${dev.wearables.map(w=>`<span class="badge b-teal">${esc(w.name)} · ${esc(w.status)}</span> `).join('')}</div>`:''}
+        ${(dev.equipment_used||[]).length?`<div class="card" style="box-shadow:none"><div class="cb" style="padding:4px 14px 8px">${dev.equipment_used.map(e=>`<div class="kv"><span>${esc(e.name||e.device_id)}</span><b class="num small">${e.n}×</b></div>`).join('')}</div></div>`:''}`:''}
+
+      ${meds.length?`<div class="section">Medications & supplements</div><div class="card" style="box-shadow:none"><div class="cb" style="padding:4px 14px 8px">${meds.map(m=>`<div class="kv"><span>${esc(m.name)} <span class="small faint">${esc(m.dose||'')} · ${esc(m.frequency||'')}</span></span><b class="small muted">${esc(m.prescriber||'')}</b></div>`).join('')}</div></div>`:''}
+
+      <div class="section">Biomarkers · ${raw.length}</div>
+      ${raw.length?`<div class="card" style="box-shadow:none"><div class="cb" style="padding:4px 14px 8px;max-height:260px;overflow:auto">${raw.slice(0,40).map(r=>`<div class="kv"><span>${esc(r.marker||r.id)}</span><b class="num">${num(r.value)}</b></div>`).join('')}${raw.length>40?`<div class="small faint" style="padding:8px 0">+ ${raw.length-40} more…</div>`:''}</div></div>`:'<div class="small faint">No labs on file.</div>'}
+
+      ${reports.length?`<div class="section">Reports · ${reports.length}</div><div class="card" style="box-shadow:none"><div class="cb" style="padding:4px 14px 8px">${reports.map(r=>`<div class="kv"><span>${esc(r.title)}<div class="small faint">${esc(r.collected_on||'')}${r.headline?' · '+esc(r.headline):''}</div></span>${r.flagged?`<span class="badge b-warn">${r.flagged} flag${r.flagged>1?'s':''}</span>`:''}</div>`).join('')}</div></div>`:''}
+
+      <div class="section">Other signals</div>
+      <div class="card" style="box-shadow:none"><div class="cb" style="padding:4px 14px 8px">
+        <div class="kv"><span>Vitals (wearable)</span><b class="small ${o.vitals&&o.vitals.available?'':'muted'}">${o.vitals&&o.vitals.available?'available':'none'}</b></div>
+        <div class="kv"><span>Recovery & sleep</span><b class="small ${o.recovery_sleep&&o.recovery_sleep.available?'':'muted'}">${o.recovery_sleep&&o.recovery_sleep.available?'available':'none'}</b></div>
+        <div class="kv"><span>Habits</span><b class="small ${o.habits&&o.habits.available?'':'muted'}">${o.habits&&o.habits.available?('exercise '+Math.round(o.habits.exercise_min_per_day||0)+' min/d'):'none'}</b></div>
+      </div></div>
+      <div class="small faint" style="margin-top:14px">Full Longevity Rx and note-signing open in the clinician console.</div>`;
+  }catch(e){ $('#drawerBody').innerHTML='<div class="small" style="color:var(--danger)">'+esc(e.message)+'</div>'; }
+}
+function openDrawer(){ $('#scrim').classList.add('on'); $('#drawer').classList.add('on'); }
+function closeDrawer(){ $('#scrim').classList.remove('on'); $('#drawer').classList.remove('on'); }
+
+/* init */
+if(TOK) boot().catch(showLogin); else showLogin();
+</script>
+</body>
+</html>

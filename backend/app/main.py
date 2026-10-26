@@ -2420,6 +2420,482 @@ def mgmt_patient_overview(pid: int, authorization: str = _Hdr(default="")):
     return patient_data.overview(pid)
 
 
+# ---- Doctor actions on a patient: assess, prescribe (Rx + therapy), sign findings ----
+@app.get("/mgmt/clinic/patients/{pid}/plan")
+def mgmt_patient_plan(pid: int, goal: str = "longevity", authorization: str = _Hdr(default="")):
+    """Everything the doctor needs to ACT: findings awaiting review, the evidence-graded Longevity Rx draft for a
+    goal, and the contraindication-screened therapies with the patient's own N-of-1 response. Read from the
+    patient's own record; nothing is prescribed until the doctor signs."""
+    _require_staff(authorization)
+    from . import patient_data, rx, therapy
+    out: dict = {"patient_id": pid, "goal": goal, "linked": patient_data._resolve_user_id(pid) is not None}
+    if not out["linked"]:
+        out["note"] = "This patient has no linked Telomy record yet — invite them to connect their Vault to prescribe from their own data."
+        return out
+    try:
+        with patient_data._patient_db(pid):
+            out["awaiting"] = db.rows("""SELECT id, title, body, kind, confidence FROM insights
+                                         WHERE review_state = 'awaiting' AND dismissed = 0
+                                         ORDER BY medical DESC, confidence DESC LIMIT 20""")
+            out["rx"] = rx.recommend(goal if goal in rx.GOALS else "longevity")
+            out["therapies"] = {"options": therapy.screen(1), "response": therapy.response(1)}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, f"Could not build the plan: {e}")
+    return out
+
+
+@app.post("/mgmt/clinic/patients/{pid}/findings/{fid}/sign")
+def mgmt_sign_finding(pid: int, fid: str, authorization: str = _Hdr(default="")):
+    """Doctor signs off a finding — moves it out of the review queue."""
+    me = _require_staff(authorization)
+    from . import patient_data
+    if patient_data._resolve_user_id(pid) is None:
+        raise HTTPException(400, "Patient has no linked record.")
+    with patient_data._patient_db(pid):
+        db.exec_("UPDATE insights SET review_state = 'signed' WHERE id = ?", (fid,))
+    return {"ok": True, "signed_by": me.get("name"), "finding": fid}
+
+
+# ---- Doctor configures the patient's own app: focus areas, targets, what to track, a note ----
+def _ensure_care_config():
+    db.exec_("CREATE TABLE IF NOT EXISTS care_config (id INTEGER PRIMARY KEY CHECK(id = 1), data TEXT)")
+
+
+@app.get("/mgmt/clinic/patients/{pid}/care-config")
+def mgmt_get_care_config(pid: int, authorization: str = _Hdr(default="")):
+    """What the doctor has set for this patient's app — focus areas, targets, trackers, a note."""
+    _require_staff(authorization)
+    from . import patient_data
+    if patient_data._resolve_user_id(pid) is None:
+        return {"linked": False}
+    with patient_data._patient_db(pid):
+        _ensure_care_config()
+        r = db.one("SELECT data FROM care_config WHERE id = 1")
+    return {"linked": True, **(db.unj(r["data"], {}) if r else {})}
+
+
+@app.put("/mgmt/clinic/patients/{pid}/care-config")
+def mgmt_set_care_config(pid: int, body: dict, authorization: str = _Hdr(default="")):
+    """Doctor sets what this patient's app measures, shows and prioritises. Reflected on the member's own screens."""
+    me = _require_staff(authorization)
+    from . import patient_data
+    if patient_data._resolve_user_id(pid) is None:
+        raise HTTPException(400, "Patient has no linked record.")
+    cfg = {"focus": body.get("focus") or [], "targets": body.get("targets") or {}, "track": body.get("track") or [],
+           "note": (body.get("note") or "")[:600], "set_by": me.get("name"), "set_at": datetime.now().isoformat()}
+    with patient_data._patient_db(pid):
+        _ensure_care_config()
+        db.exec_("INSERT OR REPLACE INTO care_config (id, data) VALUES (1, ?)", (db.j(cfg),))
+    return {"ok": True, "config": cfg}
+
+
+@app.get("/me/care-config")
+def me_care_config():
+    """The member reads the plan their doctor set for them (focus, targets, trackers, note). Empty until set."""
+    _ensure_care_config()
+    r = db.one("SELECT data FROM care_config WHERE id = 1")
+    return db.unj(r["data"], {}) if r else {}
+
+
+# ---- Care-config templates: a doctor builds a preset ("Metabolic patient", "Cardiac patient") once, applies it ----
+def _ensure_care_templates():
+    db.exec_("CREATE TABLE IF NOT EXISTS care_templates (id INTEGER PRIMARY KEY AUTOINCREMENT, org TEXT, name TEXT, data TEXT, created_by TEXT, created_at TEXT)")
+
+
+@app.get("/mgmt/clinic/care-templates")
+def mgmt_care_templates(org: str = "default", authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    _ensure_care_templates()
+    return [{"id": r["id"], "name": r["name"], "created_by": r["created_by"], **db.unj(r["data"], {})}
+            for r in db.rows("SELECT * FROM care_templates WHERE org = ? ORDER BY name", (org,))]
+
+
+@app.post("/mgmt/clinic/care-templates")
+def mgmt_save_template(body: dict, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    _ensure_care_templates()
+    data = {"focus": body.get("focus") or [], "targets": body.get("targets") or {}, "track": body.get("track") or [], "note": (body.get("note") or "")[:600]}
+    db.exec_("INSERT INTO care_templates (org, name, data, created_by, created_at) VALUES (?,?,?,?,?)",
+             (me.get("org", "default"), (body.get("name") or "Template")[:60], db.j(data), me.get("name"), datetime.now().isoformat()))
+    return {"ok": True}
+
+
+@app.delete("/mgmt/clinic/care-templates/{tid}")
+def mgmt_delete_template(tid: int, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    _ensure_care_templates()
+    db.exec_("DELETE FROM care_templates WHERE id = ?", (tid,))
+    return {"ok": True}
+
+
+@app.post("/mgmt/clinic/patients/{pid}/apply-template/{tid}")
+def mgmt_apply_template(pid: int, tid: int, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    from . import patient_data
+    if patient_data._resolve_user_id(pid) is None:
+        raise HTTPException(400, "Patient has no linked record.")
+    _ensure_care_templates()
+    t = db.one("SELECT data FROM care_templates WHERE id = ?", (tid,))
+    if not t:
+        raise HTTPException(404, "No such template.")
+    tpl = db.unj(t["data"], {})
+    cfg = {"focus": tpl.get("focus") or [], "targets": tpl.get("targets") or {}, "track": tpl.get("track") or [],
+           "note": tpl.get("note") or "", "set_by": me.get("name"), "set_at": datetime.now().isoformat()}
+    with patient_data._patient_db(pid):
+        _ensure_care_config()
+        db.exec_("INSERT OR REPLACE INTO care_config (id, data) VALUES (1, ?)", (db.j(cfg),))
+    return {"ok": True, "config": cfg}
+
+
+# ---- Staff settings hub: per-org, per-workspace preferences (doctor / centre) ----
+def _ensure_staff_settings():
+    db.exec_("CREATE TABLE IF NOT EXISTS staff_settings (scope TEXT PRIMARY KEY, data TEXT, updated_by TEXT, updated_at TEXT)")
+
+
+DOCTOR_SETTINGS_DEFAULTS = {
+    "display_name": "", "registration_no": "", "specialty": "", "signature_line": "",
+    "default_goal": "longevity", "followup_weeks": 12, "units": "metric",
+    "evidence_threshold": "B", "auto_sign": False, "require_consent": True,
+    "consult_minutes": 20,
+    "notify_findings": True, "notify_bookings": True, "notify_labs": True,
+    "biometric_lock": False,
+}
+
+CENTRE_SETTINGS_DEFAULTS = {
+    "legal_name": "", "gst_no": "", "address": "", "phone": "",
+    "slot_minutes": 45, "buffer_minutes": 10, "open_hour": 7, "close_hour": 21,
+    "gst_percent": 18, "online_payments": True, "cash_payments": True,
+    "delivery_radius_km": 10, "require_consent": True,
+    "notify_bookings": True, "notify_cancellations": True, "notify_outstanding": True,
+    "pin_lock": False,
+}
+
+
+def _settings_io(me: dict, workspace: str, defaults: dict, patch: dict | None = None) -> dict:
+    _ensure_staff_settings()
+    scope = f"{me.get('org', 'default')}::{workspace}"
+    r = db.one("SELECT data FROM staff_settings WHERE scope = ?", (scope,))
+    saved = db.unj(r["data"], {}) if r else {}
+    if patch is not None:
+        saved = {**saved, **{k: v for k, v in patch.items() if k in defaults}}
+        db.exec_("INSERT OR REPLACE INTO staff_settings (scope, data, updated_by, updated_at) VALUES (?,?,?,?)",
+                 (scope, db.j(saved), me.get("name"), datetime.now().isoformat()))
+    return {**defaults, **saved}
+
+
+@app.get("/mgmt/clinic/settings")
+def clinic_settings_get(authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    return _settings_io(me, "doctor", DOCTOR_SETTINGS_DEFAULTS)
+
+
+@app.put("/mgmt/clinic/settings")
+def clinic_settings_put(body: dict, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    return _settings_io(me, "doctor", DOCTOR_SETTINGS_DEFAULTS, patch=body or {})
+
+
+@app.get("/mgmt/centre/settings")
+def centre_settings_get(authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    return _settings_io(me, "centre", CENTRE_SETTINGS_DEFAULTS)
+
+
+@app.put("/mgmt/centre/settings")
+def centre_settings_put(body: dict, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    return _settings_io(me, "centre", CENTRE_SETTINGS_DEFAULTS, patch=body or {})
+
+
+# ---- Clinical / operations copilot (grounded, propose-don't-act) ----
+@app.post("/mgmt/clinic/copilot")
+def clinic_copilot(body: dict, authorization: str = _Hdr(default="")):
+    """Doctor copilot: ask about a patient (summary/analysis/suggestions) grounded in their own record. Drafts only —
+    nothing is prescribed, signed or ordered here; suggestions route to the existing approve flows."""
+    me = _require_staff(authorization)
+    from . import copilot
+    b = body or {}
+    return copilot.doctor_copilot(me, b.get("query", ""), b.get("patient_id"), b.get("history"))
+
+
+@app.post("/mgmt/centre/copilot")
+def centre_copilot_ep(body: dict, authorization: str = _Hdr(default="")):
+    """Centre operations copilot: ask about members, schedule, floor and revenue, grounded in this centre's data."""
+    me = _require_staff(authorization)
+    from . import copilot
+    b = body or {}
+    return copilot.centre_copilot(me, b.get("query", ""), b.get("history"))
+
+
+@app.post("/mgmt/voice/transcribe")
+async def mgmt_voice_transcribe(file: UploadFile = File(...), language: str | None = None, authorization: str = _Hdr(default="")):
+    """Staff-plane speech-to-text for the copilot mic: transcribe only (no vault binding, nothing stored)."""
+    _require_staff(authorization)
+    data = await file.read()
+    if len(data) < 2000:
+        raise HTTPException(400, "Recording too short.")
+    try:
+        return voice.transcribe(voice.decode(data, file.filename or "audio.wav"), language)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(422, f"Couldn't read that audio ({type(e).__name__}). Try again closer to the mic.")
+
+
+# ---- Doctor orders tests/scans for a patient; member sees them and their status ----
+def _ensure_ordered_tests():
+    db.exec_("""CREATE TABLE IF NOT EXISTS ordered_tests (id INTEGER PRIMARY KEY AUTOINCREMENT, test_id TEXT, name TEXT,
+                category TEXT, price INTEGER, reason TEXT, ordered_by TEXT, ordered_at TEXT, status TEXT DEFAULT 'ordered')""")
+
+
+@app.get("/mgmt/clinic/tests")
+def mgmt_clinic_tests(authorization: str = _Hdr(default="")):
+    """The orderable test & scan catalogue, for the doctor to order from."""
+    _require_staff(authorization)
+    from . import diagnostics
+    return [{"id": t["id"], "name": t["name"], "category": t["category"], "price": t.get("price", 0), "evidence": t.get("evidence"), "why": t.get("why")} for t in diagnostics.catalogue()]
+
+
+@app.post("/mgmt/clinic/patients/{pid}/order-tests")
+def mgmt_order_tests(pid: int, body: dict, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    from . import patient_data, diagnostics
+    if patient_data._resolve_user_id(pid) is None:
+        raise HTTPException(400, "Patient has no linked record.")
+    ids = body.get("test_ids") or []
+    reason = (body.get("reason") or "")[:300]
+    out = []
+    with patient_data._patient_db(pid):
+        _ensure_ordered_tests()
+        cat = {t["id"]: t for t in diagnostics.catalogue()}
+        for tid in ids:
+            t = cat.get(tid)
+            if not t:
+                continue
+            db.exec_("INSERT INTO ordered_tests (test_id, name, category, price, reason, ordered_by, ordered_at, status) VALUES (?,?,?,?,?,?,?,'ordered')",
+                     (tid, t["name"], t["category"], t.get("price", 0), reason, me.get("name"), datetime.now().isoformat()))
+            out.append(t["name"])
+    return {"ok": True, "ordered": out, "by": me.get("name")}
+
+
+@app.get("/mgmt/clinic/patients/{pid}/ordered-tests")
+def mgmt_ordered_tests(pid: int, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    from . import patient_data
+    if patient_data._resolve_user_id(pid) is None:
+        return []
+    with patient_data._patient_db(pid):
+        _ensure_ordered_tests()
+        return db.rows("SELECT * FROM ordered_tests ORDER BY ordered_at DESC")
+
+
+@app.get("/me/ordered-tests")
+def me_ordered_tests():
+    """Tests & scans the member's doctor has ordered for them, with status."""
+    _ensure_ordered_tests()
+    return db.rows("SELECT * FROM ordered_tests ORDER BY ordered_at DESC")
+
+
+@app.post("/me/ordered-tests/{oid}/book")
+def me_book_ordered_test(oid: int):
+    """Member books a doctor-ordered test at the centre → moves it to 'booked'."""
+    _ensure_ordered_tests()
+    r = db.one("SELECT * FROM ordered_tests WHERE id = ?", (oid,))
+    if not r:
+        raise HTTPException(404, "no such order")
+    from . import diagnostics
+    try:
+        day = (date.today() + timedelta(days=3)).isoformat()
+        diagnostics.book(r["test_id"], day)
+    except Exception:  # noqa: BLE001
+        pass
+    db.exec_("UPDATE ordered_tests SET status = 'booked' WHERE id = ?", (oid,))
+    return {"ok": True, "status": "booked"}
+
+
+# ---- ABDM / ABHA (India health ID). The member can register their ABHA; real record exchange needs ABDM creds. ----
+def _abha_configured() -> bool:
+    import os as _os
+    return bool(_os.environ.get("ABDM_CLIENT_ID") and _os.environ.get("ABDM_CLIENT_SECRET"))
+
+
+def _ensure_abha():
+    db.exec_("CREATE TABLE IF NOT EXISTS abha (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT)")
+
+
+@app.get("/abha/status")
+def abha_status():
+    _ensure_abha()
+    r = db.one("SELECT data FROM abha WHERE id = 1")
+    link = (db.unj(r["data"], {}) if r else {}) or {}
+    return {"configured": _abha_configured(), "linked": bool(link.get("abha")), "abha": link.get("abha"),
+            "linked_at": link.get("linked_at"),
+            "note": None if _abha_configured() else "ABDM is not connected for this clinic yet. You can register your ABHA now; pulling your national health records turns on once ABDM is configured."}
+
+
+@app.post("/abha/link")
+def abha_link(body: dict):
+    """Register the member's ABHA address/number with Telomy. (Real ABHA creation/verification via OTP runs once
+    ABDM sandbox credentials are configured; until then we just store the identifier the member gives us.)"""
+    abha = (body.get("abha") or "").strip()
+    if not abha:
+        raise HTTPException(400, "Enter your ABHA number or address.")
+    _ensure_abha()
+    data = {"abha": abha, "linked_at": datetime.now().isoformat(), "verified": _abha_configured()}
+    db.exec_("INSERT OR REPLACE INTO abha (id, data) VALUES (1, ?)", (db.j(data),))
+    return {"ok": True, **data,
+            "note": "Verified with ABDM." if _abha_configured() else "Saved. Record exchange will activate when your clinic connects ABDM."}
+
+
+@app.delete("/abha/link")
+def abha_unlink():
+    _ensure_abha()
+    db.exec_("DELETE FROM abha WHERE id = 1")
+    return {"ok": True}
+
+
+@app.get("/abha/records")
+def abha_records():
+    """National health records pulled over ABDM (FHIR). Empty with a clear note until ABDM is configured."""
+    if not _abha_configured():
+        return {"configured": False, "records": [], "note": "Connect ABDM to pull your records from hospitals and labs across India into your Vault."}
+    # Real FHIR consent + HIU fetch would run here once credentials exist.
+    return {"configured": True, "records": [], "note": "No records fetched yet. Request them from a linked facility."}
+
+
+@app.get("/me/scores")
+def me_scores():
+    """Oura/Ultrahuman-style system scores (0-100) with color-coded contributors, composed from the member's own
+    clinical data — but deeper than a single wearable signal. Each contributor carries a status (optimal/good/
+    attention) so the UI can draw the green/amber/red bars people read at a glance."""
+    from . import predict
+    inp = predict.inputs_from_vault()
+
+    def score(val, good, bad, lower=True):
+        if val is None:
+            return None
+        if lower:
+            if val <= good:
+                return 92
+            if val >= bad:
+                return 38
+            return round(92 - (val - good) / (bad - good) * 54)
+        if val >= good:
+            return 92
+        if val <= bad:
+            return 38
+        return round(38 + (val - bad) / (good - bad) * 54)
+
+    def st(sc):
+        return "optimal" if sc is not None and sc >= 80 else "good" if sc is not None and sc >= 60 else "attention" if sc is not None else "none"
+
+    def contrib(key, label, val, good, bad, unit, lower=True):
+        sc = score(val, good, bad, lower)
+        return {"key": key, "label": label, "value": val, "unit": unit, "score": sc, "status": st(sc)}
+
+    heart = [c for c in [
+        contrib("apob", "ApoB", inp.get("apob"), 80, 130, " mg/dL"),
+        contrib("ldl", "LDL", inp.get("ldl"), 100, 160, " mg/dL"),
+        contrib("hdl", "HDL", inp.get("hdl"), 60, 40, " mg/dL", lower=False),
+        contrib("sbp", "Blood pressure", inp.get("sbp"), 118, 145, " mmHg"),
+        contrib("hscrp", "Inflammation (hs-CRP)", inp.get("hscrp"), 1, 3, " mg/L"),
+        contrib("lpa", "Lp(a)", inp.get("lpa"), 30, 75, " mg/dL"),
+    ] if c["value"] is not None]
+    metabolic = [c for c in [
+        contrib("hba1c", "HbA1c", inp.get("hba1c"), 5.4, 6.3, "%"),
+        contrib("glucose", "Fasting glucose", inp.get("glucose"), 92, 126, " mg/dL"),
+        contrib("bmi", "Body mass index", inp.get("bmi"), 24, 32, ""),
+    ] if c["value"] is not None]
+    liver = [c for c in [
+        contrib("alt", "ALT", inp.get("alt"), 30, 60, " U/L"),
+        contrib("ast", "AST", inp.get("ast"), 30, 50, " U/L"),
+    ] if c["value"] is not None]
+    kidney = [c for c in [
+        contrib("egfr", "eGFR", inp.get("egfr"), 90, 60, "", lower=False),
+        contrib("uacr", "Urine ACR", inp.get("uacr"), 10, 30, " mg/g"),
+    ] if c["value"] is not None]
+
+    def grp(items):
+        vals = [c["score"] for c in items if c["score"] is not None]
+        return (round(sum(vals) / len(vals)) if vals else None), items
+
+    sys = []
+    for key, name in [("heart", "Heart"), ("metabolic", "Metabolic"), ("liver", "Liver"), ("kidney", "Kidney")]:
+        s, items = grp({"heart": heart, "metabolic": metabolic, "liver": liver, "kidney": kidney}[key])
+        if s is not None:
+            sys.append({"key": key, "name": name, "score": s, "band": "Optimal" if s >= 80 else "Good" if s >= 60 else "Needs attention", "contributors": items})
+    overall = round(sum(x["score"] for x in sys) / len(sys)) if sys else None
+    return {"as_of": date.today().isoformat(), "overall": overall,
+            "overall_band": ("Optimal" if overall and overall >= 80 else "Good" if overall and overall >= 60 else "Needs attention") if overall else None,
+            "systems": sys}
+
+
+@app.get("/sinc/briefing")
+def sinc_briefing():
+    """Proactive Sinc: instead of waiting to be asked, Sinc watches your Vault, wearables and your doctor's plan and
+    surfaces the few things that matter right now — prioritised, each with one next step. Composed from the same
+    grounded engines (targets, findings, behavioural correlations); nothing invented."""
+    from . import engine, predict
+    items: list[dict] = []
+    LB = {"ldl": "LDL", "apob": "ApoB", "hba1c": "HbA1c", "sbp": "Systolic BP", "hscrp": "hs-CRP", "weight": "Weight", "steps": "Steps"}
+    lower = {"ldl", "apob", "hba1c", "sbp", "hscrp", "weight"}
+    unit = {"ldl": " mg/dL", "apob": " mg/dL", "hba1c": "%", "sbp": " mmHg", "hscrp": " mg/L", "weight": " kg", "steps": "/day"}
+    # 1. your doctor's targets you haven't hit
+    try:
+        _ensure_care_config()
+        cc = db.one("SELECT data FROM care_config WHERE id = 1")
+        cfg = db.unj(cc["data"], {}) if cc else {}
+        inp = predict.inputs_from_vault()
+        for k, tv in (cfg.get("targets") or {}).items():
+            cur = inp.get(k)
+            if cur is None:
+                continue
+            met = (cur <= tv) if k in lower else (cur >= tv)
+            if not met:
+                gap = round(abs(cur - tv), 1)
+                items.append({"kind": "target", "severity": "high", "icon": "target",
+                              "title": f"{LB.get(k, k)} is {round(cur, 1)}{unit.get(k, '')} — {gap}{unit.get(k, '')} from your doctor's target of {tv}",
+                              "action": "Open your plan", "route": "/predict", "priority": 92})
+    except Exception:  # noqa: BLE001
+        pass
+    # 2. medical findings your doctor still needs to review
+    try:
+        aw = [x for x in engine.list_insights() if x.get("review_state") == "awaiting" and x.get("medical")]
+        for i in aw[:2]:
+            items.append({"kind": "finding", "severity": "high", "icon": "stethoscope", "title": i["title"],
+                          "detail": (i.get("body") or "")[:160], "action": "Review with your doctor", "route": "/queue", "priority": 84})
+        if len(aw) > 2:
+            items.append({"kind": "finding", "severity": "watch", "icon": "doc.text", "title": f"{len(aw) - 2} more findings are waiting for your doctor's sign-off",
+                          "action": "See the queue", "route": "/queue", "priority": 60})
+    except Exception:  # noqa: BLE001
+        pass
+    # 3. what your own data showed this week (behavioural)
+    try:
+        for i in [x for x in engine.list_insights() if x.get("kind") == "event_effect"][:2]:
+            items.append({"kind": "behavior", "severity": "watch", "icon": "sparkles", "title": i["title"],
+                          "action": "See what affects you", "route": "/insights", "priority": 48})
+    except Exception:  # noqa: BLE001
+        pass
+    items.sort(key=lambda x: -x["priority"])
+    items = items[:6]
+    headline = items[0]["title"] if items else "Nothing urgent today — you're on track. Keep it up."
+    return {"headline": headline, "as_of": date.today().isoformat(), "count": len(items), "items": items,
+            "greeting": "Here's what I noticed" if items else "All clear"}
+
+
+@app.post("/mgmt/clinic/patients/{pid}/prescribe")
+def mgmt_prescribe(pid: int, body: dict, authorization: str = _Hdr(default="")):
+    """Doctor approves a Longevity-Rx draft (chosen supplement/medicine ids) for a goal → a signed plan."""
+    me = _require_staff(authorization)
+    from . import patient_data, rx
+    if patient_data._resolve_user_id(pid) is None:
+        raise HTTPException(400, "Patient has no linked record.")
+    goal = body.get("goal", "longevity")
+    chosen = body.get("chosen") or None
+    with patient_data._patient_db(pid):
+        plan = rx.submit(goal if goal in rx.GOALS else "longevity", 1, chosen)
+        rx.decide(plan["id"], True, f"Approved by {me.get('name', 'doctor')}", keep=chosen)
+        return {"ok": True, "plan": rx.get(plan["id"]), "prescriber": me.get("name")}
+
+
 @app.post("/mgmt/staff/{sid}/profile")
 def mgmt_staff_profile(sid: int, body: dict, authorization: str = _Hdr(default="")):
     me = _require_staff(authorization)
@@ -2820,6 +3296,11 @@ class BookIn(BaseModel):
 @app.get("/mgmt/centre/dashboard")
 def mgmt_centre_dash(org: str = "default", day: str | None = None):
     return centremod.dashboard(org, day)
+
+
+@app.get("/mgmt/centre/floor")
+def mgmt_centre_floor(org: str = "default", day: str | None = None):
+    return centremod.floor(org, day)
 
 
 @app.get("/mgmt/centre/members")

@@ -114,12 +114,27 @@ def book(org: str, member_id: int, service_id: int, start_ts: str, staff_id: int
     return booking(bid)
 
 
+# Short booking service_ids (seeded / quick-book) → readable names, for when they aren't a catalog key.
+_SVC_ALIAS = {
+    "redlight": "Red-light therapy", "hbot": "HBOT", "hbot_mild": "HBOT (mild)", "iv": "IV micronutrient drip",
+    "cold": "Cold plunge", "coldplunge": "Cold plunge", "sauna": "Infrared sauna", "sauna_ir": "Infrared sauna",
+    "cryo": "Cryotherapy", "cryo_local": "Localised cryo", "pemf": "PEMF", "coach": "Coaching session",
+    "blood": "Blood draw", "consult": "Doctor consult", "dexa": "DEXA body-composition", "vo2": "VO₂max test",
+    "compression": "Compression", "h2": "Hydrogen therapy", "h2_inhal": "Hydrogen inhalation",
+    "vibroacoustic": "Vibroacoustic", "float": "Float tank", "contrast": "Contrast therapy", "ihht": "IHHT (altitude)",
+}
+
+
 def booking(bid: int) -> dict | None:
     r = db.one("SELECT * FROM c_bookings WHERE id = ?", (bid,))
     if not r:
         return None
     svc = platform.catalog_item(r["service_id"])
-    return {**r, "fields": db.unj(r["fields"], {}), "service_name": svc["name"] if svc else None}
+    sid = r["service_id"]
+    name = (svc["name"] if svc else None) or _SVC_ALIAS.get(str(sid)) or (
+        str(sid).replace("_", " ").replace("-", " ").title() if sid else None)
+    m = db.one("SELECT name FROM c_members WHERE id = ?", (r["member_id"],))
+    return {**r, "fields": db.unj(r["fields"], {}), "service_name": name, "member_name": m["name"] if m else None}
 
 
 def schedule(org: str, day: str | None = None) -> list[dict]:
@@ -169,6 +184,55 @@ def pay(iid: int, method: str) -> dict:
 
 
 # ---- dashboard --------------------------------------------------------------------------------------------------
+
+def _mod_match(device_modality: str, service_id: str) -> bool:
+    a, b = str(device_modality or "").lower(), str(service_id or "").lower()
+    if not a or not b:
+        return False
+    ah, bh = a.split("_")[0], b.split("_")[0]
+    return a == b or a.startswith(b) or b.startswith(a) or ah == bh
+
+
+def floor(org: str, day: str | None = None) -> list[dict]:
+    """Live floor: every machine/room with its status (available · in use · servicing · offline), what's running on
+    it now, and how loaded it is today. Bookings aren't pinned to a specific unit, so 'in use' is matched by
+    modality to an active session; the rest comes from the equipment register."""
+    day = day or date.today().isoformat()
+    now = datetime.now()
+    rows = db.rows("SELECT * FROM c_bookings WHERE org = ? AND substr(start_ts,1,10) = ?", (org, day))
+    active: dict[str, list] = {}
+    load: dict[str, int] = {}
+    nextup: dict[str, tuple] = {}
+    for b in rows:
+        sid = str(b["service_id"])
+        load[sid] = load.get(sid, 0) + 1
+        try:
+            st = datetime.fromisoformat(b["start_ts"]); en = st + timedelta(minutes=b["minutes"] or 30)
+        except Exception:  # noqa: BLE001
+            continue
+        mem = db.one("SELECT name FROM c_members WHERE id = ?", (b["member_id"],))
+        who = mem["name"] if mem else f"#{b['member_id']}"
+        if b["status"] in ("checked_in", "booked") and st <= now < en:
+            active.setdefault(sid, []).append({"member": who, "until": en.strftime("%H:%M")})
+        if st > now and (sid not in nextup or st < nextup[sid][0]):
+            nextup[sid] = (st, who)
+    out = []
+    for d in db.rows("SELECT * FROM devices ORDER BY room, name"):
+        base = "offline" if d["status"] == "not_in_service" else "servicing" if d["status"] in ("maintenance", "servicing") else "available"
+        busy = None
+        matched = [s for s in active if _mod_match(d["modality"], s)]
+        if base == "available" and matched and active[matched[0]]:
+            busy = active[matched[0]].pop(0)
+        today_load = sum(v for s, v in load.items() if _mod_match(d["modality"], s))
+        nxt = None
+        for s in nextup:
+            if _mod_match(d["modality"], s):
+                nxt = {"at": nextup[s][0].strftime("%H:%M"), "member": nextup[s][1]}; break
+        out.append({"id": d["id"], "name": d["name"], "modality": d["modality"], "room": d["room"], "capacity": d["capacity"],
+                    "status": "in_use" if busy else base, "busy_with": busy, "today_sessions": today_load, "next": nxt,
+                    "next_service": d["next_service"], "last_service": d["last_service"]})
+    return out
+
 
 def dashboard(org: str = "default", day: str | None = None) -> dict:
     day = day or date.today().isoformat()

@@ -326,6 +326,49 @@ def _narrative(ident, bm, vit, rec, hab, rep, models) -> str:
     return " ".join(L)
 
 
+def _care_activity() -> dict:
+    """Therapies, devices/wearables and medications read from the patient's own (already-bound) DB — the full care
+    record the member sees in the app, surfaced to the clinician. Defensive: any missing table yields an empty section."""
+    def _rows(q, p=()):
+        try:
+            return [dict(r) for r in db.rows(q, p)]
+        except Exception:  # noqa: BLE001
+            return []
+    def _one(q, p=()):
+        try:
+            r = db.one(q, p)
+            return dict(r) if r else None
+        except Exception:  # noqa: BLE001
+            return None
+    by_mod = _rows("""SELECT modality, COUNT(*) n, ROUND(SUM(COALESCE(minutes,0))) minutes, MAX(ts) last
+                      FROM therapy_sessions GROUP BY modality ORDER BY n DESC""")
+    recent = _rows("""SELECT ts, modality, ROUND(COALESCE(minutes,0)) minutes, status, subjective
+                      FROM therapy_sessions ORDER BY ts DESC LIMIT 8""")
+    tot = _one("SELECT COUNT(*) n, MIN(ts) first, MAX(ts) last FROM therapy_sessions") or {}
+    protos = []
+    for r in _rows("SELECT id, data, active FROM protocols"):
+        d = db.unj(r.get("data"), {}) or {}
+        protos.append({"id": r.get("id"), "name": d.get("name") or d.get("title") or str(r.get("id") or "").replace("-", " ").title(),
+                       "active": bool(r.get("active"))})
+    plans = _rows("SELECT goal, state, doctor, created_at FROM therapy_plans ORDER BY id DESC LIMIT 5")
+    therapies = {"total": tot.get("n", 0), "span": [tot.get("first"), tot.get("last")],
+                 "by_modality": by_mod, "recent": recent, "protocols": protos, "plans": plans}
+    wear = []
+    if _one("SELECT 1 FROM whoop_state LIMIT 1"):
+        wear.append({"name": "WHOOP", "kind": "wearable", "status": "linked"})
+    if (_one("SELECT COUNT(*) n FROM band_minutes") or {}).get("n"):
+        wear.append({"name": "Telomy patch (ECG)", "kind": "wearable", "status": "active"})
+    if (_one("SELECT COUNT(*) n FROM cgm_readings") or {}).get("n"):
+        wear.append({"name": "CGM", "kind": "wearable", "status": "active"})
+    equip = _rows("""SELECT ts.device_id, COUNT(*) n, MAX(d.name) name, MAX(d.modality) modality
+                     FROM therapy_sessions ts LEFT JOIN devices d ON d.id = ts.device_id
+                     WHERE ts.device_id IS NOT NULL AND ts.device_id <> ''
+                     GROUP BY ts.device_id ORDER BY n DESC LIMIT 12""")
+    devices = {"wearables": wear, "equipment_used": equip}
+    meds = _rows("SELECT name, dose, frequency, reason, prescriber FROM medications WHERE active = 1")
+    return {"therapies": therapies, "devices": devices, "medications": meds}
+
+
 def overview(pid: int) -> dict:
     """The one-screen 360 for the clinic (and the member's own screen): all domains + a grounded AI summary."""
     r = db.one("SELECT * FROM patients WHERE id = ?", (pid,))
@@ -347,6 +390,7 @@ def overview(pid: int) -> dict:
     with _patient_db(pid) as live:
         organs = _organs_current() if live else None
         environment = _environment_current() if live else None
+        care = _care_activity() if live else {"therapies": None, "devices": None, "medications": []}
     models = _risk(pid, bm)
     narrative = _narrative(ident, bm, vit, rec, hab, rep, models)
     return {
@@ -361,6 +405,9 @@ def overview(pid: int) -> dict:
         "recovery_sleep": rec,
         "habits": hab,
         "risk_models": models,
+        "therapies": care["therapies"],
+        "devices": care["devices"],
+        "medications": care["medications"],
         "reports": [{"id": x["id"], "title": x["title"], "panel_title": x.get("panel_title"), "collected_on": x["collected_on"],
                      "flagged": x.get("flagged"), "headline": x.get("headline")} for x in rep][:10],
         "as_of": bm.get("as_of"),

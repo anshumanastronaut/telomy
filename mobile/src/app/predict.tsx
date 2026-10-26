@@ -33,7 +33,7 @@ export default function Predict() {
   return (
     <Screen edges={[]}>
       <T v="body" color={p.muted}>Validated, published risk equations run on your own Vault. Each shows its model and citation. These are estimates for a conversation with your doctor — not a diagnosis.</T>
-      <PredictionCards models={data.models} />
+      <PredictionCards models={data.models} inputs={data.inputs} />
       <Section title="What if?">
         <Card>
           <T v="small">Change a value to see how your predicted risk moves.</T>

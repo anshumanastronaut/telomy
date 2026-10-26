@@ -137,14 +137,17 @@ export const motion = {
 
 // Typography (UI Design System v1.0): Inter for UI, Fraunces as the display serif.
 // The Telomy wordmark typeface is used only in the logo, splash and boot animation.
+// --- Direction 5: Telomy brand — TelomySans headlines, Geist body, Geist Mono numerals ---
+// TelomySans is a 70-glyph brand/display face (letters + digits + basic punctuation, no ₹/µ/arrows), so it carries
+// headlines only; Geist handles body/UI and Geist Mono the data, where the missing glyphs actually appear.
 export const fonts = {
-  display: 'Fraunces_500Medium',
-  displayLight: 'Fraunces_400Regular',
-  light: 'Inter_300Light',
-  body: 'Inter_400Regular',
-  medium: 'Inter_500Medium',
-  bold: 'Inter_600SemiBold',
-  mono: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  display: 'TelomySans_Bold',
+  displayLight: 'TelomySans_Regular',
+  light: 'Geist_300Light',
+  body: 'Geist_400Regular',
+  medium: 'Geist_500Medium',
+  bold: 'Geist_600SemiBold',
+  mono: 'GeistMono_500Medium',
 };
 
 export function ff(weight?: string | number) {

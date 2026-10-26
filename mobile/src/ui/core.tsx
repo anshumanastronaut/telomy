@@ -1,8 +1,10 @@
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { SymbolView, SFSymbol } from 'expo-symbols';
 import React from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -17,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { depth, ff, fonts, Palette, radius, space, statusColor, statusLabel, usePalette } from '@/lib/theme';
+import { TelomyLoader } from './loader';
 
 type V = 'display' | 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'label' | 'num' | 'numLg';
 
@@ -25,19 +28,20 @@ export function T({ v = 'body', color, style, ...rest }: TextProps & { v?: V; co
   const base: Record<V, TextStyle> = {
     // Editorial hierarchy: Fraunces carries every headline and number, Inter carries reading and UI. Tight negative
     // tracking on large serif sizes, generous line-height on body, one quiet micro-label style.
-    display: { fontFamily: fonts.display, fontSize: 44, lineHeight: 50, color: p.text, letterSpacing: -1.2 },
-    h1: { fontFamily: fonts.display, fontSize: 34, lineHeight: 40, color: p.text, letterSpacing: -0.6 },
-    h2: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, color: p.text, letterSpacing: -0.3 },
+    // Telomy brand face is a hero-only accent (h1 = each screen's title). display carries big numbers → mono.
+    display: { fontFamily: fonts.mono, fontSize: 44, lineHeight: 50, color: p.text, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
+    h1: { fontFamily: fonts.display, fontSize: 32, lineHeight: 38, color: p.text, letterSpacing: 0.5 },
+    h2: { fontSize: 23, fontWeight: '600', lineHeight: 29, color: p.text, letterSpacing: -0.2 },
     h3: { fontSize: 17, fontWeight: '600', lineHeight: 23, color: p.text, letterSpacing: -0.2 },
     body: { fontSize: 16, lineHeight: 24, color: p.text },
     small: { fontSize: 14, lineHeight: 20, color: p.muted },
     label: { fontSize: 12, letterSpacing: 0.6, fontWeight: '600', color: p.muted },
-    num: { fontFamily: fonts.display, fontSize: 26, fontVariant: ['tabular-nums'], color: p.text, letterSpacing: -0.4 },
-    numLg: { fontFamily: fonts.display, fontSize: 56, lineHeight: 60, fontVariant: ['tabular-nums'], color: p.text, letterSpacing: -1.4 },
+    num: { fontFamily: fonts.mono, fontSize: 25, fontVariant: ['tabular-nums'], color: p.text, letterSpacing: -0.6 },
+    numLg: { fontFamily: fonts.mono, fontSize: 52, lineHeight: 58, fontVariant: ['tabular-nums'], color: p.text, letterSpacing: -2 },
   };
   const flat = (StyleSheet.flatten([base[v], color ? { color } : null, style]) ?? {}) as TextStyle;
-  const isDisplay = flat.fontFamily === fonts.display;
-  const family = isDisplay ? fonts.display : ff(flat.fontWeight as any);
+  // Honour an explicit family (display serif / mono numerals); otherwise pick the UI weight.
+  const family = flat.fontFamily ?? ff(flat.fontWeight as any);
   // Native uppercase turns "µg/m³" into "ΜG/M³" (Greek capital mu); uppercase by hand and keep µ-units intact.
   if (flat.textTransform === 'uppercase' && typeof rest.children === 'string' && rest.children.includes('µ')) {
     const text = rest.children.split(/(µ[A-Za-z]+(?:\/[A-Za-z0-9³²]+)?)/).map((s, i) => (i % 2 ? s : s.toUpperCase())).join('');
@@ -256,13 +260,28 @@ export function Section({ title, action, onAction, children }: { title: string; 
   );
 }
 
-export function Loading({ what }: { what: string }) {
+/** A back control for screens that don't get a native header (e.g. detail screens inside the doctor/centre tab
+ * groups). Place it at the top of the Screen. Falls back to a route when there's no stack history to pop. */
+export function BackButton({ label = 'Back', fallback }: { label?: string; fallback?: string }) {
   const p = usePalette();
   return (
-    <Row style={{ padding: space[6], justifyContent: 'center' }}>
-      <ActivityIndicator color={p.teal} />
-      <T v="small">{what}</T>
-    </Row>
+    <Pressable
+      onPress={() => { if (router.canGoBack()) router.back(); else if (fallback) router.replace(fallback as any); }}
+      accessibilityRole="button" accessibilityLabel={label} hitSlop={10}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 2 }}>
+      <Icon name="chevron.left" size={17} color={p.teal} />
+      <T v="body" color={p.teal}>{label}</T>
+    </Pressable>
+  );
+}
+
+export function Loading({ what }: { what: string }) {
+  // Centre the motion mark in the viewport (not pinned to the top of the scroll view).
+  const h = Dimensions.get('window').height;
+  return (
+    <View style={{ minHeight: h * 0.9, alignItems: 'center', justifyContent: 'center' }}>
+      <TelomyLoader size="hero" message={what} />
+    </View>
   );
 }
 
@@ -381,7 +400,7 @@ export function Stat({ label, value, unit, sub, color }: { label: string; value:
     <View style={{ flex: 1, gap: 2 }}>
       <T v="label">{label}</T>
       <Row gap={4} style={{ alignItems: 'baseline' }}>
-        <T v="num" color={color}>
+        <T v="num" color={color} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5} style={{ flexShrink: 1 }}>
           {value ?? '—'}
         </T>
         {unit ? <T v="small">{unit}</T> : null}

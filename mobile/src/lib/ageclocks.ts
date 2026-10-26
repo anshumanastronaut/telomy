@@ -44,7 +44,7 @@ function vo2Ref(age: number, sex: Sex) {
 }
 function fitnessAge(i: ClockInputs): Clock {
   const base: Clock = { key: 'fitness', label: 'Fitness age', years: null, delta: null, confidence: null,
-    basis: '', note: 'VO₂max is the single best predictor of longevity. Connect your phone's health app or log a resting HR.' };
+    basis: '', note: 'VO₂max is the single best predictor of longevity. Connect the phone health app or log a resting HR.' };
   if (i.age == null) return base;
   const measured = i.vo2max && i.vo2max > 10 ? i.vo2max : null;
   const estimated = !measured && i.restingHr ? estVo2max(i.age, i.restingHr) : null;

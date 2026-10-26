@@ -1,17 +1,20 @@
 // Auth gate for a hosted Telomy server. Multi-user: sign up or log in with email + password (the token is kept on the
 // phone, so it asks only once). A server still in single-user mode shows the access-password field instead; creating an
 // account on it turns on multi-user and the first account inherits the existing Vault.
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { authStatus, login, signup, unlock } from '@/lib/api';
+import { authStatus, exitLock, login, signup, unlock } from '@/lib/api';
+import { useRole } from '@/lib/role';
 import { radius, space, type, usePalette } from '@/lib/theme';
 import { Button, T } from '@/ui/core';
-import { ThinkingOrb } from '@/sinc/ThinkingOrb';
+import { TelomyLoader } from '@/ui/loader';
 
 type Mode = 'login' | 'signup' | 'password';
 
 export function LockScreen() {
   const p = usePalette();
+  const { setRole } = useRole();
   const [mode, setMode] = useState<Mode>('login');
   const [accountsEnabled, setAccountsEnabled] = useState(false);
   const [email, setEmail] = useState('');
@@ -38,7 +41,7 @@ export function LockScreen() {
     setErr(e); setBusy(false);
   };
 
-  const input = { backgroundColor: p.surfaceAlt, borderRadius: radius.md, padding: space[4], color: p.text, fontSize: type.lead, fontFamily: 'Inter_400Regular' } as const;
+  const input = { backgroundColor: p.surfaceAlt, borderRadius: radius.md, padding: space[4], color: p.text, fontSize: type.lead, fontFamily: 'HankenGrotesk_400Regular' } as const;
   const title = mode === 'password' ? 'Welcome back' : mode === 'signup' ? 'Create your Telomy' : 'Welcome back';
   const sub = mode === 'password' ? 'Your Telomy is private. Enter your access password.'
     : mode === 'signup' ? 'Your own private Vault — labs, wearables and Sinc, all yours.'
@@ -49,7 +52,7 @@ export function LockScreen() {
       style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: p.bg }}>
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space[6], gap: space[4] }}>
-      <View style={{ alignItems: 'center' }}><ThinkingOrb state="shaping" size={64} /></View>
+      <View style={{ alignItems: 'center' }}><TelomyLoader size="hero" /></View>
       <View style={{ gap: space[2], alignItems: 'center' }}>
         <T v="h1" style={{ textAlign: 'center' }}>{title}</T>
         <T v="small" style={{ textAlign: 'center' }}>{sub}</T>
@@ -85,6 +88,10 @@ export function LockScreen() {
           <T v="small" color={p.teal} style={{ textAlign: 'center' }}>Set up accounts instead (keeps your current data)</T>
         </Pressable>
       ) : null}
+
+      <Pressable onPress={async () => { await setRole(null); exitLock(); router.replace('/welcome' as any); }} accessibilityRole="button" style={{ paddingTop: space[2] }}>
+        <T v="small" color={p.muted} style={{ textAlign: 'center' }}>Signing in as a doctor or wellness centre? →</T>
+      </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );

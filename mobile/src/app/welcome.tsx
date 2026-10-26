@@ -65,7 +65,7 @@ function StaffLogin({ kind, onBack, onDone }: { kind: 'doctor' | 'centre'; onBac
 
   useEffect(() => { staffStatus().then((s) => setFirst(!s.has_staff)).catch(() => {}); }, []);
 
-  const input = { borderWidth: 1, borderColor: p.border, borderRadius: radius.md, backgroundColor: p.surface, padding: 12, color: p.text, fontFamily: 'Inter_400Regular' } as const;
+  const input = { borderWidth: 1, borderColor: p.border, borderRadius: radius.md, backgroundColor: p.surface, padding: 12, color: p.text, fontFamily: 'HankenGrotesk_400Regular' } as const;
 
   const go = async () => {
     setErr(null); setBusy(true);

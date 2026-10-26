@@ -8,7 +8,7 @@ import { askOnDevice, SLM_INFO, useSlm } from '@/lib/slm';
 import { radius, space, type, usePalette } from '@/lib/theme';
 import { Button, Chip, ConfBar, Icon, Row, Spacer, StatusChip, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
-import { ThinkingOrb, type OrbState } from '@/sinc/ThinkingOrb';
+import { TelomyLoader } from '@/ui/loader';
 
 type Msg = { role: 'user' | 'assistant'; content: string; meta?: any; id?: number; pending?: boolean };
 
@@ -109,9 +109,9 @@ export default function Sinc() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: p.bg }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={60}>
         <Row style={{ paddingHorizontal: space[4], paddingVertical: space[2] }}>
-          {/* Sinc's face: the orb is always alive here — calm "shaping" at rest, "solving" while it works */}
-          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: p.surface, alignItems: 'center', justifyContent: 'center' }}>
-            <ThinkingOrb state={busy ? 'solving' : 'shaping'} size={20} />
+          {/* Sinc's face: the Telomy motion mark is always alive here — the brand's signature loader */}
+          <View style={{ width: 44, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+            <TelomyLoader size="mark" />
           </View>
           <View style={{ flex: 1 }}>
             <T v="h3">Sinc</T>
@@ -146,9 +146,9 @@ export default function Sinc() {
             // First impression: Sinc's presence, two words, nothing else competing. Everything Sinc can do stays one
             // tap away — the starters become quiet chips, the "how it works" line sits small under the orb.
             <View style={{ alignItems: 'center', gap: space[5], paddingTop: space[8] }}>
-              <ThinkingOrb state="listening" size={64} scale={2.6} />
+              <TelomyLoader size="hero" />
               <View style={{ alignItems: 'center', gap: space[2] }}>
-                <T v="display" style={{ textAlign: 'center' }}>Always watching.</T>
+                <T v="h1" style={{ textAlign: 'center' }}>Always watching.</T>
                 <T v="small" color={p.muted} style={{ textAlign: 'center' }}>Sinc knows your whole Vault — and shows its evidence.</T>
               </View>
               {insights.data?.threads?.length ? (
@@ -322,16 +322,11 @@ function SincThinking() {
     const a = setTimeout(() => setPhase(1), 2200), b = setTimeout(() => setPhase(2), 5500);
     return () => { clearTimeout(a); clearTimeout(b); };
   }, []);
-  const stages: { state: OrbState; text: string }[] = [
-    { state: 'searching', text: 'Reading your Vault…' },
-    { state: 'solving', text: 'Checking the evidence…' },
-    { state: 'composing', text: 'Writing your answer…' },
-  ];
-  const s = stages[phase];
+  const stages = ['Reading your Vault…', 'Checking the evidence…', 'Writing your answer…'];
   return (
-    <Row gap={space[3]}>
-      <ThinkingOrb state={s.state} size={64} />
-      <T v="small">{s.text}</T>
+    <Row gap={space[3]} style={{ alignItems: 'center' }}>
+      <TelomyLoader size="inline" />
+      <T v="small">{stages[phase]}</T>
     </Row>
   );
 }

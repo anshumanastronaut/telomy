@@ -1,6 +1,12 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { BricolageGrotesque_400Regular, BricolageGrotesque_500Medium, BricolageGrotesque_600SemiBold, BricolageGrotesque_700Bold } from '@expo-google-fonts/bricolage-grotesque';
 import { Fraunces_400Regular, Fraunces_500Medium } from '@expo-google-fonts/fraunces';
+import { Geist_300Light, Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold } from '@expo-google-fonts/geist';
+import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif';
+import { GeistMono_400Regular, GeistMono_500Medium, GeistMono_600SemiBold } from '@expo-google-fonts/geist-mono';
+import { HankenGrotesk_300Light, HankenGrotesk_400Regular, HankenGrotesk_500Medium, HankenGrotesk_600SemiBold, HankenGrotesk_700Bold } from '@expo-google-fonts/hanken-grotesk';
 import { Inter_300Light, Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { SchibstedGrotesk_400Regular, SchibstedGrotesk_500Medium, SchibstedGrotesk_600SemiBold, SchibstedGrotesk_700Bold } from '@expo-google-fonts/schibsted-grotesk';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -22,12 +28,38 @@ export default function RootLayout() {
   const theme = { ...base, colors: { ...base.colors, background: p.bg, card: p.bg, text: p.text, border: p.border, primary: p.teal } };
   const sheet = { presentation: 'modal' as const, headerShown: false };
   const [loaded] = useFonts({
+    HankenGrotesk_300Light,
+    HankenGrotesk_400Regular,
+    HankenGrotesk_500Medium,
+    HankenGrotesk_600SemiBold,
+    HankenGrotesk_700Bold,
     Inter_300Light,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Fraunces_400Regular,
     Fraunces_500Medium,
+    Geist_300Light,
+    Geist_400Regular,
+    Geist_500Medium,
+    Geist_600SemiBold,
+    Geist_700Bold,
+    BricolageGrotesque_400Regular,
+    BricolageGrotesque_500Medium,
+    BricolageGrotesque_600SemiBold,
+    BricolageGrotesque_700Bold,
+    InstrumentSerif_400Regular,
+    TelomySans_Thin: require('../../assets/fonts/TelomySans-Thin.ttf'),
+    TelomySans_Light: require('../../assets/fonts/TelomySans-Light.ttf'),
+    TelomySans_Regular: require('../../assets/fonts/TelomySans-Regular.ttf'),
+    TelomySans_Bold: require('../../assets/fonts/TelomySans-Bold.ttf'),
+    GeistMono_400Regular,
+    GeistMono_500Medium,
+    GeistMono_600SemiBold,
+    SchibstedGrotesk_400Regular,
+    SchibstedGrotesk_500Medium,
+    SchibstedGrotesk_600SemiBold,
+    SchibstedGrotesk_700Bold,
   });
   const [intro, setIntro] = useState(true);
   const [locked, setLocked] = useState(false);

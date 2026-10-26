@@ -80,16 +80,32 @@ def complete_task(tid: int) -> dict:
 # ---- the doctor's day -------------------------------------------------------------------------------------------
 
 def inbox(org: str = "default", doctor_id: int = 2) -> dict:
-    """One screen for a doctor: patients needing attention, open tasks, the care-review queue, today's consults."""
-    from . import roles
+    """One screen for a doctor: patients needing attention, open tasks, the care-review queue, today's consults.
+    Every care-queue finding is attributed to the patient it belongs to (read from that patient's own record) so the
+    doctor sees WHO needs review, not an orphaned symptom — and can open the chart and act on it."""
+    from . import roles, patient_data
     try:
         patients = roles.doctor_patients(doctor_id)
     except Exception:  # noqa: BLE001
         patients = []
     care = []
-    try:
-        care = [i for i in db.rows("SELECT * FROM insights WHERE review_state = 'awaiting' ORDER BY created_at DESC LIMIT 20")]
-    except Exception:  # noqa: BLE001
-        pass
+    seen_uids: set = set()
+    for pt in patients:
+        pid = pt["id"]
+        try:
+            uid = patient_data._resolve_user_id(pid)
+            if uid is None or uid in seen_uids:
+                continue  # seed-only patient (concerns show as triage flags) or a duplicate link to the same record
+            seen_uids.add(uid)
+            with patient_data._patient_db(pid):
+                rows = db.rows("""SELECT id, title, kind, confidence, body, medical FROM insights
+                                  WHERE review_state = 'awaiting' AND dismissed = 0
+                                  ORDER BY medical DESC, confidence DESC LIMIT 6""")
+        except Exception:  # noqa: BLE001
+            rows = []
+        for r in rows:
+            care.append({"id": r["id"], "patient_id": pid, "patient": pt["name"], "kind": r["kind"],
+                         "title": r["title"], "body": r["body"], "confidence": r["confidence"], "medical": r["medical"]})
+    care.sort(key=lambda c: (-(c.get("medical") or 0), -(c.get("confidence") or 0)))
     return {"org": org, "doctor_id": doctor_id, "patients": patients[:20], "open_tasks": tasks(org, "open")[:20],
-            "care_queue": [{"id": c["id"], "title": c["title"]} for c in care], "templates": templates(org)}
+            "care_queue": care[:25], "templates": templates(org)}

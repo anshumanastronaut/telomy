@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Telomy Loader</title>
+<style>
+  :root { --bg:#EDEBE4; --teal:#1f6b5b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0B0D0D; --teal:#43AC90; } }
+  html,body { margin:0; height:100%; background:var(--bg); display:grid; place-items:center; }
+  #wrap { display:grid; justify-items:center; gap:28px; }
+  canvas { display:block; }
+  .cap { font:400 12px/1 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+         letter-spacing:.12em; color:var(--teal); opacity:.75; text-transform:uppercase; }
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="c" aria-label="Telomy loading"></canvas>
+    <div class="cap" id="cap">Reading your signals…</div>
+  </div>
+<script>
+/* Telomy loader — side-on DNA double helix / infinity.
+   Two strands 180° apart: sp = sin(t·SPEED − i·TWIST). One shared clock drives every column, so the whole mark
+   moves in sync; the beads sweep past each other and meet at the crossing (pinch) nodes. Mirrors the in-app
+   component (mobile/src/ui/loader.tsx). */
+(function () {
+  'use strict';
+  const N = 11, SPEED = 1.0, TWIST = 0.55;              // columns · rotation speed · twist per column
+  const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+  const teal = () => getComputedStyle(document.documentElement).getPropertyValue('--teal').trim() || '#1f6b5b';
+  let W, H, dpr, COL;
+
+  function size() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.min(460, Math.max(260, window.innerWidth * 0.82));
+    H = Math.round(W * 0.42);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    COL = teal();
+  }
+  size();
+  window.addEventListener('resize', size);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', size);
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const t0 = performance.now();
+
+  function frame(now) {
+    const t = reduce ? 0.4 : (now - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+    const s = W / N, cy = H / 2, Hm = H * 0.42, R = Math.max(3, Math.min(8.5, s * 0.17));
+    for (let i = 0; i < N; i++) {
+      const x = s * (i + 0.5);
+      const sp = Math.sin(t * SPEED - i * TWIST);
+      const a = Math.abs(sp);
+      const y1 = cy - Hm * sp, y2 = cy + Hm * sp;
+      // the rung
+      ctx.strokeStyle = COL; ctx.globalAlpha = 0.18 + 0.5 * a; ctx.lineWidth = 1 + 0.9 * a; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x, y2); ctx.stroke();
+      // the two beads (bigger at the crossing nodes, with a soft glow)
+      ctx.globalAlpha = 1; ctx.fillStyle = COL;
+      ctx.shadowColor = COL; ctx.shadowBlur = 6 + 8 * (1 - a);
+      const r = R * (1.22 - 0.3 * a);
+      ctx.beginPath(); ctx.arc(x, y1, r, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y2, r, 0, 7); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

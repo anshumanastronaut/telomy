@@ -53,6 +53,8 @@ export default function Profile() {
       </Card>
 
       <Group title="Take care of yourself">
+        <ListRow icon="heart.text.square" title="Vitals" subtitle="Your body by system, scored 0–100 with every contributor" onPress={() => router.push('/vitals' as any)} />
+        <ListRow icon="sparkles" title="What affects you" subtitle="Patterns in your own data — what lifts you, what drains you" onPress={() => router.push('/insights' as any)} />
         <ListRow icon="list.bullet.clipboard" title="Your trackers" subtitle="Pain, symptoms, supplements, habits — anything you told Sinc" onPress={() => router.push('/trackers' as any)} />
         <ListRow icon="pills.fill" title="Curated supplements" subtitle="Only what your labs support — dose, timing, evidence grade" onPress={() => router.push('/rx')} />
         <ListRow icon="figure.stand" title="Whole-body scan & tests" subtitle="Blood panels, imaging, genetics — what to test next" onPress={() => router.push('/tests')} />
@@ -80,6 +82,7 @@ export default function Profile() {
       </Group>
 
       <Group title="Your data">
+        <ListRow icon="qrcode" title="ABHA · Health ID" subtitle="Link India's health ID; bring records into your Vault" onPress={() => router.push('/abha' as any)} />
         <ListRow icon="hand.raised" title="Consent centre" subtitle="Per-purpose, revocable, with history" onPress={() => router.push('/consent')} />
         <ListRow icon="person.2" title="Family Vault" subtitle="Scoped, time-boxed sharing" onPress={() => router.push('/family')} />
         <ListRow icon="brain" title="What Sinc remembers" subtitle="View and delete facts" onPress={() => router.push('/memory')} />

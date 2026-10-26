@@ -52,3 +52,9 @@ research/*/nhanes_*.csv
 backend/data_local/
 backend/telomy.db
 backend/_setup_accounts.py
+
+# never commit — live-capture DB WAL/SHM (real PHI) and rig credentials
+backend/telomy-live.db*
+*.db-shm
+*.db-wal
+research/validation/RIG_CREDENTIALS.md

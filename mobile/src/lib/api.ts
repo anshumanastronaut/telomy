@@ -33,6 +33,8 @@ let locked = false;
 const lockListeners = new Set<(l: boolean) => void>();
 function setLocked(l: boolean) { if (l !== locked) { locked = l; lockListeners.forEach((f) => f(l)); } }
 export function onLockChange(f: (l: boolean) => void) { lockListeners.add(f); f(locked); return () => { lockListeners.delete(f); }; }
+/** Dismiss the member-Vault lock overlay without signing in — e.g. to go sign in as a doctor/centre instead. */
+export function exitLock() { setLocked(false); }
 /** Exchange the password for a token. Returns an error message, or null on success. */
 export async function unlock(password: string): Promise<string | null> {
   try {

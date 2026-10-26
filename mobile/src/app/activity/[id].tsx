@@ -54,7 +54,7 @@ export default function Activity() {
             <Row key={f.key}>
               <T v="body" style={{ flex: 1 }}>{f.label}{f.unit ? ` (${f.unit})` : ''}</T>
               <TextInput value={vals[f.key] ?? ''} onChangeText={(v) => setVals({ ...vals, [f.key]: v })} keyboardType="decimal-pad" placeholder="—" placeholderTextColor={p.faint}
-                style={{ width: 90, borderRadius: radius.sm, padding: 8, color: p.text, textAlign: 'right', fontFamily: 'Inter_400Regular' }} />
+                style={{ width: 90, borderRadius: radius.sm, padding: 8, color: p.text, textAlign: 'right', fontFamily: 'HankenGrotesk_400Regular' }} />
             </Row>
           ))}
           <Button title="Save session" onPress={log} disabled={!Object.values(vals).some(Boolean)} />

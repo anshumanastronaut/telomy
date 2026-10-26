@@ -19,7 +19,7 @@ export default function About() {
     if (data) setF({ first_name: data.first_name ?? '', dob: data.dob ?? '', sex: data.sex ?? '', height_cm: data.height_cm ? String(data.height_cm) : '',
       weight_kg: data.weight_kg ? String(data.weight_kg) : '', smoker: data.smoker ? 'yes' : 'no' });
   }, [data]);
-  const input = { borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' } as const;
+  const input = { borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular' } as const;
   const dobOk = !f.dob || /^\d{4}-\d{2}-\d{2}$/.test(f.dob);
   async function save() {
     if (!dobOk) { show('Date of birth as YYYY-MM-DD, e.g. 1995-04-21', 'alert'); return; }

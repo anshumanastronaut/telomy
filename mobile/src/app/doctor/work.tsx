@@ -1,10 +1,11 @@
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { api, useApi } from '@/lib/api';
 import { staffOrg } from '@/lib/staff';
 import { radius, space, usePalette } from '@/lib/theme';
-import { Button, Card, ErrorState, Loading, Row, Screen, Section, T, useToast } from '@/ui/core';
+import { Button, Card, Chip, ErrorState, Loading, Row, Screen, Section, T, useToast } from '@/ui/core';
 
 export default function Work() {
   const p = usePalette();
@@ -34,16 +35,16 @@ export default function Work() {
         {!inbox.data ? <Loading what="Loading…" /> : null}
 
         <Section title={`Care review · ${care.length}`}>
-          {care.length ? (
-            <Card style={{ paddingVertical: 4 }}>
-              {care.map((c: any, i: number) => (
-                <Row key={c.id} style={{ paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: p.border }}>
-                  <T v="body" style={{ flex: 1 }} numberOfLines={3}>{c.title}</T>
-                </Row>
-              ))}
+          <T v="small" color={p.faint} style={{ marginTop: -2, marginBottom: space[1] }}>Findings from your patients' own data, awaiting your sign-off. Tap to open the chart and act.</T>
+          {care.length ? care.map((c: any) => (
+            <Card key={`${c.patient_id}-${c.id}`} onPress={() => router.push(`/doctor/patient/${c.patient_id}` as any)} style={{ marginBottom: space[2] }}>
+              <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <T v="label" color={p.teal}>{c.patient}</T>
+                <Chip label={`${Math.round((c.confidence ?? 0) * 100)}%`} fg={p.muted} bg={p.surfaceAlt} />
+              </Row>
+              <T v="body" style={{ marginTop: 4 }} numberOfLines={2}>{c.title}</T>
             </Card>
-          ) : <Card><T v="small">Nothing awaiting review.</T></Card>}
-          <T v="small">Findings surfaced from your patients' own data, awaiting your review.</T>
+          )) : <Card><T v="small">Nothing awaiting review.</T></Card>}
         </Section>
 
         <Section title={`Open tasks · ${tasks.data?.length ?? 0}`}>
@@ -57,7 +58,7 @@ export default function Work() {
             {tasks.data && !tasks.data.length ? <T v="small">Inbox zero.</T> : null}
             <Row style={{ alignItems: 'center', gap: 8 }}>
               <TextInput value={newTask} onChangeText={setNewTask} placeholder="New task" placeholderTextColor={p.faint}
-                style={{ flex: 1, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, color: p.text, fontFamily: 'Inter_400Regular' }} onSubmitEditing={add} />
+                style={{ flex: 1, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, color: p.text, fontFamily: 'HankenGrotesk_400Regular' }} onSubmitEditing={add} />
               <Button kind="secondary" title="Add" disabled={!newTask.trim()} onPress={add} />
             </Row>
           </Card>

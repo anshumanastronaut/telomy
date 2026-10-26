@@ -105,7 +105,7 @@ V.dashboard = async () => {
   const c = el('div', 'card'); c.style.marginTop = '18px';
   c.appendChild(el('div', 'row between center', `<h3>Today’s schedule</h3>`));
   c.appendChild(tableOf(['Time', 'Service', 'Member', 'Status', ''], (d.schedule || []).map(b => [
-    hhmm(b.start_ts), b.service_name || '—', '#' + (b.member_id ?? ''), statusBadge(b.status),
+    hhmm(b.start_ts), b.service_name || '—', (b.member_name || '#' + (b.member_id ?? '')), statusBadge(b.status),
     b.status === 'booked' ? btn('Check in', 'primary sm', () => checkIn(b.id)) : '',
   ]), 'No bookings today.'));
   v.appendChild(c);
@@ -119,7 +119,7 @@ V.schedule = async () => {
   const c = el('div', 'card table-card');
   c.appendChild(tableOf(['Time', 'Service', 'Member', 'Resource', 'Status', ''], rows.map(b => [
     hhmm(b.start_ts) + '–' + hhmm(new Date(new Date(b.start_ts).getTime() + (b.minutes || 0) * 60000)), b.service_name || '—',
-    '#' + (b.member_id ?? ''), b.resource_id ? 'Room ' + b.resource_id : '—', statusBadge(b.status),
+    (b.member_name || '#' + (b.member_id ?? '')), b.resource_id ? 'Room ' + b.resource_id : '—', statusBadge(b.status),
     b.status === 'booked' ? btn('Check in', 'primary sm', () => checkIn(b.id)) : btn('Complete', 'sm', () => setBookingStatus(b.id, 'completed')),
   ]), 'Nothing scheduled today.'));
   v.appendChild(c);
@@ -809,6 +809,42 @@ function overviewCard(ov) {
       : f.factor === 'uv' ? `UV max ~${f.uv_mean_max ?? '—'}` : f.factor === 'food_quality' ? 'From the diet log (NOVA), not the postcode' : (f.note ?? '');
     const c = el('div', 'card'); c.appendChild(el('div', 'section-title', `What ${(ov.environment.place || 'their city')} does to them`));
     c.appendChild(tableOf(['Factor', 'Signal', 'Confidence'], factors.map(f => [LAB[f.factor] ?? f.factor, line(f), `<span class="badge">${f.confidence || '—'}</span>`]), ''));
+    node.appendChild(c);
+  }
+
+  // therapies (centre sessions the person has had — modality, dose, protocols)
+  const th = ov.therapies || {};
+  const MODN = { sauna: 'Infrared / Finnish sauna', sauna_ir: 'Infrared sauna', cold: 'Cold plunge', redlight: 'Red-light / PBM', iv: 'IV micronutrient', hbot: 'Hyperbaric O₂ (HBOT)', hbot_mild: 'HBOT (mild)', cryo: 'Cryotherapy', cryo_local: 'Localised cryo', pemf: 'PEMF', compression: 'Compression', coach: 'Coaching', blood: 'Blood draw', consult: 'Consult', h2: 'Hydrogen', h2_inhal: 'Hydrogen inhalation', vibroacoustic: 'Vibroacoustic', float: 'Float tank', contrast: 'Contrast therapy', ihht: 'IHHT (altitude)' };
+  const modn = (m) => MODN[m] || (m ? String(m).replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : '—');
+  if (th && th.total) {
+    const c = el('div', 'card'); c.appendChild(el('div', 'section-title', `Therapies · ${th.total} sessions`));
+    c.appendChild(tableOf(['Modality', 'Sessions', 'Hours', 'Last'], (th.by_modality || []).map((m) => [modn(m.modality), m.n, Math.round((m.minutes || 0) / 60), (m.last || '').slice(0, 10) || '—']), 'No therapy sessions.'));
+    if ((th.protocols || []).length) {
+      const pr = el('div', 'row wrap'); pr.style.marginTop = '8px';
+      th.protocols.forEach((p) => pr.appendChild(el('span', 'badge' + (p.active ? ' primary' : ''), p.name + (p.active ? ' · active' : ''))));
+      c.appendChild(pr);
+    }
+    node.appendChild(c);
+  }
+
+  // devices (wearables + clinic equipment used)
+  const dev = ov.devices || {};
+  if ((dev.wearables || []).length || (dev.equipment_used || []).length) {
+    const c = el('div', 'card'); c.appendChild(el('div', 'section-title', 'Devices'));
+    if ((dev.wearables || []).length) {
+      const w = el('div', 'row wrap'); w.style.marginBottom = '8px';
+      dev.wearables.forEach((x) => w.appendChild(el('span', 'badge primary', `${x.name} · ${x.status}`)));
+      c.appendChild(w);
+    }
+    if ((dev.equipment_used || []).length) c.appendChild(tableOf(['Equipment used', 'Sessions'], dev.equipment_used.map((e) => [e.name || e.device_id, e.n]), ''));
+    node.appendChild(c);
+  }
+
+  // medications & supplements
+  const meds = ov.medications || [];
+  if (meds.length) {
+    const c = el('div', 'card'); c.appendChild(el('div', 'section-title', 'Medications & supplements'));
+    c.appendChild(tableOf(['Name', 'Dose', 'Frequency', 'Prescriber'], meds.map((m) => [m.name, m.dose || '—', m.frequency || '—', m.prescriber || '—']), ''));
     node.appendChild(c);
   }
 

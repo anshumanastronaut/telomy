@@ -12,16 +12,26 @@ import { fonts, usePalette, useScheme } from '@/lib/theme';
 
 const IOS = Platform.OS === 'ios';
 
+// Not every SF Symbol has a `.fill` variant (e.g. `calendar`, `sparkles`), and SymbolView renders BLANK for a name
+// that doesn't exist — which looked like the icon "disappearing" when a tab became active. So the focused icon is the
+// base symbol unless an explicit filled `selected` is passed; selection is still signalled by the active tint.
+const HAS_FILL = new Set<string>([
+  'sun.max', 'person.2', 'tray', 'person.crop.circle', 'chart.bar', 'waveform.path.ecg.rectangle', 'archivebox',
+  'bubble.left.and.text.bubble.right', 'figure.stand',
+]);
+
 /** Tab icon. iOS renders the SF Symbol (Liquid Glass look); Android/others render the matching Ionicon
  *  (SF Symbols are iOS-only and render blank elsewhere). `ion` is the Ionicons base name; the outline
- *  variant is used when unfocused. `selected` overrides the iOS fill symbol when it has no `.fill` variant. */
-export const tabIcon = (name: SFSymbol, ion: string, selected?: SFSymbol) =>
-  ({ color, focused }: { color: any; focused: boolean }) =>
+ *  variant is used when unfocused. `selected` overrides the symbol shown when the tab is active. */
+export const tabIcon = (name: SFSymbol, ion: string, selected?: SFSymbol) => {
+  const active: SFSymbol = selected ?? (HAS_FILL.has(name) ? (`${name}.fill` as SFSymbol) : name);
+  return ({ color, focused }: { color: any; focused: boolean }) =>
     IOS ? (
-      <SymbolView name={focused ? (selected ?? (`${name}.fill` as SFSymbol)) : name} size={22} tintColor={color} />
+      <SymbolView name={focused ? active : name} size={22} tintColor={color} />
     ) : (
       <Ionicons name={(focused ? ion : `${ion}-outline`) as any} size={23} color={color} />
     );
+};
 
 /** Tabs for one role; redirects to welcome or the right role home when the stored role differs. */
 export function RoleTabs({ role, children }: { role: Role; children: React.ReactNode }) {

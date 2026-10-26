@@ -230,5 +230,5 @@ export default function Onboarding() {
 }
 
 function inp(p: any) {
-  return { borderRadius: radius.md, padding: 14, fontSize: 16, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface } as const;
+  return { borderRadius: radius.md, padding: 14, fontSize: 16, color: p.text, fontFamily: 'HankenGrotesk_400Regular', backgroundColor: p.surface } as const;
 }
