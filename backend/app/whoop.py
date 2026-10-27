@@ -226,6 +226,39 @@ def series(stream: str, start: int, end: int, limit: int = 200000) -> list[dict]
     return out
 
 
+def _extend_sleep_end(end: int, resting: int | None, cap_s: int = 2 * 3600) -> int:
+    """WHOOP often closes the sleep session early (a stir, or the strap/NOOP stops pushing) while heart rate is still
+    in the sleeping band — the person is still asleep. Extend the night's end through trailing HR that stays at/below
+    the sleeping floor (resting + max(10, 15 %)), in 5-min bins, up to the last sample we have. Symmetric to the
+    HR-led onset correction on the client. No resting HR, a gap > 10 min before the next sample, or HR already above
+    the floor → no extension (honest: we never invent sleep past where the data supports it)."""
+    if resting is None:
+        return end
+    floor = resting + max(10, 0.15 * resting)
+    rows = db.rows("SELECT key, data FROM whoop_rows WHERE stream='hrSample' AND ts >= ? AND ts < ? ORDER BY ts", (end, end + cap_s))
+    hr = []
+    for r in rows:
+        try:
+            t = json.loads(r["key"]).get("ts"); b = json.loads(r["data"]).get("bpm")
+        except (json.JSONDecodeError, AttributeError):
+            continue
+        if t and b and 25 <= b <= 220:
+            hr.append((t, b))
+    if not hr or hr[0][0] - end > 10 * 60:        # no trailing data, or a long gap = a separate lie-down, don't bridge
+        return end
+    bins: dict[int, list[int]] = {}
+    for t, b in hr:
+        bins.setdefault(t - (t % 300), []).append(b)
+    new_end = end
+    for k in sorted(bins):
+        vs = sorted(bins[k])
+        if vs[len(vs) // 2] <= floor:
+            new_end = max(new_end, min(k + 300, hr[-1][0] + 1))
+        else:
+            break
+    return new_end
+
+
 def nights(days: int = 30, merge_gap_s: int = 90 * 60) -> list[dict]:
     """WHOOP sleep sessions (NOOP's read of the strap), newest last. NOOP often splits one night into several sessions
     (a long awakening ends one and starts another); sessions whose gap is under `merge_gap_s` are merged into one night
@@ -259,6 +292,7 @@ def nights(days: int = 30, merge_gap_s: int = 90 * 60) -> list[dict]:
     out = []
     for m in merged:
         start, end = m["start"], m["end"]
+        end = _extend_sleep_end(end, m["noopRestingHr"])   # recover sleep WHOOP cut off early while HR was still low
         hr = night_hr(start, end)
         tel = telomy_stages(start, end)                    # re-stages the WHOLE merged span from the 1 Hz stream
         out.append({"start": start, "end": end, "efficiency": m["efficiency"], "noopRestingHr": m["noopRestingHr"],
