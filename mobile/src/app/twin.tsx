@@ -5,7 +5,7 @@ import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { api, useApi } from '@/lib/api';
 import { radius, space, usePalette } from '@/lib/theme';
-import { Button, Card, Chip, Icon, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
+import { Button, Card, Chip, ErrorState, Icon, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { ORGAN_LABEL, systemOfOrgan, Twin3D } from '@/twin3d/Twin3D';
 import type { OrganId } from '@/twin3d/scene';
 
@@ -163,6 +163,9 @@ export default function Twin({ inTab = false }: { inTab?: boolean } = {}) {
   }, [preset, years]);
   useEffect(() => { api(`/twin/day?drinking=${drinking}`).then(setDayT).catch(() => setDayT(null)); }, [drinking]);
 
+  // Once the fetch has settled with no data (a timeout on a poor connection, or an empty response), show a retry
+  // instead of the loader forever — the loader is gated on data, so without this the screen hangs on "Waking your twin…".
+  if (!o.data && !o.loading) return <Screen edges={inTab ? ['top'] : []}><ErrorState message={o.error ?? 'Your twin could not load. Check your connection and retry.'} onRetry={() => { o.reload(); mir.reload(); proj.reload(); organs.reload(); }} /></Screen>;
   if (!o.data) return <Screen edges={inTab ? ['top'] : []}><Loading what="Waking your twin…" /></Screen>;
   const d = o.data;
   const rb = sim?.risk_baseline?.at(-1)?.[1], rs = sim?.risk_scenario?.at(-1)?.[1];
