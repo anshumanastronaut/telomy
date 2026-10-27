@@ -1811,3 +1811,377 @@ Sources:
 - [TechTimes: AI-training consent and record deletion](https://www.techtimes.com/articles/320412/20260714/samsung-health-deletes-medical-records-if-users-refuse-ai-training-before-galaxy-unpacked.htm), [Android Authority: Health Records, meds, food (2024)](https://www.androidauthority.com/samsung-health-app-update-health-records-medication-food-tracking-3492312/)
 - [Healthcare IT News: Samsung acquires Xealth](https://www.healthcareitnews.com/news/samsung-acquires-xealth-push-toward-connected-care), [MobiHealthNews: Xealth finalised](https://www.mobihealthnews.com/news/samsung-electronics-finalizes-xealth-acquisition-digital-health-app), [KS Post: connected-care strategy at VivaTech 2026](https://www.kspost.biz/en-us/articles/2667), [HLTH: Samsung Health at HLTH 2025 (HealthTap Find Care)](https://hlth.com/insights/articles/samsung-health-at-hlth-2025-expanding-the-future-of-connected-care-2025-11-12), [TipRanks: Generation Lab × Samsung Health](https://www.tipranks.com/news/private-companies/generation-lab-plans-european-expansion-and-samsung-health-integration)
 - [Digit: Watch 9 India launch](https://www.digit.in/news/wearable-devices/samsung-galaxy-watch-9-and-watch-ultra-2-launched-in-india-check-specs-price-availability-and-other-details.html), [TelecomTalk: Watch 9 India price](https://telecomtalk.info/samsung-galaxy-watch-9-launched-in-india/1009998/), [Smartprix: Watch 9 India price](https://www.smartprix.com/smartwatches/samsung-galaxy-watch-9-ppd154wv0pp6), [TechRepublic: Galaxy Watch glucose — what works](https://www.techrepublic.com/article/news-samsung-galaxy-watch-blood-sugar-tracking/), [Bill's Home Tech: Watch 9 guide (fall detection, third party)](https://billshometech.com/guides/samsung-galaxy-watch-9)
+
+---
+
+## 2026-10-27 — Withings (Withings+ · Body Scan 2 · ScanWatch · BeamO · U-Scan · Sleep Rx · Health Solutions RPM)
+
+**Basic features.**
+- **Connected-device ecosystem:** smart scales (Body Smart, Body Cardio, Body Scan, Body Scan 2), BP cuffs
+  (BPM Vision, BPM Connect), hybrid watches (ScanWatch 2, ScanWatch Nova), an under-mattress sleep mat,
+  a thermometer/"multiscope" (BeamO) and urine analysers (U-Scan). Everything feeds one Withings app.
+- **Records and sharing:** trends, history export (CSV/PDF) and sharing with a doctor stay free.
+- **Consult-lite:** Withings+ includes **Cardio Check-Up**. A cardiologist reviews your ECG and health
+  data and replies in the app within 24 h, up to 4 times a year (Withings press release and support page).
+- **No labs, no e-pharmacy, no nutrition logging of note, no Rx pathway.**
+
+**Advanced features.**
+- **Body Scan 2 ("longevity station", CES 2026, $599.95).** The scale reports **60+ biomarkers in ~90 s**
+  using segmental BIA, a 6-lead ECG through the handle, pulse-wave velocity (**vascular age**) and an
+  electrochemical sweat/"nerve health" test on the feet. It adds a **hypertension-risk notification**
+  with no cuff and a **"Health Trajectory" score** of predicted healthy years. Withings positions it
+  as an early warning signal, not a diagnosis. Withings' own page says it may miss some hypertension
+  cases and that a cuff is still the best screen. **Status is unverified:** launch was planned for Q2
+  2026 *pending FDA clearance* (hypertension and AF features). I found no confirmation that the clearance
+  was granted or that US shipping had started. TechRadar's review praised accuracy but saw vascular age
+  swing a lot over two weeks. Named one of TIME's Best Inventions of 2026.
+- **BeamO ($249.95, FDA-cleared Nov 2025).** One device with ECG, a digital stethoscope with AI
+  heart/lung sound analysis, a thermometer and SpO₂, aimed at family home use and teleconsults. A BeamO
+  Pro version is sold to clinics.
+- **U-Scan Nutrio / Calci (US from Oct 2025).** A toilet-mounted urine reader for hydration, ketones,
+  pH, vitamin C and calcium. Starter kit $379.95, cartridges $99.95 every 2.5 months, Withings+ needed.
+- **Withings Intelligence.** An AI layer launched in beta Jun 2025 inside Withings+, with trend
+  detection, cross-metric correlations and a virtual assistant. Withings does not say which model it
+  uses, how it is grounded, or whether it runs on-device. I found no general-availability announcement.
+- **Sleep Rx mat.** An under-mattress mat that Withings says is FDA-cleared to aid diagnosis of
+  obstructive sleep apnea at home.
+- **B2B: Withings Health Solutions.** Remote patient monitoring with cellular devices (BPM Connect Pro,
+  BPM Pro 2, Body Pro 2, Sleep Rx, BeamO Pro, a glucose meter) feeding a clinician dashboard, plus a
+  developer API. The "FDA-cleared" labels come from vendor pages; I did not check 510(k) numbers.
+- **Not offered:** blood panel, blood-based bio-age, genomics, CGM sensor, imaging, fall detection on
+  the hybrid watches (not verified either way), caregiver dashboard.
+
+**Pricing.**
+- **Hardware is premium:** Body Scan 2 $599.95. In India, Body Scan is ~₹48,700–49,000 and ScanWatch 2
+  ~₹36,100–36,300 (withings.com/en-in snapshots, may be stale).
+- **Withings+ costs $9.95/mo or $99.50/yr (US).** It bundles Withings Intelligence, health scores, the
+  Readiness indicator, Cardio Check-Up and, since mid-Oct 2026, third-party sync for new accounts.
+- **Sync paywall (Oct 2026).** Accounts created from **12–13 Oct 2026** (sources differ on the date) need
+  Withings+ for automatic sync to Apple Health, Health Connect and other apps. The Partner Hub says the
+  "Start for Free" API plan now needs it too. Older accounts are grandfathered. MacRumors, TechRadar
+  ("cash grab") and Android Authority covered the backlash. Critics note that the HealthKit write
+  happens locally on the phone.
+
+**Weaknesses.**
+- **Paying for your own data's portability.** The sync paywall is the clearest recent trust own-goal
+  in this category. It also hurts developers building on the Withings API.
+- **Measures a lot, interprets little.** The scores are wellness composites. Health Trajectory and
+  vascular age have no published validation that I could find, and the PWV estimate is noisy in review.
+  The AI layer is opaque.
+- **Regulatory lag.** The headline Body Scan 2 features were still "pending FDA" in every source I found.
+- **No blood work, so no metabolic or clinical-risk depth.** Withings says it avoids blood tests on
+  purpose ("early warnings, not diagnoses").
+- **India:** a D2C store exists, but at premium prices and with no India-specific clinical or lab
+  integration that I found. The Cardio Check-Up and RPM programs are documented for US/EU.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **Vascular-age clock from the sensors we already have.** Patch ECG plus ring/finger PPG give a
+     pulse-arrival time. Calibrate a PWV-style **vascular age** against cuff BP and a reference cohort, and
+     publish its test–retest variability. That fixes the weakness the TechRadar review found in Withings'
+     version. It would sit next to the blood and muscle clocks as a third clock (new matrix row).
+  2. **"ECG review" queue with an SLA.** Withings charges for a cardiologist reading your ECG within
+     24 h. We already capture patch ECG and run an AF classifier, and we have a doctor workspace. Add an
+     auto-triaged review item (AF-flagged strips first) for the platform cardiologist, shown to the
+     patient as "reviewed by Dr X in N h".
+  3. **Keep import and export free (positioning).** Ingest Withings scale/BP/sleep data from Health
+     Connect/HealthKit where the user's account still syncs, and make Telomy's own export free. That way
+     "your data moves freely" is a contrast Withings has just handed us.
+- *Operational parity via partnership:* home BP cuffs and scales are commodity hardware. Partner with an
+  Indian connected BP/scale maker (or accept any Health Connect source) rather than build. For clinics,
+  Telomy's centre workspace can be the dashboard on top of cellular RPM devices from a partner.
+  Withings' RPM stack proves that clinics pay for this.
+- *Our opening:* Withings collects excellent signals but stops at "notification" and "trajectory".
+  It has **no blood panel, no trained disease or mortality model, no grounded AI, no labs or doctors in
+  India**, and it now charges to move your data. Pitch to Withings owners: "keep your scale; Telomy
+  turns its readings and a blood panel into a 10-year risk and a doctor plan." **Watch item:** if Body
+  Scan 2's hypertension notification gets FDA clearance, Withings becomes the first company with a
+  cleared cuffless hypertension screen in a scale. Monitor the 510(k) database.
+
+Sources:
+- [MacRumors: new Withings users pay $99/yr for Apple Health syncing](https://www.macrumors.com/2026/10/15/withings-plus-apple-health-syncing/), [TechRadar: "cash grab" backlash](https://techradar.com/home/smart-scales/an-obvious-cash-grab-withings-is-charging-its-smart-scale-users-usd100-for-a-basic-health-data-feature-and-users-are-angry), [Android Authority: Health Connect sync paywall](https://androidauthority.com/withings-apple-health-google-health-connect-sync-paywall-3724240), [Terra: sync subscription for new accounts](https://tryterra.co/blog/withings-apple-health-sync-subscription-new-accounts), [iThinkDiff: Withings+ needed for sync](https://www.ithinkdiff.com/withings-apple-health-sync-withings-plus/)
+- [Withings: Cardio Check-Up](https://www.withings.com/us/en/landing/cardio-check-up), [Withings support: Cardio Check-Up](https://support.withings.com/hc/en-us/articles/32557735511953-Withings-Cardio-Check-Up), [Withings press: Cardio Check-Up](https://media.withings.com/press/press-releases/cardio-checkup/cardio-checkup-US.pdf), [Withings support: Vascular Age](https://support.withings.com/hc/en-us/articles/10267310684945-Body-Scan-Learn-more-about-Vascular-Age)
+- [Withings press: Withings Intelligence beta](https://media.withings.com/press/press-releases/Withings-Intelligence/Withings_Intelligence-EN.pdf), [Withings App 7.5 release note](https://support.withings.com/hc/en-us/articles/39068163954321-Withings-App-7-5-Release-Note), [Notebookcheck: Withings Intelligence](https://www.notebookcheck.net/Withings-Intelligence-promises-deep-insights-into-health-and-fitness-on-smartwatches-and-other-wearables.1035258.0.html)
+- [PR Newswire: Body Scan 2 longevity station](https://www.prnewswire.com/news-releases/withings-redefines-preventive-health-with-body-scan-2-the-worlds-first-science-backed-longevity-station-302652358.html), [MacRumors: Body Scan 2 at CES 2026](https://www.macrumors.com/2026/01/05/withings-body-scan-2-smart-scale/), [9to5Google: Body Scan 2 hypertension](https://9to5google.com/2026/01/04/withings-body-scan-2-scale-can-detect-health-risk-factors-such-as-hypertension-at-home/), [Engadget: Body Scan 2](https://www.engadget.com/home/smart-home/withings-updated-body-scan-scale-tracks-60-different-biomarkers-010000703.html), [Tom's Guide: Body Scan 2](https://www.tomsguide.com/wellness/fitness/withings-body-scan-2-warns-users-of-high-blood-pressure-chronic-stress-and-heart-conditions), [TechRadar: BodyScan 2 review](https://techradar.com/home/smart-scales/withings-bodyscan-2-review), [TIME Best Inventions 2026](https://time.com/collection/best-inventions/2026/withings-bodyscan-2/)
+- [Engadget: BeamO FDA clearance](https://www.engadget.com/home/smart-home/withings-has-received-fda-clearance-for-medical-multiscopebeamo-110000186.html), [Withings press: BeamO US](https://media.withings.com/press/press-releases/beamO/press-release-US.pdf), [Withings: U-Scan Nutrio](https://www.withings.com/en-us/products/u-scan-nutrio), [Withings: U-Scan Calci](https://www.withings.com/us/en/u-scan-calci), [Notebookcheck: U-Scan available](https://www.notebookcheck.net/Withings-U-Scan-for-contactless-urine-analysis-now-available.1150246.0.html)
+- [Withings: Sleep Rx](https://www.withings.com/en-us/pages/sleep-rx), [Withings: RPM for health professionals](https://www.withings.com/us/en/health-solutions/remote-patient-monitoring), [Withings: BPM Connect Pro](https://www.withings.com/en-us/pages/bpm-connect-pro), [Fierce Healthcare: cellular devices](https://www.fiercehealthcare.com/tech/withings-launches-new-cellular-health-monitoring-devices-to-connect-patients-and-doctors)
+- [Withings India store (bestsellers)](https://www.withings.com/en-in/collections/bestsellers), [Smartprix: Withings India prices](https://www.smartprix.com/smartwatches/withings-brand)
+
+## 2026-10-27 — PharmEasy (API Holdings · PharmEasy Plus · Thyrocare · Samsung Health integration)
+
+**Basic features.**
+- **E-pharmacy:** order medicines by search or prescription upload, doorstep delivery. Product sales
+  including private label were ₹5,670 cr in FY26 (MediaNama). It **entered quick commerce in FY26**,
+  which MediaNama says brought in higher-margin customers. Delivery speed and coverage are not published.
+- **Lab tests with home collection:** 500+ tests and packages (Play Store listing), "up to 70% off",
+  NABL labs. Fulfilment runs largely through **Thyrocare, which the group controls (51.02%)**. Thyrocare's
+  own site lists home collection in 2,000+ pincodes, NABL and CAP accreditation, and Aarogyam packages from
+  ₹1,099 for 66 tests (₹999 each for 2+) up to ₹6,499 for 140 tests incl. allergy. Aggregator sites show
+  different prices and test counts for the same package names, so treat specific figures as unverified.
+- **Teleconsults:** offered in-app, and inside Samsung Health since Feb 2026. I found no published fee,
+  doctor-network size or specialty list.
+- **Plus membership:** 5% off medicines, 50% off the first lab test and free delivery (PharmEasy's page).
+  The fee was not found on an official page. Coupon sites show promos such as ₹99 for 3 months (unverified).
+- **Other:** "AI-assisted physiotherapy sessions" appear in the app listing (low-authority source, no
+  details). No longevity, bio-age, wearable-analytics or nutrition product found.
+
+**Advanced features.**
+- **Distribution via Samsung Health (Feb 2026).** Samsung Health India users can order medicines, book
+  tests and teleconsult inside Samsung Health, with six months of Plus free. That puts PharmEasy's
+  logistics inside the most widely used Android health OS in India. Samsung Health already has ABHA
+  records via Eka Care, profiled 23 Oct.
+- **Vertical integration as the business model.** The lab makes the profit, not the pharmacy. Thyrocare
+  had FY26 revenue of ~₹829 cr at a 33.8% EBITDA margin and 20%+ YoY growth for eight quarters running.
+  Q4 FY26 PAT rose 128% to ₹48.7 cr. CEO Rahul Guha (since Aug 2025) says PharmEasy routes ~₹180 cr a
+  year of testing through Thyrocare.
+- **B2B:** pharma distribution (Ascent Health, AknaMed). FY26 commentary also names hospital management
+  systems, pathology labs and generics as high-margin focus areas. I found no product details.
+- **Not offered (that I found):** biological age, disease or mortality risk prediction, wearable fusion,
+  CGM, AI health coach, Rx pathways beyond normal prescriptions, genomics, safety/SOS, caregiver features.
+  Health records beyond order and report history are unclear. I found no source confirming PharmEasy's
+  own ABHA linkage.
+
+**Pricing / business.**
+- Consumer: pay per order and per test, with an optional Plus membership.
+- Group (API Holdings) FY26: revenue ₹6,619 cr from operations (MediaNama), +13%. Analyses that use total
+  income cite ~₹6,869 cr. EBITDA turned positive (₹62.5 cr per one analysis, ~₹100 cr pre-exceptional per
+  another), but there was still a **net loss of ~₹520 cr**. The last ₹1,050 cr of term debt was cleared
+  by mid-Aug 2026 by selling 9.9% of Thyrocare. **No IPO date is set.** Guha's preconditions are being
+  debt-free and profitable excluding Thyrocare, the latter expected by end-FY27. Valuation has fallen from a
+  ~$5.6B peak to ~$0.7B (investor blog; unverified).
+- **Regulatory risk:** a proposed 20% cap on the trade margin between landing cost and MRP would squeeze
+  pharmacy and distribution economics (Business Standard).
+
+**Weaknesses.**
+- **Service reliability and trust.** Trustpilot and PissedConsumer reviews (~1.6–1.7/5 on ~250 reviews,
+  self-selected) focus on late or phantom deliveries, refunds shown in the app but never received, wrong
+  or damaged items, and support that is chatbot-only. One reviewer says support acted only after a
+  National Consumer Helpline complaint.
+- **Transactional, not longitudinal.** PharmEasy sells the test and the pill but does not interpret
+  results over time, link them to wearables, or predict risk. A report is a PDF plus "doctor-verified"
+  ranges.
+- **Balance-sheet constrained.** It is in a "profit first, growth second" mode, so new consumer R&D
+  (AI, longevity) is unlikely in the near term. Margin-cap regulation is an overhang.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **"Insight → order" trigger.** When a Telomy risk model or the retest planner flags a missing or
+     stale marker (HbA1c, ApoB, ferritin, vitamin D), offer a one-tap booking for the *specific* cheap
+     panel with a partner lab, priced against the ~₹1,000-for-66-tests Thyrocare benchmark. PharmEasy
+     sells tests with no reason attached. We sell the reason.
+  2. **Results-to-model ingest for partner-lab reports.** Parse Thyrocare/PharmEasy PDF reports straight
+     into the biomarker store and recompute clocks and risk. Many Indian users already have these PDFs,
+     which makes this the cheapest acquisition hook.
+  3. **Med list → refill and interaction check.** Extend `features.py` interactions with a user med list
+     and refill reminders, then hand off refills to a pharmacy partner by deep link. That gives parity
+     without holding inventory.
+- *Operational parity via partnership:* **Thyrocare is the obvious lab partner to approach.** It is listed,
+  sells B2B, covers 2,000+ pincodes, is NABL/CAP-accredited, and is the price floor. The catch is that it
+  is controlled by PharmEasy, so also court an independent lab (Redcliffe, Healthians, Metropolis) to
+  avoid single-vendor dependence. For medicines, use a deep-link partner rather than our own pharmacy.
+  The margin-cap risk and PharmEasy's thin pharmacy profits show that owning inventory is a bad business
+  for us.
+- *Our opening:* PharmEasy (like 1mg) has the logistics and none of the intelligence. It has no bio-age,
+  no risk prediction, no wearable layer and no coach, and its service reputation is poor. Samsung chose
+  PharmEasy as its commerce layer, so **the interpretation layer inside Indian health OSes is still
+  open**. Telomy can be the brain that decides *which* test and *why*, with Thyrocare-class labs doing
+  the draw. **Watch item:** if PharmEasy uses its Samsung Health placement to add AI report explanations,
+  it becomes a cheap-lab-plus-AI rival. Monitor app release notes.
+
+Sources:
+- [PharmEasy diagnostics page](https://pharmeasy.in/diagnostics), [PharmEasy on Google Play](https://play.google.com/store/apps/details?id=com.phonegap.rxpal&hl=en_GB), [APKPure listing](https://m.apkpure.com/pharmeasy-doorstep-healthcare/com.phonegap.rxpal), [Zoutons: Plus membership offers (coupon site)](https://zoutons.com/news/pharmeasy-plus-membership-free-coupon-code)
+- [eHealth (Elets): PharmEasy × Samsung Health, Feb 2026](https://ehealth.eletsonline.com/2026/02/pharmeasy-integrates-with-samsung-health-to-enable-in-app-medicine-ordering-and-diagnostics-access/), [Chambers: Digital Healthcare 2026 India](https://practiceguides.chambers.com/practice-guides/digital-healthcare-2026/india/trends-and-developments)
+- [Business Standard: profit first, growth second (May 2026)](https://www.business-standard.com/industry/news/pharmeasy-s-parent-has-a-new-playbook-profit-first-growth-second-126051900979_1.html), [MediaNama: FY26 loss trimmed to ₹520 cr (Oct 2026)](https://www.medianama.com/2026/10/223-pharmeasy-fy26-high-margin-businesses/), [UnlistedZone: API Holdings FY26](https://unlistedzone.com/api-holdings-fy26-financial-analysis), [WWIPL: FY26 results](https://wwipl.com/blog/pharmeasy-unlisted-shares-fy26-results/), [WWIPL: IPO after debt-free](https://wwipl.com/blog/pharmeasy-ipo-comeback-debt-free-status/), [Medical Buyer: Thyrocare rules out reverse merger](https://medicalbuyer.co.in/thyrocare-rules-out-reverse-merger-of-pharmeasy-into-listed-diagnostics-company/), [ValueForStartups: valuation (blog, low weight)](https://valueforstartups.in/pharmeasy)
+- [Thyrocare Services: packages and pricing](https://thyrocareservices.com/services), [diagnosticcentres.in: Aarogyam packages](https://www.diagnosticcentres.in/category/aarogyam/), [healthcareoffers.in: Aarogyam](https://healthcareoffers.in/aarogyam-packages/)
+- [Trustpilot: PharmEasy reviews](https://www.trustpilot.com/review/pharmeasy.in), [PissedConsumer: PharmEasy](https://pharmeasy.pissedconsumer.com/review.html), [brands.run: PharmEasy review](https://brands.run/ecommerce/pharmeasy-review/)
+
+## 2026-10-27 — Sugar.fit (Ragus Healthcare · Diabetes Reversal Program · GLP-1 Weight Loss · Bangalore clinic)
+
+*Roster note: next unprofiled India platform after PharmEasy (HealthifyMe, Tata 1mg, Practo and Cult.fit
+have seed lines only and are queued for full profiles on the revisit pass). Research run 2026-10-27 from
+Sugar.fit's homepage, App Store listing, its Frontiers trial paper, The Ken and Entrackr. Several pricing
+figures come from third-party blogs (one written by a competing provider) and are flagged as such.*
+
+**Basic features.**
+- **Program, not product:** a subscription diabetes / prediabetes / obesity program run by Ragus Healthcare
+  (the App Store developer and the trial sponsor's legal name). It was founded in 2021 out of the Cure.fit /
+  Cult.fit orbit and is backed by MassMutual Ventures, B Capital and Endiya.
+- **Homepage plans (checked 27 Oct 2026):** 12-month "Diabetes Reversal" at **₹29,990** with 1 CGM, 4 doctor
+  consults and 3 diagnostic tests. 4-month plan at **₹15,990** with 1 CGM, 2 doctor consults and 1 test.
+  Both include "unlimited diabetes expert consultations", meal plans, and fitness and mindfulness plans.
+  The same page also says "quarterly" doctor consults, which conflicts with the cards. A special-offer page
+  shows ₹17,990 for 12 months, and a 2025 App Store reviewer says they paid ₹36,000. In practice the price
+  is negotiated through sales, with no-cost EMI.
+- **Doctors and coaches:** diabetologists, endocrinologists and dietitians are booked in-app. The 2024 plan
+  also had daily live fitness classes (Cult.fit content, per a reviewer).
+- **Labs:** 1–3 tests per plan via partner labs. One complaint says partners called the user's pincode
+  unserviceable and the replacement lab refused too (unverified, consumercomplaints.in).
+- **App:** App Store 4.7★ from ~11k ratings, English only, version 10.58 (15 Oct 2026). Recent release
+  notes are bug fixes, including a "CGM scan issue" fix in April. The privacy label says usage data may be
+  used to track users across other companies' apps.
+- **Scale:** homepage claims "1,50,000+" users. **FY25 revenue ₹66.5 cr (+77%), net loss ₹42 cr (−11%),
+  expenses ₹117 cr** (Entrackr, from RoC filings, Jan 2026). Total funding is ~$16–27M depending on the
+  tracker. I found no 2026 round.
+
+**Advanced features.**
+- **CGM-led feedback**, but thin: **one sensor per plan**, which is roughly two weeks of wear on a 4- or
+  12-month subscription. The sensor brand is not named. App Store reviews describe sensors that expired
+  before use, replacements refused after expiry, and one disputed non-delivery.
+- **GLP-1 Weight Loss Program** (separate site, sugarfitglp.com): doctor-supervised semaglutide (Zydus and
+  Lupin generics, Wegovy, Ozempic) and tirzepatide (Mounjaro, Yurpeak). The drug is billed separately. The
+  site states BMI ≥30 eligibility, while a blog says 27+ with a comorbidity. Semaglutide went off-patent in
+  India on 20 Mar 2026, so generic drug costs are now much lower. The app markets support for GLP-1 users
+  (protein, activity, progress), and Sugar.fit cites 15–20% average weight loss, which is the published
+  trial figure for the drugs, not its own outcome.
+- **AI layer (homepage):** "AI-Diet" recommendations and food analytics, a **RAGUS.GPT** diabetes chatbot,
+  CGM insights and **"Face Scan Vitals"** (camera-based vitals). No accuracy, grounding method or
+  validation is published for any of these. I found no meal-photo glucose prediction.
+- **Published trial (its main evidence asset):** *Frontiers in Endocrinology*, 18 Aug 2026. A multicentre
+  RCT at four private diabetes clinics (Ahmedabad, Delhi, Bengaluru ×2) of the digital program plus
+  standard care against standard care alone. 180 were randomised and 149 analysed **per-protocol** over
+  **90 days**. HbA1c fell **−1.46 points vs −0.07** (p<0.001). Caveats: **control-arm dropout was 31%
+  (28/90) against 3%**, the control arm was not matched for contact time, there were baseline imbalances,
+  it was unblinded, and it lasted only 90 days. It shows short-term glycaemic benefit and does not show
+  "reversal".
+- **Hybrid clinic:** a Bangalore weight-loss clinic page exists. I found no centre list.
+- **Not present:** biological age, long-term risk or mortality prediction, wearable fusion beyond "connects
+  with health watches, CGMs, glucometers", genomics, imaging, fall/SOS safety, caregiver view, or an
+  on-device model.
+
+**Pricing.** List ₹15,990 (4 mo) and ₹29,990 (12 mo), discounted down to ~₹17,990 and sold through
+webinars and sales calls with no-cost EMI. GLP-1 program fees come on top of drug cost (third-party blogs
+quote the same ₹15,990/₹29,990 structure; unverified).
+
+**Weaknesses.**
+- **Overclaiming.** The Ken (17 Jun 2024) reported a co-founder telling a webinar diabetes is "100%
+  reversible", with no need for "even one medicine". The homepage still says "Diabetes Reversal" while its
+  own RCT supports only a 90-day HbA1c drop.
+- **Sales-led trust problems.** Consumer-complaint sites and App Store reviews (unverified) describe
+  refunds denied after a promised guarantee, EMIs that kept running after cancellation, undelivered or
+  expired CGMs, and tickets closed without resolution. Trustpilot is low, with ~6% reply rate on negative
+  reviews.
+- **Monitoring is not continuous.** One CGM per plan means most of the subscription runs on coaching and
+  logs, not glucose data.
+- **Unit economics:** ₹117 cr expenses on ₹66.5 cr revenue. It is a human-coach and sales-heavy model that
+  burns cash.
+- **Single-disease scope.** Diabetes and weight only. A member's heart, kidney and liver risk, sleep and
+  aging are out of frame.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **A GLP-1 companion that is better than Sugar.fit's** (matrix row already flagged ★ cheap build).
+     Log dose and schedule, side effects, protein and lean-mass guardrails, and **muscle-loss watch via our
+     muscular-age clock**, next to HRV, sleep and weight. Generic semaglutide makes this India's
+     fastest-growing cohort, and nobody tracks muscle loss on the drug.
+  2. **Glucose without a 14-day-per-year CGM:** read glucose from HealthKit / Health Connect when a sensor
+     is present (BYO-CGM row), and between sensors use our chronic-risk model plus meal photos to predict
+     the glycaemic load of meals. That turns their 2-week sensor into a year-round loop.
+  3. **Ship the camera-vitals capture flow** (the HRV algorithm already exists) so we match "Face Scan
+     Vitals", **with a published accuracy check against the chest patch / ring**. They publish none.
+  4. **Remission tracking done honestly:** HbA1c trajectory, meds de-escalated under the doctor role, and
+     the ADA remission definition (HbA1c <6.5% for ≥3 months off glucose-lowering drugs) as the claim
+     language, instead of "reversal".
+- *Operational parity via partnership:* doctor-led Rx (GLP-1 and diabetes meds) through partner
+  diabetologists on our doctor workspace, CGM supply through a sensor distributor, and labs through a
+  Thyrocare-class partner (see PharmEasy profile). Do not build a webinar sales floor; distribute through
+  clinics (B2B2C) where the doctor already owns the relationship.
+- *Our opening:* Sugar.fit is the best-funded Indian "diabetes reversal" brand, but it is single-disease,
+  sales-led and credibility-exposed. Its evidence is a per-protocol 90-day trial with lopsided dropout. Its
+  CGM covers ~2 weeks of a year. Its AI is unvalidated. Telomy can position as **"the whole-body view for
+  people on diabetes and GLP-1 care"**, covering cardio-renal-metabolic risk, muscle preservation and
+  sleep, sold through the diabetologists who ran Sugar.fit's trial sites, with clean month-to-month
+  billing. **Evidence gap to close:** Sugar.fit now has a peer-reviewed RCT and we have none for the
+  product itself. A small prospective study with a partner clinic (e.g. Mitogenez) would neutralise that.
+
+Sources:
+- [Sugar.fit homepage (plans, AI features, user claim)](https://home.sugarfit.com/), [Sugar.fit special-offer page](https://www.sugarfit.com/special-offer/), [Sugar.fit GLP-1 program](https://home.sugarfitglp.com/), [Sugar.fit Bangalore GLP-1 clinic page](https://www.sugarfit.com/experience-center/weightloss-clinic/bangalore/services/glp-1-weight-loss/)
+- [sugar.fit on the App Store (India)](https://apps.apple.com/in/app/sugar-fit/id1568271882)
+- [Frontiers in Endocrinology: RCT of the digitally delivered program (18 Aug 2026)](https://www.frontiersin.org/articles/10.3389/fendo.2026.1920317/full)
+- [The Ken: Inside Sugar.fit's science-defying diabetes-reversal plan (17 Jun 2024, paywalled)](https://the-ken.com/story/inside-sugar-fits-science-defying-diabetes-reversal-plan/)
+- [Entrackr: Sugar.fit FY25 revenue +77%, losses narrow (Jan 2026)](https://entrackr.com/fintrackr/sugarfit-posts-77-revenue-growth-in-fy25-narrows-losses-11002610), [Inc42 funding](https://inc42.com/company/sugar-fit/funding/), [Tracxn profile](https://tracxn.com/d/companies/sugarfit/__E5myTMcNzeXyRMCBNTsz48wOqrD_TWW-YxV5WPVfyqI)
+- [HealthyWayFit: Sugar.fit centre guide (competing provider, low weight)](https://www.healthywayfit.com/blog/sugarfit-diabetes-reversal-centre/), [gheware: GLP-1 program cost review (blog, unverified)](https://health.gheware.com/blog/posts/2026/05/sugarfit-glp1-weight-loss-program-review-india-2026.html), [altrcare: GLP-1 in India 2026 (semaglutide off-patent)](https://www.altrcare.com/blog/glp1-medication-india-guide-2026)
+- [consumercomplaints.in: Sugar Fit refund complaint](https://www.consumercomplaints.in/sugar-fit-refund-is-not-being-given-c3346217), [consumercomplaints.in: service not provided](https://www.consumercomplaints.in/sugar-fit-service-not-provided-c3499519), [Trustpilot: sugarfit.com](https://uk.trustpilot.com/review/www.sugarfit.com)
+
+## 2026-10-28 — Apollo 24|7 (Apollo HealthCo · Circle · Ask Apollo · GLP-1 programme · ProHealth / AICVD)
+
+*Roster note: next unprofiled India platform after Sugar.fit (Ultrahuman India is covered by the
+Ultrahuman profile). Research run 2026-10-28 from Apollo's own pages (Circle landing, GLP-1 page,
+ProHealth listings, Q4 FY26 earnings-call transcript), Healthcare IT News, and review sites. The Play
+Store listing could not be fetched, so app ratings/download counts are not given. Several finance
+figures come from secondary write-ups and are flagged.*
+
+**Basic features.**
+- **Omnichannel super-app** of India's largest private hospital group: e-pharmacy (backed by the
+  Apollo Pharmacy chain, ~7,440 stores at Jun 2026 per a secondary report), online and in-clinic doctor
+  consults, home-collection lab tests, and hospital records (discharge summaries, Rx, labs, imaging).
+- **Lab packages** sold with heavy "60% off" anchoring: e.g. Prime 72 tests ₹2,389, Superior 80 tests
+  ₹2,809, Advance 78 tests ₹5,399; reports promised in 48 h.
+- **Consult fees** visible on its GLP-1 page: ₹800–1,500 per doctor, online and/or clinic.
+- **Circle membership:** landing page shows ₹199/12 mo (struck from ₹599), ₹149/6 mo, ₹99/3 mo —
+  medicine discounts/cashback, consult discounts, free delivery, a free lab test on the annual plan.
+  Older pages list different tiers; benefits don't apply to hospital visits. Current details unverified.
+- **AI:** "Ask Apollo" symptom checker; a beta GLP-1 Q&A. No grounding method or accuracy published.
+- **ABHA/ABDM:** no source found confirming Apollo 24|7 ABHA linking (Samsung Health India already has it).
+
+**Advanced features.**
+- **AICVD cardiac risk score**, built with Microsoft on Apollo's Indian patient data; Apollo says
+  1M+ ProHealth checks use it and that it beats Framingham for Indians (company claim; one external
+  validation in the Dutch Maastricht Study reported). This is the closest Indian rival to our trained
+  risk models — but it's cardiac-only and sold inside a one-off checkup.
+- **ProHealth preventive checks:** ₹4,499 (Lite) to ~₹36,000 (platinum, Bengaluru), with "AI-powered"
+  10-year risk scores combining lifestyle, sleep, stress, history and tests, plus doctor interpretation
+  and follow-ups. ProHealth DeepX adds a HoloLens 3D heart visualisation (showpiece).
+- **Clinical Intelligence Engine** (CDS: 1,300+ conditions, 800+ symptoms) opened to outside doctors
+  through Apollo 24|7 — a B2B play for clinicians. No published accuracy.
+- **GLP-1 programme:** free first consult; Mounjaro, Ozempic, Wegovy, Saxenda; "CDSCO-approved brands
+  only, no compounded/grey-market". App keeps weight logs, dose history, labs and notes in one record;
+  refill reminder a week ahead and one-tap renewal. Programme price, drug prices and safety sections were
+  blank on the page (Oct 2026). No coach, CGM or body-composition tracking mentioned.
+- **Not found:** biological-age score, mortality prediction, continuous wearable monitoring or fusion,
+  meal-photo nutrition, fall/SOS, on-device AI, methylation/genomics in ProHealth.
+
+**Pricing / scale.** Apollo HealthCo crossed ₹10,000 cr revenue in FY26; Q4 FY26 revenue ₹2,848 cr
+(+22%), EBITDA ₹156 cr; online cash loss down to ₹16 cr/quarter from ₹80 cr; Apollo 24|7 GMV ₹528 cr in
+Q4 (+20%) — per Apollo's earnings call. Advent invested ₹2,475 cr (2024) toward a pharmacy-distribution
+merger and listing (reported for FY27; secondary sources). GMV definitions changed, so YoY comparisons
+are loose.
+
+**Weaknesses.**
+- **Episodic, not continuous.** Risk is computed once at a checkup; nothing ties it to daily vitals,
+  sleep or food, and there is no wearable loop.
+- **Pharmacy-ops complaints** (mostly 2022–24 Trustpilot/App Store/consumercomplaints.in, unverified):
+  delayed orders incl. heart medication, 7–10-day refunds, no in-app cancel (2024 review).
+- **AI claims are self-reported**; the symptom checker and CDS have no public accuracy figures.
+- **Discount-anchored pricing** ("60% off" on most lab packages; Circle tiers change often) makes the
+  value opaque.
+- **Hospital-centric:** the app funnels to Apollo hospitals/pharmacies — not a neutral health OS for
+  people seen elsewhere.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **Indian recalibration of our risk models** (new matrix row). AICVD's moat is "trained on Indians".
+     Recalibrate our CVD/diabetes/mortality models on Indian partner-centre data (Mitogenez first) and
+     publish calibration plots — then we beat AICVD on breadth (12 conditions + mortality + bio-age) and
+     on transparency.
+  2. **"After the checkup" import:** parse a ProHealth / Thyrocare / any-lab PDF into our engine and turn
+     a one-off report into a tracked trajectory with wearable context (extends the any-lab-upload row).
+     Apollo sells ~1M+ checkups a year that end as a PDF; we can be where they go next.
+  3. **GLP-1 refill + dose loop at parity**, plus what Apollo lacks: muscle-loss watch via our muscular
+     clock and recovery/HRV next to dose (same ★ as the Sugar.fit profile).
+  4. **Doctor-side CDS with shown evidence:** position our clinic engine against Apollo's CIE by showing
+     the numbers and sources behind each suggestion (tool-grounded LLX).
+- *Operational parity via partnership:* home collection + e-pharmacy by deep link to a partner
+  (Thyrocare/1mg/Apollo itself are all B2B-capable); GLP-1 Rx through partner endocrinologists on our
+  doctor workspace. Don't build pharmacy logistics — Apollo's 7k-store network can't be matched.
+- *Our opening:* Apollo has the trust, the hospitals and an India-trained cardiac score, but it is
+  episodic and hospital-funnelled, with no continuous monitoring, bio-age, safety agent or on-device AI.
+  Telomy is the continuous layer between Apollo-style checkups — and Apollo could be a partner rather
+  than just a rival.
+
+Sources:
+- [Apollo 24|7 Circle landing](https://www.apollo247.com/circle-landing), [Circle benefits article (older)](https://www.apollo247.com/blog/article/apollo-247-circle-membership-benefits), [GrabOn Apollo247 page](https://www.grabon.in/apollo247-coupons/)
+- [Apollo 24|7 GLP-1 weight-loss page](https://www.apollo247.com/weight-loss-by-ask-apollo), [Apollo Pharmacy GLP-1 guide (blog)](https://www.apollopharmacy.in/blogs/article/glp-1-weight-loss-program-india-guide)
+- [Apollo Q4 FY26 earnings-call transcript](https://www.apollohospitals.com/sites/default/files/2026-05/transcript-of-apollo-hospitals---q4-fy26-earnings-call.pdf), [Alpha Spread Q2 FY26 call](https://www.alphaspread.com/security/nse/apollohosp/investor-relations/earnings-call/q2-2026), [multibagg.ai Q3 FY26 (secondary)](https://www.multibagg.ai/market-pulse/articles/apollo-hospitals-q3-fy26-results-91809), [markhub24 (secondary)](https://www.markhub24.com/post/apollo-24-7-integrating-hospital-and-digital-healthcare-services)
+- [Healthcare IT News: Apollo expands access to AI decision-support tool](https://www.healthcareitnews.com/news/asia/apollo-hospitals-expands-access-ai-decision-support-tool), [Healthcare IT News: AI heart-risk tool from decade of patient data](https://www.healthcareitnews.com/news/asia/apollo-hospitals-utilised-decade-long-patient-data-develop-ai-heart-disease-risk), [Apollo: AI cardiovascular risk tool](https://www.apollohospitals.com/apollo-in-the-news/apollo-hospitals-has-launched-an-artificial-intelligence-tool-to-predict-the-risk-of-cardiovascular-disease), [Healthcare IT News: ProHealth DeepX mixed reality](https://www.healthcareitnews.com/news/asia/apollo-hospitals-launches-immersive-mixed-reality-programme)
+- [Apollo Clinic ProHealth packages](https://www.apolloclinic.com/health-check-packages/prohealth-package/), [ProHealth Platinum Male, Bannerghatta Rd](https://www.apollohospitals.com/apollo-prohealth-advanced-platinum-health-program-male-apollo-hospitals-bannerghatta-road)
+- [Trustpilot: Apollo Pharmacy](https://www.trustpilot.com/review/www.apollopharmacy.in?page=2), [Trustpilot: Apollo247](https://www.trustpilot.com/review/covid.apollo247.com), [consumercomplaints.in: Apollo 24/7](https://www.consumercomplaints.in/bycompany/apollo-247-a613810.html), [App Store reviews](https://apps.apple.com/in/app/apollo-247-health-medicine/id1496740273?see-all=reviews&platform=iphone)

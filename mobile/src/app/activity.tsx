@@ -9,8 +9,10 @@ import { useApi } from '@/lib/api';
 import { useHealth } from '@/lib/health';
 import { data, radius, space, type, usePalette } from '@/lib/theme';
 import { fmtDur, useWellness } from '@/lib/wellness';
+import { energyCurve } from '@/lib/wellness-core';
 import { Button, Card, Chip, Icon, Row, Screen, Section, T } from '@/ui/core';
 import { ScoreRing, StrainColumns } from '@/ui/wellness';
+import { EnergyCurve, MeasurementHistory, StressTimeline } from '@/ui/welltory';
 
 const GOALS = { steps: 10000, kcal: 500, exercise: 30 };
 
@@ -60,6 +62,9 @@ export default function Activity() {
     { key: 'sleep', label: 'Sleep duration', unit: 'h', dp: 1, r: vsBaseline(w.last ? w.last.tstMin / 60 : null, prevNights.map((n) => n.tstMin / 60)), to: '/wellness/sleep' },
   ].filter((v) => v.r);
 
+  // ---- intraday "body battery": modelled from today's minute HR/HRV/sleep, anchored to the canonical Energy score
+  const eCurve = energyCurve(w.today.minutes, w.restingHr ?? 65, w.recovery.score ?? 70, w.energy.score);
+
   // ---- last 7 days of steps, last 9 weeks of exercise minutes
   const week = days.slice(-7);
   const weekMax = Math.max(1, ...week.map((d: any) => d.steps ?? 0));
@@ -72,6 +77,23 @@ export default function Activity() {
         <T v="label">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</T>
         <T v="small">The same scores as your Home, worked out on this phone from your own data.</T>
       </View>
+
+      {/* one-minute camera heart-rate + HRV read */}
+      <Card tone="teal" onPress={() => router.push('/measure')} accessibilityLabel="Measure your heart with the camera">
+        <Row style={{ alignItems: 'center' }}>
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: data.heart + '22', alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="heart.fill" size={22} color={data.heart} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <T v="h3">Measure now</T>
+            <T v="small">A one-minute camera read of your heart rate and HRV.</T>
+          </View>
+          <Icon name="chevron.right" size={16} color={p.faint} />
+        </Row>
+      </Card>
+
+      {/* trend of your camera-HRV reads (hidden until there are 2+) */}
+      <MeasurementHistory />
 
       {/* what to do today — one clear call from energy, recovery and stress */}
       {w.guidance ? (
@@ -99,9 +121,23 @@ export default function Activity() {
         ))}
       </View>
 
+      {eCurve.length >= 3 ? (
+        <Section title="Energy today">
+          <Card><EnergyCurve curve={eCurve} /></Card>
+        </Section>
+      ) : null}
+
       <WhatAffectsYou />
 
       <MetGoal zones={w.today.zones} worn={w.today.worn} />
+
+      {w.today.stress.timeline && w.today.stress.timeline.length >= 10 ? (
+        <Section title="Stress today">
+          <Card>
+            <StressTimeline timeline={w.today.stress.timeline} />
+          </Card>
+        </Section>
+      ) : null}
 
       {move.length ? (
         <Section title="Movement today">

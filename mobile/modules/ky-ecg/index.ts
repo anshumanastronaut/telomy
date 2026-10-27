@@ -100,9 +100,13 @@ type Events = {
   onRingDevice: (d: FoundDevice) => void;
   onRingHistory: (h: RingHistory) => void;
   onRingSleep: (s: { nights: RingSleepRecord[] }) => void;
+  onPpgFrame: (f: PpgFrame) => void;
 };
 
+export type PpgFrame = { t?: number; r?: number; g?: number; b?: number; error?: string };
+
 type Native = {
+  startPpg(): void; stopPpg(): void;
   ringStatus(): RingStatus; ringScan(): void; ringAutoConnect(): void; ringSyncHistory(): void;
   ringStartRaw(ecg: boolean, imu: boolean, ppg: boolean): void; ringStopRaw(): void;
   ringStartOvernight(): void; ringStopOvernight(): void; autoSleep(): boolean; setAutoSleep(on: boolean): void; autoRecord(): boolean; setAutoRecord(on: boolean): void;
@@ -186,6 +190,14 @@ export const Ring = {
 const native = requireOptionalNativeModule<Native>('KyEcg');
 
 export const isAvailable = native != null;
+
+/** Camera photoplethysmography: fingertip over the back lens + torch. `start` opens the camera and streams
+ *  per-frame average R/G/B via `onFrame`; JS (lib/ppg.ts) turns the series into HR + HRV. `stop` closes it. */
+export const Ppg = {
+  start: () => native?.startPpg(),
+  stop: () => native?.stopPpg(),
+  onFrame(cb: (f: PpgFrame) => void) { return native ? native.addListener('onPpgFrame', cb) : { remove() {} }; },
+};
 
 const noop = () => {};
 export const Band = {

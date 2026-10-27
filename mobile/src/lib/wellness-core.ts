@@ -360,6 +360,49 @@ export function stressFor(mins: MinuteRec[], resting: number, rmssdRef: number[]
 /** VO₂max estimate, Uth et al. 2004: 15.3 × HRmax / HRrest (±~5 ml/kg/min). HRrest = personal resting HR (awake). */
 export const vo2max = (age: number, restingHr: number) => (restingHr > 30 ? 15.3 * (hrMax(age) / restingHr) : null);
 
+/**
+ * Intraday "body battery" (Welltory's Energy): a 0–100 level that DRAINS with cardiac load above rest and RECHARGES
+ * when calm or asleep — a transparent heart-rate/HRV heuristic (the Garmin/Welltory family), not a proprietary score.
+ * Drain ∝ heartbeats above resting; recharge is a steady trickle while calm and faster while asleep. The curve's
+ * SHAPE comes entirely from the person's own minute data; when `anchorNow` (today's canonical Energy) is given the
+ * whole series is shifted so its last point equals it, so the curve and the Energy ring never disagree.
+ */
+export function energyCurve(
+  mins: MinuteRec[], resting: number, startLevel: number, anchorNow?: number | null,
+): { t: number; v: number }[] {
+  const DRAIN = 0.0055;   // per bpm-over-resting per minute (~6 pts/h at +18 bpm)
+  const CALM = 0.045;     // recharge per minute while calm awake (~2.7 pts/h)
+  const SLEEP = 0.18;     // recharge per minute while asleep (~11 pts/h)
+  const pts = mins
+    .filter((m) => m.hr && m.quality !== 'poor' && m.quality !== 'no_contact')
+    .map((m) => ({ t: new Date(m.ts).getTime() / 1000, m }))
+    .sort((a, b) => a.t - b.t);
+  if (pts.length < 10) return [];
+  let level = Math.max(0, Math.min(100, startLevel || 70));
+  const raw: { t: number; v: number }[] = [];
+  let prevT = pts[0].t;
+  for (const { t, m } of pts) {
+    const dt = Math.max(0, Math.min(10, (t - prevT) / 60)); // minutes since last sample, capped (gaps ≠ huge jumps)
+    prevT = t;
+    if (m.sleep === 'asleep') level += SLEEP * dt;
+    else if (m.hr <= resting + 5) level += CALM * dt;
+    else level -= DRAIN * Math.max(0, m.hr - resting) * dt;
+    level = Math.max(0, Math.min(100, level));
+    raw.push({ t, v: level });
+  }
+  // shift so the latest point matches the canonical Energy ring (keeps the real drain/recharge deltas)
+  if (anchorNow != null && raw.length) {
+    const shift = anchorNow - raw[raw.length - 1].v;
+    for (const r of raw) r.v = Math.max(0, Math.min(100, r.v + shift));
+  }
+  // downsample to ~one point per 10 min for a clean chart
+  const out: { t: number; v: number }[] = [];
+  let last = -Infinity;
+  for (const r of raw) { if (r.t - last >= 600) { out.push(r); last = r.t; } }
+  if (out.length && out[out.length - 1].t !== raw[raw.length - 1].t) out.push(raw[raw.length - 1]);
+  return out;
+}
+
 // ------------------------------------------------------------------ coach line
 
 export function coachLine(rec: Score, sleep: Score | null, n?: Night) {

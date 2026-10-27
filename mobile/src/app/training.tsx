@@ -10,6 +10,7 @@ import { data, radius, space, type, usePalette } from '@/lib/theme';
 import { buildSessions, dailyLoads, trainingStatus, WORKOUT_TYPE_COUNT, type Session } from '@/lib/training';
 import { useWellness, type MinuteRec } from '@/lib/wellness';
 import { Card, Chip, Icon, Row, Screen, Section, T } from '@/ui/core';
+import { WorkoutHrLine, WorkoutZoneBreakdown } from '@/ui/welltory';
 import { phoneActivity, type PhoneActivity } from '../../modules/ky-ecg';
 
 const ZONE = [data.hrv, data.activity, data.temp, data.heart, data.rem];
@@ -69,7 +70,7 @@ export default function Training() {
       ) : null}
 
       <Section title="Sessions">
-        {recent.length ? recent.map((s) => <SessionRow key={s.id} s={s} />) : (
+        {recent.length ? recent.map((s) => <SessionRow key={s.id} s={s} mins={mins} age={w.age} />) : (
           <Card>
             <T v="h3">No sessions yet</T>
             <T v="small">Workouts sync from your phone's health app (Apple Health on iPhone; Health Connect — Samsung Health & Google Fit — on Android). Walks, runs and rides of 10 minutes or more are detected by your iPhone on their own.</T>
@@ -85,7 +86,7 @@ export default function Training() {
   );
 }
 
-function SessionRow({ s }: { s: Session }) {
+function SessionRow({ s, mins = [], age = 35 }: { s: Session; mins?: MinuteRec[]; age?: number }) {
   const p = usePalette();
   const when = new Date(s.start * 1000);
   const total = s.zones?.reduce((a, b) => a + b, 0) ?? 0;
@@ -110,11 +111,8 @@ function SessionRow({ s }: { s: Session }) {
         {s.avgHr ? <T v="small">avg {Math.round(s.avgHr)} bpm{s.maxHr ? ` · max ${Math.round(s.maxHr)}` : ''}</T> : null}
         <T v="small" color={p.faint}>{s.source}{s.device && s.source === 'Apple Health' ? ` · ${s.device}` : ''}</T>
       </Row>
-      {total ? (
-        <View style={{ flexDirection: 'row', height: 6, borderRadius: 3, overflow: 'hidden', backgroundColor: p.surfaceAlt }}>
-          {s.zones!.map((z, i) => (z ? <View key={i} style={{ flex: z, backgroundColor: ZONE[i] }} /> : null))}
-        </View>
-      ) : null}
+      <WorkoutHrLine mins={mins} start={s.start} end={s.end} age={age} />
+      {total ? <WorkoutZoneBreakdown zones={s.zones!} /> : null}
     </Card>
   );
 }

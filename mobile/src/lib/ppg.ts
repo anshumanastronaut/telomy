@@ -99,6 +99,20 @@ function stressFromHrv(hr: number, rmssd: number): number {
   return Math.max(1, Math.min(100, Math.round(s)));
 }
 
+const clamp100 = (x: number) => Math.max(1, Math.min(100, Math.round(x)));
+
+/** The three spot scores a single measurement shows (Welltory's Stress / Energy / Health trio), all 0–100.
+ *  These are NORMATIVE estimates from this one reading — HR and the raw HRV metrics are the hard numbers; these
+ *  are a readable summary that sharpens once the app has the person's own baseline. stress: HR↑ & HRV↓ → higher.
+ *  energy ("body battery"): parasympathetic reserve, from RMSSD with a gentle HR penalty. health: autonomic tone
+ *  overall, driven by SDNN (overall variability) with an RMSSD contribution. */
+export function scoresFromHrv(hr: number, rmssd: number, sdnn: number): { stress: number; energy: number; health: number } {
+  const stress = stressFromHrv(hr, rmssd);
+  const energy = clamp100(45 + (rmssd - 40) * 0.8 - (hr - 65) * 0.6);
+  const health = clamp100(40 + (sdnn - 50) * 0.7 + (rmssd - 40) * 0.3);
+  return { stress, energy, health };
+}
+
 /** Full pipeline: per-frame red-channel averages + timestamps (ms) → HR, HRV and a stress estimate + quality 0–1. */
 export function analysePpg(tms: number[], red: number[], fs = FS): HrvResult | null {
   if (tms.length < fs || tms[tms.length - 1] - tms[0] < 20000) return null; // need ~20 s+

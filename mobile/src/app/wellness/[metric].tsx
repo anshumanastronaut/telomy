@@ -12,6 +12,7 @@ import { TrendChart } from '@/ui/trends';
 import { nightSeries, normalBand, type Wellness } from '@/lib/wellness';
 import { SOURCE_LABEL } from '@/lib/sleepfuse';
 import { StageBreakdown, StrainColumns, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
+import { SleepHrRainbow } from '@/ui/welltory';
 
 const METHODS: Record<string, { title: string; how: string; sources: string[] }> = {
   recovery: {
@@ -109,7 +110,7 @@ export default function WellnessDetail() {
             {w.last.stages?.length ? <Section title="Sleep stages"><Card><StageBreakdown n={w.last} /></Card></Section> : null}
             {w.last.hr5.length ? <Card>
               <Segmented options={[{ key: 'hr', label: 'Heart rate' }, { key: 'hrv', label: 'HRV' }]} value={hrKind} onChange={setHrKind} />
-              <NightHrChart n={w.last} kind={hrKind} />
+              {hrKind === 'hr' && w.last.stages?.length ? <SleepHrRainbow n={w.last} /> : <NightHrChart n={w.last} kind={hrKind} />}
               <T v="small">{hrKind === 'hr'
                 ? (w.last.lowestHrPos != null && w.last.lowestHrPos > 0.66 ? 'Your heart rate bottomed out late in the night. Late meals, alcohol, late exercise or a warm room often delay it.' : 'Your heart rate settled early, a sign your body could start recovering soon after you fell asleep.')
                 : 'HRV usually rises through the night as recovery takes over.'}</T>
