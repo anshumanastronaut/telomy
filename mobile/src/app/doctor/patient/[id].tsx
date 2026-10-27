@@ -33,6 +33,8 @@ export default function DoctorPatient() {
   const [goal, setGoal] = React.useState('heart');
   const [signed, setSigned] = React.useState<Record<string, boolean>>({});
   const [chosen, setChosen] = React.useState<Record<string, boolean>>({});
+  const [thAdded, setThAdded] = React.useState<Record<string, boolean>>({});
+  const [thBusy, setThBusy] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
   const ov = useApi<any>(`/mgmt/clinic/patients/${id}/overview`, [id]);
@@ -246,7 +248,17 @@ export default function DoctorPatient() {
                     {resp?.verdict ? <T v="small" color={resp.verdict === 'helped' ? p.teal : p.muted}>Their data: {resp.verdict}</T> : <T v="small" color={p.faint}>{t.summary}</T>}
                   </View>
                   <Chip label={t.status === 'ok' ? 'suitable' : 'caution'} fg={tone.fg} bg={tone.bg} />
-                  <Button kind="ghost" title="Add" onPress={() => show(`${t.name} added to the plan.`, 'success')} />
+                  <Button kind="ghost" disabled={thAdded[t.modality] || thBusy === t.modality}
+                    title={thAdded[t.modality] ? 'Added ✓' : thBusy === t.modality ? '…' : 'Prescribe'}
+                    onPress={async () => {
+                      setThBusy(t.modality);
+                      try {
+                        await api(`/mgmt/clinic/patients/${id}/prescribe-therapy`, { body: { modality: t.modality } });
+                        setThAdded((s) => ({ ...s, [t.modality]: true }));
+                        show(`${t.name} prescribed — sessions booked, visible in the patient's app.`, 'success');
+                        plan.reload();
+                      } catch (e: any) { show(e.message, 'alert'); } finally { setThBusy(null); }
+                    }} />
                 </Row>
               );
             })}

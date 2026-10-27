@@ -2896,6 +2896,26 @@ def mgmt_prescribe(pid: int, body: dict, authorization: str = _Hdr(default="")):
         return {"ok": True, "plan": rx.get(plan["id"]), "prescriber": me.get("name")}
 
 
+@app.post("/mgmt/clinic/patients/{pid}/prescribe-therapy")
+def mgmt_prescribe_therapy(pid: int, body: dict, authorization: str = _Hdr(default="")):
+    """Doctor prescribes one screened therapy modality directly → a signed one-modality plan that books the patient's
+    sessions and appears in their app. (The goal-based auto-plan stays the separate /therapy flow.)"""
+    me = _require_staff(authorization)
+    from . import patient_data, therapy
+    if patient_data._resolve_user_id(pid) is None:
+        raise HTTPException(400, "Patient has no linked record.")
+    modality = (body.get("modality") or "").strip()
+    if not modality:
+        raise HTTPException(400, "A therapy modality is required.")
+    with patient_data._patient_db(pid):
+        try:
+            plan = therapy.save_single_plan(1, modality, int(body.get("per_week") or 2))
+            therapy.decide_plan(plan["id"], True, f"Prescribed by {me.get('name', 'doctor')}", doctor=me.get("name", "doctor"))
+        except (ValueError, LookupError) as e:
+            raise HTTPException(400, str(e))
+        return {"ok": True, "modality": modality, "name": therapy.MODALITIES.get(modality, {}).get("name", modality), "prescriber": me.get("name")}
+
+
 @app.post("/mgmt/staff/{sid}/profile")
 def mgmt_staff_profile(sid: int, body: dict, authorization: str = _Hdr(default="")):
     me = _require_staff(authorization)
