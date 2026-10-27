@@ -58,3 +58,4 @@ backend/telomy-live.db*
 *.db-shm
 *.db-wal
 research/validation/RIG_CREDENTIALS.md
+research/ppg-validation/welltory-ppg-dataset/
