@@ -16,6 +16,7 @@ import hmac
 import json
 import os
 import re
+import time
 import uuid
 
 from . import db
@@ -290,11 +291,15 @@ def nights(days: int = 30, merge_gap_s: int = 90 * 60) -> list[dict]:
         else:
             merged.append(dict(s))
     out = []
+    now = time.time()
     for m in merged:
         start, end = m["start"], m["end"]
         end = _extend_sleep_end(end, m["noopRestingHr"])   # recover sleep WHOOP cut off early while HR was still low
         hr = night_hr(start, end)
-        tel = telomy_stages(start, end)                    # re-stages the WHOLE merged span from the 1 Hz stream
+        # Only re-stage RECENT nights with the motion stager — staging every night in a days=21 request is slow and,
+        # after a restart clears the cache, made /whoop/nights time out on the client (it then fell back to the ring's
+        # shorter night). Older nights keep WHOOP's own NOOP stages, which are cheap and already stored.
+        tel = telomy_stages(start, end) if (now - end) < 3 * 86400 else None
         out.append({"start": start, "end": end, "efficiency": m["efficiency"], "noopRestingHr": m["noopRestingHr"],
                     "noopStages": m["noopStages"], "stages": tel["segments"] if tel else m["noopStages"],
                     "stager": tel["model"] if tel else "NOOP", "userEdited": m["userEdited"],
@@ -305,10 +310,37 @@ def nights(days: int = 30, merge_gap_s: int = 90 * 60) -> list[dict]:
 
 
 def telomy_stages(start: int, end: int) -> dict | None:
-    """Telomy's motion+HR stager on the WHOOP 1 Hz stream (app/stager_motion.py), as NOOP-style segments. Cached."""
+    """Telomy's motion+HR stager on the WHOOP 1 Hz stream (app/stager_motion.py), as NOOP-style segments.
+    Cached in-memory (lru) AND persisted to the DB, so a restart/deploy doesn't re-stage every night — that cold
+    re-stage made /whoop/nights time out and the app fell back to the ring's shorter night."""
     n = db.one("SELECT COUNT(*) AS n FROM whoop_rows WHERE stream IN ('hrSample','gravitySample') AND ts>=? AND ts<?", (start - 900, end + 900))["n"]
+    cached = _stage_cache_get(start, end, n)
+    if cached is not None:
+        return cached
     r = _telomy_stages(start, end, n, db.db_path())   # db path in the key so users never share a cache entry
-    return dict(r) if r else None
+    res = dict(r) if r else None
+    if res:
+        _stage_cache_put(start, end, n, res)
+    return res
+
+
+def _stage_cache_get(start: int, end: int, rows: int) -> dict | None:
+    try:
+        db.exec_("CREATE TABLE IF NOT EXISTS telomy_stage_cache (start INT, end INT, rows INT, model TEXT, segments TEXT, PRIMARY KEY(start,end,rows))")
+        r = db.one("SELECT model, segments FROM telomy_stage_cache WHERE start=? AND end=? AND rows=?", (start, end, rows))
+        if r:
+            return {"model": r["model"], "segments": json.loads(r["segments"])}
+    except Exception:  # noqa: BLE001 — a cache miss/error must never break the request
+        pass
+    return None
+
+
+def _stage_cache_put(start: int, end: int, rows: int, res: dict) -> None:
+    try:
+        db.exec_("INSERT OR REPLACE INTO telomy_stage_cache VALUES (?,?,?,?,?)",
+                 (start, end, rows, res.get("model"), json.dumps(res.get("segments"), separators=(",", ":"))))
+    except Exception:  # noqa: BLE001
+        pass
 
 
 @functools.lru_cache(maxsize=128)
