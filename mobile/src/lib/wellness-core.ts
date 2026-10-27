@@ -247,6 +247,41 @@ export function recoveryScore(n: Night | undefined, history: Night[], sleep: Sco
   return { score, label: readiness(score), calibrating, confidence, contributors: c.map(({ w, z: _z, ...x }) => ({ ...x, score: x.score == null ? null : Math.round(x.score) })) };
 }
 
+// ------------------------------------------------------------------ energy ("body battery") + today's guidance
+
+/** A Welltory-style "body battery" 0–100: how much capacity you have today. It charges from overnight recovery and
+ *  sleep, and drains with today's exertion (strain) and sustained daytime stress. Derived from the already-computed
+ *  scores so it stays consistent with Recovery, Sleep and Stress. */
+export function energyScore(recovery: Score, sleep: Score | null, stressScore: number | null, strain: number): Score {
+  if (recovery.score == null)
+    return { score: null, label: 'Needs last night', contributors: [], confidence: 'calibrating', calibrating: 'Energy builds on your overnight recovery — wear the patch, ring or WHOOP to bed' };
+  const rec = recovery.score;
+  const slp = sleep?.score ?? rec;
+  const loadPenalty = Math.min(18, Math.max(0, strain) * 1.0);
+  const stressPenalty = stressScore != null ? Math.max(0, stressScore - 45) * 0.35 : 0;
+  const charge = 0.6 * rec + 0.4 * slp;
+  const s = Math.round(clamp(charge - loadPenalty - stressPenalty));
+  const contributors: Contributor[] = [
+    { key: 'recovery', label: 'Overnight recovery', score: rec, value: `${rec}`, note: 'HRV, resting HR and sleep restored you' },
+    { key: 'sleep', label: 'Sleep', score: sleep?.score ?? null, value: sleep?.score != null ? `${sleep.score}` : '—', note: 'Quality and duration last night' },
+    { key: 'stress', label: 'Daytime stress', score: stressScore != null ? Math.round(clamp(100 - stressScore)) : null, value: stressScore != null ? `${stressScore}` : '—', note: 'Sustained stress drains the battery' },
+    { key: 'load', label: 'Exertion today', score: null, value: strain ? strain.toFixed(1) : '0', note: 'Activity spends energy' },
+  ];
+  return { score: s, label: s >= 75 ? 'Charged' : s >= 55 ? 'Steady' : s >= 35 ? 'Running low' : 'Depleted', contributors, confidence: recovery.confidence };
+}
+
+export type Guidance = { title: string; body: string; tone: 'teal' | 'copper'; action?: 'breathe' | 'sleep' };
+/** "What to do today" — one clear call, from today's recovery, energy and stress (the Welltory train/rest/recover idea). */
+export function todayGuidance(energy: number | null, recovery: number | null, stress: number | null): Guidance | null {
+  if (recovery == null && energy == null) return null;
+  if (stress != null && stress >= 65)
+    return { title: 'Downshift today', body: 'Your stress is running high. Five minutes of slow breathing or a short walk will reset your nervous system before you push anything else.', tone: 'copper', action: 'breathe' };
+  const rec = recovery ?? energy ?? 0, en = energy ?? rec;
+  if (rec >= 70 && en >= 65) return { title: 'Go for it', body: 'You’re recovered and charged — a good day for a demanding workout or a hard effort.', tone: 'teal' };
+  if (rec >= 50) return { title: 'Train moderate', body: 'A moderate session fits today — zone-2 cardio or technique work, not a max effort.', tone: 'teal' };
+  return { title: 'Recover today', body: 'Recovery and energy are low. Keep it gentle — a walk, mobility or rest — and protect tonight’s sleep.', tone: 'copper', action: 'sleep' };
+}
+
 // ------------------------------------------------------------------ illness heads-up
 
 export type IllnessSignal = { key: string; label: string; detail: string };

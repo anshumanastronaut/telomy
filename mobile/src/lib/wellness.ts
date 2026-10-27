@@ -11,7 +11,7 @@ import { fuseNights, healthNights, ringOwnNights, sleepNeed, sleepRegularity, wh
 import { api } from './api';
 import { syncDaily } from './sync';
 import { syncVitals } from './vitalsync';
-import { illnessWatch, coachLine, fmtClock, fmtDur, isNight, knots, nightsFrom, recoveryScore, sleepScore, strainFromTrimp, stressFor, vo2max, zonesFor, type Contributor, type DayEvent, type MinuteRec, type Night, type Score, type UserEventRec, localDate } from './wellness-core';
+import { energyScore, illnessWatch, coachLine, fmtClock, fmtDur, isNight, knots, nightsFrom, recoveryScore, sleepScore, strainFromTrimp, stressFor, todayGuidance, vo2max, zonesFor, type Contributor, type DayEvent, type Guidance, type MinuteRec, type Night, type Score, type UserEventRec, localDate } from './wellness-core';
 export * from './wellness-core';
 
 /** Server day engine on the WHOOP 1 Hz stream (backend/app/whoop_day.py). */
@@ -24,6 +24,7 @@ export type Wellness = {
   today: { minutes: MinuteRec[]; zones: number[]; trimp: number; strain: number; stress: ReturnType<typeof stressFor>; worn: number; activeMin: number; source: 'patch' | 'whoop'; whoop?: WhoopDay };
   yesterdayTrimp: number | null; restingHr: number | null; vo2: number | null; reload: () => void; sessionsToday: DayEvent[]; userEvents: UserEventRec[];
   need: SleepNeed; sri: number | null; illness: ReturnType<typeof illnessWatch>;
+  energy: Score; guidance: Guidance | null;
 };
 
 /** Must equal KYCapture.analysisVersion: nights analysed by an older version are re-analysed once on the phone. */
@@ -122,9 +123,10 @@ export function useWellness(ageHint?: number | null): Wellness {
           calmMin: Math.max(0, wd!.stress.minutes - wd!.stress.highMin), minutes: wd!.stress.minutes, timeline: [] } }
     : { minutes: tm, zones, trimp, strain: strainFromTrimp(trimp), stress, worn: tm.length, source: 'patch' as const,
         activeMin: tm.filter((m) => m.activity === 'active').length };
+  const energy = energyScore(recovery, sleep, today.stress?.score ?? null, today.strain);
   return {
     loading: !state, nights, naps, last: fresh, sleep, recovery, age,
-    today,
+    today, energy, guidance: todayGuidance(energy.score, recovery.score, today.stress?.score ?? null),
     yesterdayTrimp: byDay(yKey).length >= 60 ? zonesFor(byDay(yKey), age).trimp : null,
     restingHr, vo2: restingHr ? vo2max(age, restingHr) : null, reload: load, sessionsToday: state?.sessions ?? [], userEvents: state?.userEvents ?? [],
     need: sleepNeed(nights, today.strain, strainByDate), sri, illness: illnessWatch(nights),

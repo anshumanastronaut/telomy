@@ -9,7 +9,7 @@ import { useApi } from '@/lib/api';
 import { useHealth } from '@/lib/health';
 import { data, radius, space, type, usePalette } from '@/lib/theme';
 import { fmtDur, useWellness } from '@/lib/wellness';
-import { Card, Row, Screen, Section, T } from '@/ui/core';
+import { Button, Card, Chip, Icon, Row, Screen, Section, T } from '@/ui/core';
 import { ScoreRing, StrainColumns } from '@/ui/wellness';
 
 const GOALS = { steps: 10000, kcal: 500, exercise: 30 };
@@ -34,8 +34,9 @@ export default function Activity() {
   const nights = w.nights ?? [];
   const prevNights = nights.slice(0, -1);
 
-  // ---- the four scores (identical to Home)
+  // ---- the scores (same on-device engine as Home) — Energy ("body battery") leads, then recovery/strain/sleep/stress
   const scores = [
+    { key: 'energy', label: 'Energy', v: w.energy.score, max: 100, text: w.energy.score != null ? `${w.energy.score}` : '—', color: data.activity, sub: w.energy.label },
     { key: 'recovery', label: 'Recovery', v: w.recovery.score, max: 100, text: w.recovery.score != null ? `${w.recovery.score}` : '—', color: data.recovery, sub: w.recovery.label },
     { key: 'strain', label: 'Strain', v: w.today.worn >= 10 ? w.today.strain : null, max: 21, text: w.today.worn >= 10 ? w.today.strain.toFixed(1) : '—', color: data.heart, sub: w.today.worn >= 10 ? `${w.today.activeMin} active min` : 'Wear the patch' },
     { key: 'sleep', label: 'Sleep', v: w.sleep?.score ?? null, max: 100, text: w.sleep?.score != null ? `${w.sleep.score}` : '—', color: data.sleep, sub: w.last ? fmtDur(w.last.tstMin) : 'No night yet' },
@@ -72,7 +73,21 @@ export default function Activity() {
         <T v="small">The same scores as your Home, worked out on this phone from your own data.</T>
       </View>
 
-      {/* the four scores */}
+      {/* what to do today — one clear call from energy, recovery and stress */}
+      {w.guidance ? (
+        <Card tone={w.guidance.tone}>
+          <Row style={{ alignItems: 'flex-start' }}>
+            <Icon name={w.guidance.action === 'sleep' ? 'moon.zzz' : w.guidance.action === 'breathe' ? 'wind' : 'figure.run'} size={18} color={w.guidance.tone === 'teal' ? p.teal : p.copper} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <T v="h3">{w.guidance.title}</T>
+              <T v="small">{w.guidance.body}</T>
+            </View>
+          </Row>
+          {w.guidance.action === 'breathe' ? <Button kind="secondary" title="Start a breathing session" icon="wind" onPress={() => router.push('/breathe')} /> : null}
+        </Card>
+      ) : null}
+
+      {/* the scores */}
       <View style={{ flexDirection: 'row', gap: space[2] }}>
         {scores.map((s) => (
           <Pressable key={s.key} onPress={() => router.push(`/wellness/${s.key}` as any)} accessibilityRole="button" accessibilityLabel={`${s.label} ${s.text}`}
@@ -83,6 +98,8 @@ export default function Activity() {
           </Pressable>
         ))}
       </View>
+
+      <WhatAffectsYou />
 
       {move.length ? (
         <Section title="Movement today">
@@ -183,8 +200,32 @@ export default function Activity() {
 
       <Card>
         <T v="label">How these are worked out</T>
-        <T v="small">Recovery compares last night's HRV and lowest heart rate with your own previous 30 nights, adjusted for sleep, breathing and yesterday's strain (green 67+, amber 34–66, red 33 or less). Strain weights every minute by heart-rate zone (Edwards TRIMP) on a 0–21 scale. Stress compares daytime heart rate and HRV with your calm baseline. Usual ranges are your own mean ± 1.5 standard deviations.</T>
+        <T v="small">Energy ("body battery") charges from your overnight recovery and sleep and drains with today's exertion and sustained stress. Recovery compares last night's HRV and lowest heart rate with your own previous 30 nights, adjusted for sleep, breathing and yesterday's strain (green 67+, amber 34–66, red 33 or less). Strain weights every minute by heart-rate zone (Edwards TRIMP) on a 0–21 scale. Stress compares daytime heart rate and HRV with your calm baseline. Usual ranges are your own mean ± 1.5 standard deviations.</T>
       </Card>
     </Screen>
+  );
+}
+
+/** Welltory-style "what affects you" preview: the top event→signal effects from the correlation engine. */
+function WhatAffectsYou() {
+  const p = usePalette();
+  const ins = useApi<any[]>('/insights');
+  const items = (ins.data ?? []).filter((x) => x.kind === 'event_effect').slice(0, 3);
+  if (!items.length) return null;
+  return (
+    <Section title="What affects you">
+      <Card style={{ gap: space[2] }} onPress={() => router.push('/insights' as any)}>
+        {items.map((x) => (
+          <Row key={x.id} style={{ alignItems: 'flex-start' }}>
+            <Icon name="sparkles" size={13} color={p.teal} />
+            <View style={{ flex: 1 }}>
+              <T v="body" style={{ fontWeight: '600' }}>{x.title}</T>
+              {x.receipts ? <T v="small" color={p.muted}>{x.receipts.n} days · r {x.receipts.r} · p {x.receipts.p}</T> : null}
+            </View>
+          </Row>
+        ))}
+        <Row><T v="small" color={p.teal} style={{ flex: 1 }}>See all your correlations</T><Icon name="chevron.right" size={12} color={p.teal} /></Row>
+      </Card>
+    </Section>
   );
 }

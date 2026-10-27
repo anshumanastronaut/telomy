@@ -34,6 +34,11 @@ const METHODS: Record<string, { title: string; how: string; sources: string[] }>
     how: 'While you are awake and not exercising, each minute is classed as calm, neutral or stress from your heart rate above resting and your HRV compared with your own calm minutes. The score is the share of stress minutes.',
     sources: ['Firstbeat Technologies 2014: stress and recovery analysis based on 24-h HRV', 'Kim HG et al. 2018, Psychiatry Investig: stress and HRV meta-analysis', 'Task Force of ESC/NASPE 1996: HRV standards'],
   },
+  energy: {
+    title: 'Energy',
+    how: 'Your "body battery" for the day. It charges from your overnight recovery (HRV, resting heart rate, sleep restoration) and your sleep, and drains with today’s exertion (strain) and sustained daytime stress. 75+ is charged, 55–74 steady, 35–54 running low, under 35 depleted. It is derived from your Recovery, Sleep and Stress scores, so it always moves with them.',
+    sources: ['Plews DJ et al. 2013, Sports Med: daily ln RMSSD vs rolling baseline', 'Firstbeat Technologies 2014: body resources and stress–recovery balance from HRV', 'Banister EW 1991: training impulse'],
+  },
 };
 
 export default function WellnessDetail() {
@@ -68,6 +73,21 @@ export default function WellnessDetail() {
               </Row>
             </Section>
           ) : null}
+        </>
+      ) : null}
+
+      {metric === 'energy' ? (
+        <>
+          <DetailHero dial value={w.energy.score} label={w.energy.score == null ? 'Needs last night' : w.energy.label} color={recoveryColor(p, w.energy.score)} sub={w.energy.calibrating} />
+          {w.guidance ? (
+            <Card tone={w.guidance.tone} style={{ gap: 2 }}>
+              <T v="label">What to do today</T>
+              <T v="h3">{w.guidance.title}</T>
+              <T v="small">{w.guidance.body}</T>
+            </Card>
+          ) : null}
+          {w.energy.contributors.length ? <Section title="What's charging and draining it"><ContributorList items={w.energy.contributors} /></Section>
+            : <Empty title="No night yet" body="Energy builds on last night's recovery. Wear the patch, ring or WHOOP to bed." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />}
         </>
       ) : null}
 
