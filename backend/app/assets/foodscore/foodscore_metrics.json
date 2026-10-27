@@ -1,0 +1,43 @@
+{
+  "nova_processing": {
+    "n_trained": 703003,
+    "n_test": 140601,
+    "accuracy": 0.811,
+    "macro_f1": 0.777,
+    "classes": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ]
+  },
+  "nutriscore": {
+    "n_trained": 1030035,
+    "n_test": 206007,
+    "accuracy": 0.892,
+    "macro_f1": 0.877,
+    "classes": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e"
+    ]
+  },
+  "_meta": {
+    "source": "Open Food Facts (openfoodfacts.org, ODbL)",
+    "features": [
+      "energy-kcal_100g",
+      "fat_100g",
+      "saturated-fat_100g",
+      "carbohydrates_100g",
+      "sugars_100g",
+      "fiber_100g",
+      "proteins_100g",
+      "salt_100g",
+      "sodium_100g"
+    ],
+    "total_usable_rows": 2511579,
+    "note": "NOVA = learned processing signal; Nutri-Score largely reproduces its own formula"
+  }
+}

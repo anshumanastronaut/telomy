@@ -111,7 +111,8 @@ flowchart TB
 |---|---|---|
 | Identity & consent | *new* `auth`, `consents` in `main.py` | Users, orgs, memberships, care relationships, consent per purpose, audit |
 | Vault | `db`, `labparse`, `catalog*`, `features`, `food` | Markers, signals, events, reports, imaging, meds, documents |
-| Engine | `engine`, `derived`, `predict`, `evidence` | Ages, scores, effects, correlations, rules, risk models, insights, N-of-1 |
+| Engine (guideline) | `engine`, `derived`, `predict`, `evidence` | Ages, scores, effects, correlations, rules, risk models, insights, N-of-1 |
+| Intelligence (trained) | `telomy_ml`, `llx/*`, assets in `app/assets/` | NHANES-trained blood/muscle age clocks, 13-condition disease screen, 10-yr mortality, wearable fusion, supplement/modality/nutrition/voice/check-in engines; served additively at `/me/*`. See [MODELS.md](../MODELS.md). |
 | Sinc | `sinc`, `summaries`, `voice`, `brief` | Chat, AI summaries, voice intents, specialist packs |
 | Therapy | `therapy`, `physio`, `devices` | Modalities, sessions, telemetry, verdicts, plans, floor, phenotypes, HSAI |
 | Twin & life | `twin`, `routine`, `activities`, `exposome` | Digital twin, routines, custom activities, environment |
@@ -193,3 +194,4 @@ sequenceDiagram
 | dev | fixtures + staff accounts | auto-deploy on merge |
 | staging | fixtures + consented anonymised subset | mirrors prod |
 | prod | real users, DPDP-controlled | no seed, no dev routes |
+| **cloud (interim)** | founder n-of-1 on real data | Oracle VM, Caddy auto-HTTPS → uvicorn `127.0.0.1:8787`, systemd `telomy`, per-user SQLite multi-user mode, trained-ML suite deployed. `deploy/oracle/deploy.sh`. The always-on backend for untethered device testing ahead of AWS prod. |

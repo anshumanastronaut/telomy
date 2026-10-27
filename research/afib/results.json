@@ -1,0 +1,14 @@
+{
+  "source": "PhysioNet CinC 2017 single-lead ECG (8528 recordings)",
+  "classes": [
+    "Normal",
+    "AF",
+    "Other",
+    "Noisy"
+  ],
+  "cv_challenge_F1": 0.783,
+  "AF_sensitivity": 0.789,
+  "AF_specificity": 0.982,
+  "beats_current_rule": "Se 0.62 -> 0.79",
+  "note": "largest free labeled single-lead AF set; million-scale labeled AF ECG does not exist free"
+}

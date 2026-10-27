@@ -103,7 +103,7 @@ export default function InsightDetail() {
                 onChangeText={setNote}
                 placeholder="Note (required to reject)"
                 placeholderTextColor={p.faint}
-                style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface }}
+                style={{ borderRadius: radius.md, padding: 10, color: p.text, fontFamily: 'HankenGrotesk_400Regular', backgroundColor: p.surface }}
               />
               {err ? <T v="small" color={p.danger}>{err}</T> : null}
               <Row>

@@ -37,7 +37,7 @@ export default function TherapyDetail() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: m.name }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">{m.name}</T>
         <Row style={{ flexWrap: 'wrap' }}>
           <VerdictChip verdict={m.my_verdict} />

@@ -86,7 +86,7 @@ export default function Monthly() {
           <Card tone="copper">
             <T v="label">Sign as Dr. Meera Rao</T>
             <TextInput value={note} onChangeText={setNote} placeholder="Note for the patient (required)" placeholderTextColor={p.faint} multiline
-              style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
+              style={{ borderRadius: radius.md, padding: 10, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular' }} />
             <Button title="Sign and send" disabled={!note.trim()} onPress={async () => { await api(`/monthly-reports/${r.period}/sign`, { body: { note } }); show('Signed and sent to the patient.', 'success'); rep.reload(); }} />
           </Card>
         ) : null}

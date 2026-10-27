@@ -38,6 +38,7 @@ final class KYBand: NSObject {
     private var probedAcc = false
     private var capture: KYCapture?
     private var restingSavedAt = 0.0
+    private var lastVitalAt = 0.0   // throttle for the continuous longitudinal vitals record
     private var state: State = .idle
     private var userDisconnected = false
     private(set) var wantsStream = false
@@ -196,7 +197,8 @@ final class KYBand: NSObject {
         if let v = m.rmssd300 { summary["rmssd300End"] = v }
         let t0 = c.meta["startedAt"] as? Double ?? Date().timeIntervalSince1970
         let wall = Date().timeIntervalSince1970 - t0
-        if wall > 2 * 3600, let n = KYSleepNight.analyze(beats: c.beatTimes.map { $0 - t0 }, durationSec: wall) {
+        let overnight = isOvernightTherapy(c.meta["therapyId"]) || nightOverlapSec(from: t0, to: t0 + wall) >= 2 * 3600
+        if wall > 2 * 3600, overnight, let n = KYSleepNight.analyze(beats: c.beatTimes.map { $0 - t0 }, durationSec: wall) {
             var sl: [String: Any] = ["totalSleepMin": n.totalSleepMin, "efficiency": n.efficiency, "wasoMin": n.wakeAfterOnsetMin,
                                      "awakenings": n.awakenings, "hypnogram": n.asleep.map { $0 ? 1 : 0 }, "epochSec": 30]
             if let v = n.sleepOnsetMin { sl["onsetMin"] = v }
@@ -270,8 +272,64 @@ final class KYBand: NSObject {
         publish()
     }
 
+    private var lastAutoEval = 0.0
+
+    // MARK: continuous recording — the patch records whenever it is on the skin, not only when someone taps Live
+    // (2026-10-19: worn all night, connected, lead on — and nothing was recorded). Rolling 2-h "All-day ECG" captures;
+    // a capture the user started, or the overnight one, is never touched; sleep onset hands over to the overnight
+    // capture (KYSleepAuto); raw all-day bundles are kept 14 days (per-minute summaries go to the server for good).
+    static let autoRecordKey = "telomy.patch.autoRecord"
+    var autoRecordOn: Bool { UserDefaults.standard.object(forKey: Self.autoRecordKey) as? Bool ?? true }
+    private var leadOffSince: Double?, lastPrune = 0.0
+    var isContinuousCapture: Bool { (capture?.meta["therapyId"] as? String) == "continuous" }
+
+    private func autoRecordTick() {
+        guard autoRecordOn, state == .connected || state == .streaming, !liveBlockedByRecording, sync == nil else { return }
+        let now = Date().timeIntervalSince1970
+        if leadOn == true { leadOffSince = nil } else if leadOn == false { leadOffSince = leadOffSince ?? now }
+        if let c = capture {
+            guard isContinuousCapture else { return }
+            let t0 = c.meta["startedAt"] as? Double ?? now
+            if let off = leadOffSince, now - off > 300 {
+                _ = stopCapture(extra: ["autoStopped": true, "reason": "patch off"]); log("auto-record: patch off — record closed"); return
+            }
+            if now - t0 > 2 * 3600 {
+                _ = stopCapture(extra: ["autoStopped": true, "reason": "rolled"]); log("auto-record: rolled 2-h record")
+                startContinuous()
+            }
+        } else if leadOn == true {
+            startContinuous()
+        }
+        if now - lastPrune > 86400 { lastPrune = now; pruneContinuous(olderThanDays: 14) }
+    }
+
+    private func startContinuous() {
+        let r = startCapture(meta: ["therapy": "All-day ECG", "therapyId": "continuous", "settings": [:], "pre": [:],
+                                    "tz": TimeZone.current.identifier, "autoStarted": true])
+        log("auto-record: started \(r["id"] ?? r["error"] ?? "")")
+    }
+
+    /// Close a running all-day record (sleep onset hands over to the overnight capture).
+    func stopContinuousIfRunning() {
+        if isContinuousCapture { _ = stopCapture(extra: ["autoStopped": true, "reason": "sleep onset"]) }
+    }
+
+    private func pruneContinuous(olderThanDays d: Double) {
+        let cutoff = Date().timeIntervalSince1970 - d * 86400
+        for m in KYCapture.list() where (m["therapyId"] as? String) == "continuous" {
+            if let t = m["startedAt"] as? Double, t < cutoff, let id = m["id"] as? String { KYCapture.delete(id: id) }
+        }
+    }
+
     private func publish() {
         emit?("onStatus", status())
+        // patch-only nights: status updates (lead-on/off, ~every 15 s) also drive auto-sleep, at most once a minute —
+        // without the ring there is no other heartbeat while the patch is connected but not streaming
+        let now = Date().timeIntervalSince1970
+        if now - lastAutoEval > 60 {
+            lastAutoEval = now
+            DispatchQueue.main.async { KYSleepAuto.shared.evaluate(); self.autoRecordTick() }
+        }
         log("status \(state.rawValue) holter=\(holterState) blocked=\(liveBlockedByRecording) lead=\(leadOn.map { "\($0)" } ?? "?") batt=\(info?.battery ?? -1)")
     }
 
@@ -369,6 +427,17 @@ final class KYBand: NSObject {
                 liveBlockedByRecording = false
                 if wantsStream && sync == nil { beginStream() }
             }
+            // Auto-sync: a recording the band made on its own (phone away, app closed) is pulled the moment the band
+            // reconnects — once per recording, so nothing waits on someone remembering to tap Sync.
+            let have = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("ky-recordings/\(holterStart ?? 0).holter")
+            let alreadyOnPhone = ((try? FileManager.default.attributesOfItem(atPath: have.path)[.size] as? Int) ?? 0) > 1024
+            if !recording, s != .readingFlash, sync == nil, capture == nil, !alreadyOnPhone, let st = holterStart, st > 0,
+               UserDefaults.standard.integer(forKey: "telomy.band.lastAutoSync") != Int(st) {
+                UserDefaults.standard.set(Int(st), forKey: "telomy.band.lastAutoSync")
+                log("auto-sync on-band recording started \(st)")
+                syncRecording()
+            }
             publish()
         case .holterTime(let t): holterStart = t; publish()
         case .ecgFrame(let f): handleFrame(f)
@@ -424,6 +493,7 @@ final class KYBand: NSObject {
         if let v = st.rmssd { mm["rmssdSmooth"] = v }
         if let v = st.rmssd5 { mm["rmssd5"] = v }
         if now - restingSavedAt > 60 { restingSavedAt = now; UserDefaults.standard.set(st.restingHr, forKey: Self.restingKey) }
+        KYSleepAuto.shared.band(sleep: st.sleep.rawValue, activity: st.activity.rawValue)   // auto sleep onset / wake
         if let v = m.meanNN60 { mm["meanNN60"] = v }
         if let v = m.rmssd60, st.hrvState == "ok" || st.hrvState == "active" { mm["rmssd60"] = v }
         if let v = m.sdnn60 { mm["sdnn60"] = v }
@@ -432,6 +502,15 @@ final class KYBand: NSObject {
         if let v = m.sdnn300 { mm["sdnn300"] = v }
         if let v = m.artefactPercent60 { mm["artefactPercent"] = v }
         if capture != nil { mm["capturing"] = capture!.id; capture?.addMetrics(mm) }
+        // Longitudinal vitals: persist a compact summary continuously while connected — all day, not only during a
+        // capture — so the whole day's physiology lands on one clock for the sync queue to upload. Throttled to ~10 s.
+        if now - lastVitalAt >= 9.5, let hr = st.hr {
+            lastVitalAt = now
+            var vital: [String: Any] = ["ts": Int(now.rounded()), "hr": hr, "motion": st.motionIndex,
+                                        "quality": m.quality.rawValue, "step_s": 10]
+            if let hrv = m.rmssd60, st.hrvState == "ok" || st.hrvState == "active" { vital["hrv"] = hrv }
+            KYWellnessStore.append(kind: "vitals", record: vital)
+        }
         emit?("onMetrics", mm)
         // Lock Screen live heart (ActivityKit), throttled to 5 s inside
         let live = KYLiveActivity.shared

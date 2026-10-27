@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { api, fmtDate, useApi } from '@/lib/api';
 import { acquireStream, Band, bandAvailable, clearDevices, ecg, useBand, type BandMetrics } from '@/lib/band';
-import { space, usePalette } from '@/lib/theme';
+import { space, usePalette, onInk } from '@/lib/theme';
 import { Button, Card, Chip, Empty, Icon, ListRow, Row, Screen, Section, Segmented, Stat, T, useToast } from '@/ui/core';
 import { BeatHeart, EcgMonitor, HrTrend, Tachogram } from '@/ui/ecg';
 
@@ -59,7 +59,7 @@ export default function Monitor() {
   if (!bandAvailable) {
     return (
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Live ECG' }} />
+        <Stack.Screen options={{ title: '' }} />
         <Empty title="ECG band needs the Telomy app" body="Live ECG uses Bluetooth through Telomy's native app. It isn't available in Expo Go or on the web." />
       </Screen>
     );
@@ -88,7 +88,7 @@ export default function Monitor() {
     return (
       <View style={{ flex: 1 }}>
         <Screen edges={[]}>
-          <Stack.Screen options={{ title: 'Live ECG' }} />
+          <Stack.Screen options={{ title: '' }} />
           <T v="h1">{remembered ? 'Reconnecting…' : 'Connect your ECG band'}</T>
           {remembered ? (
             <Card tone="teal">
@@ -128,24 +128,25 @@ export default function Monitor() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Live ECG' }} />
+        <Stack.Screen options={{ title: '' }} />
         <Row style={{ flexWrap: 'wrap' }}>
           <Chip label={s?.deviceName ?? 'ECG band'} icon="waveform.path.ecg" fg={p.teal} bg={p.tealSoft} />
           {s?.battery != null ? <Chip label={`Battery ${s.battery}`} icon="battery.50percent" /> : null}
           <Chip label={q.label} fg={qfg} bg={qbg} />
         </Row>
 
-        <LinearGradient colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
-          <Row style={{ alignItems: 'flex-end' }}>
-            <BeatHeart lastBeatAt={b.lastBeatAt} size={30} />
-            <T v="display" color={m?.hrConfidence === 'low' ? 'rgba(255,255,255,0.45)' : '#fff'} style={{ fontSize: 84, lineHeight: 90 }} accessibilityLabel={`Heart rate ${fmt(m?.hr)} beats per minute`}>{fmt(m?.hr)}</T>
-            <View style={{ marginBottom: 10 }}>
-              <T v="body" color="rgba(255,255,255,0.6)">bpm</T>
-              {m?.hrSd != null ? <T v="small" color="rgba(255,255,255,0.5)">± {Math.max(1, Math.round(m.hrSd))}</T> : null}
-            </View>
-            <View style={{ flex: 1 }} />
-            <View style={{ alignItems: 'flex-end', marginBottom: 6 }}>
-              <T v="label" color="rgba(255,255,255,0.55)">HRV · RMSSD</T>
+        <LinearGradient colors={['#121C18', '#0B1210']} style={{ borderRadius: 28, padding: space[5], gap: space[3], borderWidth: 1, borderColor: onInk.hairline }}>
+          <Row style={{ alignItems: 'flex-end', justifyContent: 'space-between' }}>
+            <Row style={{ alignItems: 'flex-end', flexShrink: 1, minWidth: 0, gap: 4 }}>
+              <BeatHeart lastBeatAt={b.lastBeatAt} size={30} />
+              <T v="display" numberOfLines={1} adjustsFontSizeToFit color={m?.hrConfidence === 'low' ? onInk.faint : '#fff'} style={{ fontSize: 76, lineHeight: 82, flexShrink: 1 }} accessibilityLabel={`Heart rate ${fmt(m?.hr)} beats per minute`}>{fmt(m?.hr)}</T>
+              <View style={{ marginBottom: 10 }}>
+                <T v="body" color={onInk.muted}>bpm</T>
+                {m?.hrSd != null ? <T v="small" color={onInk.muted}>± {Math.max(1, Math.round(m.hrSd))}</T> : null}
+              </View>
+            </Row>
+            <View style={{ alignItems: 'flex-end', marginBottom: 6, flexShrink: 0, paddingLeft: space[3] }}>
+              <T v="label" color={onInk.muted}>HRV · RMSSD</T>
               <T v="num" color="#fff" style={{ fontSize: 30 }}>{m?.rmssdSmooth != null && (m.hrvState === 'ok' || m.hrvState === 'active') ? fmt(m.rmssdSmooth) : '–'} <T v="small">ms</T></T>
             </View>
           </Row>
@@ -155,7 +156,7 @@ export default function Monitor() {
             {m?.signal && m.signal !== 'clean' ? <Chip label={m.signal === 'motion' ? 'Movement in signal' : m.signal === 'noisy' ? 'Noisy signal' : m.signal.replace('_', ' ')} fg={p.warn} bg={p.warnSoft} /> : null}
             {m?.restingHr ? <Chip label={`Your resting ≈ ${Math.round(m.restingHr)} bpm`} /> : null}
           </Row>
-          <T v="small" color="rgba(255,255,255,0.6)">{m?.hrConfidence === 'low' ? 'Holding the last reliable value while the signal is noisy.' : q.hint}</T>
+          <T v="small" color={onInk.muted}>{m?.hrConfidence === 'low' ? 'Holding the last reliable value while the signal is noisy.' : q.hint}</T>
         </LinearGradient>
 
         <Card style={{ gap: space[2] }}>

@@ -25,7 +25,9 @@
         "NSSupportsLiveActivitiesFrequentUpdates": true,
         "CADisableMinimumFrameDurationOnPhone": true,
         "NSHealthShareUsageDescription": "Telomy reads steps, activity, workouts, sleep and vitals from Apple Health to build your daily scores. Telomy never writes to Health.",
-        "NSHealthUpdateUsageDescription": "Telomy does not write to Apple Health."
+        "NSHealthUpdateUsageDescription": "Telomy does not write to Apple Health.",
+        "NSMotionUsageDescription": "Telomy uses your phone's motion activity (still, walking, driving) to detect sleep and activity automatically. It stays on your phone.",
+        "NSLocationWhenInUseUsageDescription": "Telomy uses your location to show real-time air quality, UV and weather where you are — an outdoor-health score, UV and sun-exposure alerts, and a cleaner picture of what your environment does to your body. Used only while you have the app open; your location is never stored."
       },
       "appleTeamId": "M483297A5P",
       "buildNumber": "5",
@@ -42,7 +44,11 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.kumaranshuman.telomy",
       "usesCleartextTraffic": true,
-      "versionCode": 5
+      "versionCode": 5,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -63,7 +69,15 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Telomy uses the microphone when you talk to Sinc \u2014 to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
+          "microphonePermission": "Telomy uses the microphone when you talk to Sinc — to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Telomy uses your location to show real-time air quality, UV and weather where you are — an outdoor-health score, UV and sun-exposure alerts, and a cleaner picture of what your environment does to your body. Used only while you have the app open; your location is never stored.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
         }
       ],
       "@bacons/apple-targets"

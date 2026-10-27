@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Telomy nightly DB backup (macOS launchd LaunchAgent)
+  ====================================================
+  Runs deploy/mac/backup-db.sh every night at ~03:30. If the Mac is asleep at
+  03:30, launchd runs the job once shortly after it wakes.
+
+  Install
+  -------
+    mkdir -p /Users/anshuman/telomy-app/backend/logs
+    chmod +x /Users/anshuman/telomy-app/deploy/mac/backup-db.sh
+    cp deploy/mac/com.telomy.backup.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.telomy.backup.plist
+    # run once now to verify:
+    launchctl start com.telomy.backup
+    tail -f /Users/anshuman/telomy-app/backend/logs/backup.err.log
+
+  Uninstall
+  ---------
+    launchctl unload -w ~/Library/LaunchAgents/com.telomy.backup.plist
+    rm ~/Library/LaunchAgents/com.telomy.backup.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.telomy.backup</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/anshuman/telomy-app/deploy/mac/backup-db.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/anshuman/telomy-app/backend</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/anshuman/telomy-app/backend/logs/backup.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/anshuman/telomy-app/backend/logs/backup.err.log</string>
+</dict>
+</plist>

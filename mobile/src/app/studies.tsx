@@ -32,7 +32,7 @@ export default function Studies() {
       <T v="body" color={p.muted}>An N-of-1 study alternates weeks on and off an intervention, then compares your own data. You get one of three verdicts: Helped, No reliable signal, or Possible negative.</T>
       <Section title="Start a study">
         <Card>
-          <TextInput value={iv} onChangeText={setIv} placeholder="Intervention, e.g. Magnesium 300 mg at night" placeholderTextColor={p.faint} style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, fontFamily: 'Inter_400Regular' }} />
+          <TextInput value={iv} onChangeText={setIv} placeholder="Intervention, e.g. Magnesium 300 mg at night" placeholderTextColor={p.faint} style={{ borderRadius: radius.md, backgroundColor: p.surfaceAlt, padding: 12, color: p.text, fontFamily: 'HankenGrotesk_400Regular' }} />
           <T v="label">Outcome</T>
           <Row style={{ flexWrap: 'wrap' }}>
             {OUTCOMES.map(([k, l]) => (

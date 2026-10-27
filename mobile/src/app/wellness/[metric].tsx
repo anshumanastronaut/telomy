@@ -4,13 +4,15 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { useApi } from '@/lib/api';
-import { space, usePalette } from '@/lib/theme';
+import { space, type, usePalette, data } from '@/lib/theme';
 import { fmtClock, fmtDur, hrMax, useWellness } from '@/lib/wellness';
 import { Button, Card, Empty, Loading, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { C, DetailHero } from '@/ui/today';
 import { TrendChart } from '@/ui/trends';
 import { nightSeries, normalBand, type Wellness } from '@/lib/wellness';
-import { StageBreakdown, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
+import { SOURCE_LABEL } from '@/lib/sleepfuse';
+import { StageBreakdown, StrainColumns, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
+import { SleepHrRainbow } from '@/ui/welltory';
 
 const METHODS: Record<string, { title: string; how: string; sources: string[] }> = {
   recovery: {
@@ -20,18 +22,23 @@ const METHODS: Record<string, { title: string; how: string; sources: string[] }>
   },
   sleep: {
     title: 'Sleep',
-    how: 'Wake, light, deep and REM sleep are estimated every 30 s from your heart rhythm and ECG-derived breathing by a small neural network (convolution + bidirectional GRU) trained on 151 hospital sleep-lab nights with expert scoring. ECG-only staging agrees with a full sleep study about 2 in 3 epochs; treat stage minutes as estimates. The score combines duration, efficiency, time to fall asleep, time awake, wake-ups, overnight HRV vs your normal, the heart-rate drop in sleep and timing regularity. Breathing rate comes from the breathing rhythm in your ECG.',
-    sources: ['Hirshkowitz M et al. 2015, Sleep Health: NSF sleep duration', 'Ohayon M et al. 2017, Sleep Health: NSF sleep-quality indicators', 'Phillips AJK et al. 2017, Sci Rep: sleep regularity', 'Sridhar N et al. 2020, npj Digit Med: sleep staging from instantaneous heart rate', 'Radha M et al. 2019, Sci Rep: sleep stages from HRV with LSTM', 'Alvarez-Estevez D, Rijsman R 2021, PLoS One: HMC sleep staging database', 'Ohayon M et al. 2004, Sleep: normative sleep architecture', 'Charlton PH et al. 2016, Physiol Meas: respiratory rate from the ECG', 'Karlen W et al. 2013, IEEE TBME: smart fusion'],
+    how: 'Wake, light, deep and REM sleep are estimated every 30 s from your heart rhythm and ECG-derived breathing by a small neural network (convolution + bidirectional GRU) trained on 151 hospital sleep-lab nights with expert scoring. Tested on sleep-lab nights it never saw, it agrees with expert scoring about 6 epochs in 10 (κ 0.36), similar to consumer wearables: total sleep and timing are reliable, deep and REM minutes are estimates. The score combines duration, efficiency, time to fall asleep, time awake, wake-ups, overnight HRV vs your normal, the heart-rate drop in sleep and timing regularity. Breathing rate comes from your ECG and is shown only when two independent methods agree. Nights come from the best device you wore: the patch (ECG stages), then Apple Watch stages from Apple Health, then the ring (sleep and wake from its heart-rate log and your iPhone\u2019s motion, no stages), then any other Health sleep. Sleep need = baseline (8 h until 14 nights, then learnt from your longer nights, 7–9 h) + up to 45 min for a hard day + your sleep debt. Each night, 55 % of what you missed carries into the next night\u2019s target (a rule that tracked WHOOP\u2019s own sleep debt within 15 minutes on 93 % of 853 nights); extra sleep clears it but never banks. Regularity is the Sleep Regularity Index: how likely you are in the same state (asleep or awake) at the same clock time on consecutive days.',
+    sources: ['Hirshkowitz M et al. 2015, Sleep Health: NSF sleep duration', 'Ohayon M et al. 2017, Sleep Health: NSF sleep-quality indicators', 'Phillips AJK et al. 2017, Sci Rep: sleep regularity', 'Sridhar N et al. 2020, npj Digit Med: sleep staging from instantaneous heart rate', 'Radha M et al. 2019, Sci Rep: sleep stages from HRV with LSTM', 'Alvarez-Estevez D, Rijsman R 2021, PLoS One: HMC sleep staging database', 'Ohayon M et al. 2004, Sleep: normative sleep architecture', 'Charlton PH et al. 2016, Physiol Meas: respiratory rate from the ECG', 'Van Dongen HPA et al. 2003, Sleep: cumulative cost of sleep restriction', 'Banks S et al. 2010, Sleep: recovery sleep dose response', 'Klerman EB, Dijk DJ 2005, Curr Biol: sleep need under extended sleep', 'Schyvens AM et al. 2025: six wearables vs polysomnography', 'de Zambotti M et al. 2019, Med Sci Sports Exerc: wearable sleep technology', 'Karlen W et al. 2013, IEEE TBME: smart fusion'],
   },
   strain: {
     title: 'Strain',
-    how: 'Every minute you wear the band, your heart rate is placed in one of five zones of your maximum (208 − 0.7 × age). Minutes are weighted 1–5 by zone (Edwards TRIMP) and mapped to a 0–21 scale: about 3 for a short walk, 13 for a 45-minute moderate run, 17+ for a hard long session.',
-    sources: ['Edwards S 1993, The Heart Rate Monitor Book: zone TRIMP', 'Tanaka H et al. 2001, JACC: age-predicted maximal HR', 'Banister EW 1991: training impulse'],
+    how: 'During patch sessions, each minute\u2019s heart rate is placed in one of five zones of your maximum (208 − 0.7 × age), weighted 1–5 (Edwards TRIMP) and mapped to 0–21. When you wear a WHOOP all day, every minute counts in proportion to effort measured against your heart-rate reserve (Banister TRIMP), ignoring near-resting minutes, because fixed zones counted ordinary walking as training on all-day data. Workouts are detected when heart rate rises 15+ bpm above resting while your wrist is moving for 5+ minutes; calories use the Keytel 2005 equation. The all-day number is not yet calibrated against WHOOP\u2019s own Day Strain.',
+    sources: ['Edwards S 1993, The Heart Rate Monitor Book: zone TRIMP', 'Tanaka H et al. 2001, JACC: age-predicted maximal HR', 'Banister EW 1991: training impulse', 'Karvonen MJ 1957: heart-rate reserve', 'Keytel LR et al. 2005, J Sports Sci: energy expenditure from heart rate'],
   },
   stress: {
     title: 'Stress',
     how: 'While you are awake and not exercising, each minute is classed as calm, neutral or stress from your heart rate above resting and your HRV compared with your own calm minutes. The score is the share of stress minutes.',
     sources: ['Firstbeat Technologies 2014: stress and recovery analysis based on 24-h HRV', 'Kim HG et al. 2018, Psychiatry Investig: stress and HRV meta-analysis', 'Task Force of ESC/NASPE 1996: HRV standards'],
+  },
+  energy: {
+    title: 'Energy',
+    how: 'Your "body battery" for the day. It charges from your overnight recovery (HRV, resting heart rate, sleep restoration) and your sleep, and drains with today’s exertion (strain) and sustained daytime stress. 75+ is charged, 55–74 steady, 35–54 running low, under 35 depleted. It is derived from your Recovery, Sleep and Stress scores, so it always moves with them.',
+    sources: ['Plews DJ et al. 2013, Sports Med: daily ln RMSSD vs rolling baseline', 'Firstbeat Technologies 2014: body resources and stress–recovery balance from HRV', 'Banister EW 1991: training impulse'],
   },
 };
 
@@ -49,7 +56,13 @@ export default function WellnessDetail() {
       <Stack.Screen options={{ title: m.title }} />
       {metric === 'recovery' ? (
         <>
-          <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} sub={w.recovery.calibrating} />
+          <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} sub={w.recovery.calibrating ?? (w.recovery.confidence === 'building' ? 'Building your baseline (under 14 nights): treat as provisional' : undefined)} />
+          {w.illness?.flagged ? (
+            <Card tone="copper" style={{ gap: space[1] }}>
+              <T v="label">Your body may be fighting something</T>
+              <T v="small">{w.illness.signals.map((x) => `${x.label} (${x.detail})`).join(' · ')} over the last two nights compared with your normal. Rest, fluids and an early night help; see a doctor if you feel unwell. A pattern in your own numbers, not a diagnosis.</T>
+            </Card>
+          ) : null}
           {w.recovery.contributors.length ? <Section title="What moved it"><ContributorList items={w.recovery.contributors} /></Section>
             : <Empty title="No night yet" body="Wear the band to bed and start Overnight sleep. Recovery appears the next morning." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />}
           <Trends w={w} kind="recovery" />
@@ -64,29 +77,82 @@ export default function WellnessDetail() {
         </>
       ) : null}
 
+      {metric === 'energy' ? (
+        <>
+          <DetailHero dial value={w.energy.score} label={w.energy.score == null ? 'Needs last night' : w.energy.label} color={recoveryColor(p, w.energy.score)} sub={w.energy.calibrating} />
+          {w.guidance ? (
+            <Card tone={w.guidance.tone} style={{ gap: 2 }}>
+              <T v="label">What to do today</T>
+              <T v="h3">{w.guidance.title}</T>
+              <T v="small">{w.guidance.body}</T>
+            </Card>
+          ) : null}
+          {w.energy.contributors.length ? <Section title="What's charging and draining it"><ContributorList items={w.energy.contributors} /></Section>
+            : <Empty title="No night yet" body="Energy builds on last night's recovery. Wear the patch, ring or WHOOP to bed." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />}
+        </>
+      ) : null}
+
       {metric === 'sleep' ? (
         w.last ? (
           <>
-            <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
+            <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start + (w.last.onsetMin ?? 0) * 60)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
+            {w.last.onsetMin != null && w.last.onsetMin >= 15 ? (
+              <Card style={{ gap: 2 }}>
+                <Row><T v="small" style={{ flex: 1 }}>In bed</T><T v="num" style={{ fontSize: 16 }}>{fmtClock(w.last.start)}</T></Row>
+                <Row><T v="small" style={{ flex: 1 }}>Fell asleep</T><T v="num" style={{ fontSize: 16 }}>{fmtClock(w.last.start + w.last.onsetMin * 60)}</T></Row>
+                <Row><T v="small" style={{ flex: 1 }}>Time to fall asleep</T><T v="num" style={{ fontSize: 16 }}>{fmtDur(w.last.onsetMin)}</T></Row>
+                <T v="small" color={p.faint}>We mark sleep from the first real heart-rate drop, not from when you lay down — resting in bed isn't sleep.</T>
+              </Card>
+            ) : null}
+            <T v="small" color={p.faint}>From {SOURCE_LABEL[w.last.source ?? 'patch']}{w.last.sourceName && w.last.source === 'health' ? ` (${w.last.sourceName})` : ''}</T>
+            <SleepNeedCard w={w} />
             <LastNightCard n={w.last} sleep={w.sleep} history={w.nights} embedded />
             {w.last.stages?.length ? <Section title="Sleep stages"><Card><StageBreakdown n={w.last} /></Card></Section> : null}
-            <Card>
+            {w.last.hr5.length ? <Card>
               <Segmented options={[{ key: 'hr', label: 'Heart rate' }, { key: 'hrv', label: 'HRV' }]} value={hrKind} onChange={setHrKind} />
-              <NightHrChart n={w.last} kind={hrKind} />
+              {hrKind === 'hr' && w.last.stages?.length ? <SleepHrRainbow n={w.last} /> : <NightHrChart n={w.last} kind={hrKind} />}
               <T v="small">{hrKind === 'hr'
                 ? (w.last.lowestHrPos != null && w.last.lowestHrPos > 0.66 ? 'Your heart rate bottomed out late in the night. Late meals, alcohol, late exercise or a warm room often delay it.' : 'Your heart rate settled early, a sign your body could start recovering soon after you fell asleep.')
                 : 'HRV usually rises through the night as recovery takes over.'}</T>
-            </Card>
+            </Card> : null}
             {w.sleep ? <Section title="Contributors"><ContributorList items={w.sleep.contributors} /></Section> : null}
+            {w.naps?.filter((n) => Date.now() / 1000 - n.end < 20 * 3600).length ? (
+              <Section title="Possible naps today">
+                <Card style={{ gap: space[2] }}>
+                  <T v="small">Detected from a heart-rate dip + stillness — but resting awake looks the same, so you're the judge. Naps don't count toward your night's sleep.</T>
+                  {w.naps.filter((n) => Date.now() / 1000 - n.end < 20 * 3600).map((n) => (
+                    <Row key={n.id}>
+                      <T v="body" style={{ flex: 1 }}>{fmtClock(n.start)} – {fmtClock(n.end)}</T>
+                      <T v="small" color={p.faint}>{fmtDur(n.tstMin)}</T>
+                      <T v="small" color={p.teal}>possible</T>
+                    </Row>
+                  ))}
+                </Card>
+              </Section>
+            ) : null}
             <Trends w={w} kind="sleep" />
-            <Button kind="secondary" title="Open the full session" icon="folder" onPress={() => router.push('/captures')} />
+            {w.last.source === 'patch' ? <Button kind="secondary" title="Open the full session" icon="folder" onPress={() => router.push('/captures')} /> : null}
           </>
-        ) : <Empty title="No night yet" body="Wear the band to bed and start Overnight sleep from Therapy → Record therapy." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />
+        ) : <Empty title="No night yet" body="Wear the patch or ring to bed (Telomy detects sleep on its own), or connect your phone's health app for its sleep." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />
       ) : null}
 
       {metric === 'strain' ? (
         <>
-          <DetailHero value={w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null} max={21} unit="OF 21" label="Today’s strain" sub={`${w.today.worn} min worn · ${w.today.activeMin} min active`} color={C.strain} />
+          <DetailHero value={w.today.worn >= 10 ? Math.round(w.today.strain * 10) / 10 : null} max={21} unit="OF 21" label="Today’s strain" sub={`${w.today.worn} min worn · ${w.today.activeMin} min active${w.today.source === 'whoop' ? ' · from WHOOP (all-day heart rate)' : ''}`} color={C.strain} />
+          {w.today.whoop?.workouts.length ? (
+            <Section title="Workouts detected today">
+              {w.today.whoop.workouts.map((x) => (
+                <Card key={x.start} style={{ gap: 2 }}>
+                  <T v="h3">{fmtClock(x.start)} · {x.min} min</T>
+                  <T v="small">avg {x.avgHr} bpm · max {x.maxHr}{x.kcal != null ? ` · ${x.kcal} kcal` : ''} · heart rate and wrist motion</T>
+                </Card>
+              ))}
+            </Section>
+          ) : null}
+          <Button kind="secondary" title="Exercise & training" icon="figure.run" onPress={() => router.push('/training' as any)} />
+          <Section title="Your day, hour by hour">
+            <Card><StrainColumns mins={w.today.minutes} age={w.age} /><T v="small">Each column is one hour; height is that hour's load, colours are minutes in each heart-rate zone.</T></Card>
+          </Section>
           <Section title="Heart-rate zones today">
             <Card><ZoneBar zones={w.today.zones} /><T v="small">Zones are % of your estimated max heart rate ({Math.round(hrMax(w.age))} bpm at age {Math.round(w.age)}).</T></Card>
           </Section>
@@ -140,17 +206,54 @@ function Trends({ w, kind }: { w: Wellness; kind: 'recovery' | 'sleep' }) {
     ? [
         { title: 'Recovery', f: (x: any) => x.recovery, color: C.green, unit: '%', up: true, dec: 0 },
         { title: 'Overnight HRV', f: (x: any) => x.n.sleepRmssd, color: '#5CC9A7', unit: 'ms', up: true, dec: 0 },
-        { title: 'Lowest heart rate', f: (x: any) => x.n.lowestHr, color: '#FF6B57', unit: 'bpm', up: false, dec: 0 },
+        { title: 'Lowest heart rate', f: (x: any) => x.n.lowestHr, color: data.heart, unit: 'bpm', up: false, dec: 0 },
       ]
     : [
         { title: 'Time asleep', f: (x: any) => x.n.tstMin / 60, color: C.sleep, unit: 'h', up: true, dec: 1 },
         { title: 'Sleep score', f: (x: any) => x.sleep, color: C.sleep, unit: '', up: true, dec: 0 },
-        { title: 'Breathing rate', f: (x: any) => x.n.respRate, color: '#8EA8FF', unit: '/min', up: false, dec: 1 },
+        { title: 'Breathing rate', f: (x: any) => x.n.respRate, color: data.sleep, unit: '/min', up: false, dec: 1 },
       ];
   return (
     <Section title="Trends">
       <Segmented options={[{ key: '7', label: '7 nights' }, { key: '30', label: '30 nights' }]} value={days} onChange={setDays} />
       {charts.map((c) => <TrendChart key={c.title} title={c.title} points={pts(c.f)} band={band(c.f)} color={c.color} unit={c.unit} decimals={c.dec} higherIsBetter={c.up} />)}
     </Section>
+  );
+}
+
+/** Tonight's sleep need (baseline + strain + debt repayment), the running debt and a suggested bedtime. */
+function SleepNeedCard({ w }: { w: Wellness }) {
+  const p = usePalette();
+  const n = w.need;
+  const parts: [string, number, string][] = [
+    ['Baseline', n.baselineMin, n.personal ? 'learnt from your nights' : 'adult typical until 14 nights'],
+    ['Today\u2019s strain', n.strainMin, 'harder days need more'],
+    ['Paying back debt', n.repayMin, 'carried from short nights'],
+  ];
+  return (
+    <Card style={{ gap: space[2] }}>
+      <Row>
+        <T v="label" style={{ flex: 1 }}>Tonight you need</T>
+        {n.bedtime ? <T v="small">in bed by {fmtClock(n.bedtime)}</T> : null}
+      </Row>
+      <T v="num" style={{ fontSize: type.h1 }} color={C.sleep}>{fmtDur(n.needMin)}</T>
+      {parts.map(([k, v, note]) => (
+        <Row key={k}>
+          <T v="small" style={{ flex: 1 }}>{k} <T v="small" color={p.faint}>· {note}</T></T>
+          <T v="small">{v >= 1 ? (k === 'Baseline' ? fmtDur(v) : `+${Math.round(v)} min`) : '—'}</T>
+        </Row>
+      ))}
+      <Row>
+        <T v="small" style={{ flex: 1 }}>Sleep debt (last 14 nights)</T>
+        <T v="small" color={n.debtMin > 120 ? p.warn : p.text}>{n.debtMin >= 1 ? fmtDur(n.debtMin) : 'none'}</T>
+      </Row>
+      {w.sri != null ? (
+        <Row>
+          <T v="small" style={{ flex: 1 }}>Sleep regularity index</T>
+          <T v="small" color={w.sri >= 80 ? p.success : w.sri >= 65 ? p.text : p.warn}>{w.sri}</T>
+        </Row>
+      ) : null}
+      {n.lastNightPct != null ? <T v="small">Last night you got {Math.round(n.lastNightPct * 100)} % of the sleep you needed.</T> : null}
+    </Card>
   );
 }

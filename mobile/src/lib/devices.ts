@@ -5,10 +5,11 @@
 import { useEffect, useState } from 'react';
 import { Band, bandAvailable, useBand } from './band';
 import { Ring, type RingStatus } from '../../modules/ky-ecg';
-import { useHealth } from './health';
+import { startRingHistory } from './ringhistory';
+import { HEALTH_LABEL, useHealth } from './health';
 
 export type SourceId = 'patch' | 'ring' | 'health';
-export const SOURCE_LABEL: Record<SourceId, string> = { patch: 'Chest ECG patch', ring: 'Smart ring', health: 'Apple Health' };
+export const SOURCE_LABEL: Record<SourceId, string> = { patch: 'Chest ECG patch', ring: 'Smart ring', health: HEALTH_LABEL };
 
 // Which sources can provide each metric, best first. "patch" = KY-E-B1 single-lead ECG (gold for HR/HRV/rhythm),
 // "ring" = PPG + IMU + temp, "health" = Apple Watch / iPhone via HealthKit.
@@ -58,8 +59,12 @@ export function useDevices(ageHint?: number | null): DevicesSnapshot {
   const [ring, setRing] = useState<RingStatus | null>(bandAvailable ? Ring.status() : null);
   useEffect(() => {
     if (!bandAvailable) return;
+    // Subscribe FIRST, then kick off auto-connect — so the ring's status/data updates are never missed on a cold
+    // start (the patch is handled the same way by useBand). Both are safe no-ops when nothing is paired.
     const a = Ring.onStatus(setRing), b = Ring.onData(setRing);
     setRing(Ring.status());
+    startRingHistory();
+    try { Ring.autoConnect(); } catch {}
     return () => { a.remove(); b.remove(); };
   }, []);
 
@@ -80,7 +85,7 @@ export function useDevices(ageHint?: number | null): DevicesSnapshot {
   const hy = health.today;
   const live: Record<string, Fused> = {
     hr: fuse('hr', { patch: bandConn ? bm?.hr : undefined, ring: ringConn ? ring?.hr : undefined, health: hy?.restingHr }),
-    hrv: fuse('hrv', { patch: bandConn && (bm?.hrvState === 'ok' || bm?.hrvState === 'active') ? bm?.rmssdSmooth : undefined, health: hy?.hrvSdnn }),
+    hrv: fuse('hrv', { patch: bandConn && (bm?.hrvState === 'ok' || bm?.hrvState === 'active') ? bm?.rmssdSmooth : undefined, ring: ringConn ? ring?.hrv : undefined, health: hy?.hrvSdnn }),
     spo2: fuse('spo2', { ring: ringConn ? ring?.spo2 : undefined, health: hy?.spo2 }),
     skinTemp: fuse('skinTemp', { ring: ringConn ? ring?.temp : undefined }),
     steps: fuse('steps', { health: hy?.steps }),

@@ -23,7 +23,7 @@ export default function Signal() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: s.label }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">{s.label}</T>
         <Segmented options={RANGES.map((k) => ({ key: k, label: k === 'W' ? 'Week' : k === 'M' ? 'Month' : k }))} value={range} onChange={setRange} />
         <Card>
@@ -66,7 +66,7 @@ export default function Signal() {
               keyboardType="decimal-pad"
               placeholder={`Value in ${s.unit || 'units'}`}
               placeholderTextColor={p.faint}
-              style={{ flex: 1, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, fontFamily: 'Inter_400Regular', backgroundColor: p.surface }}
+              style={{ flex: 1, borderRadius: radius.md, padding: 12, color: p.text, fontFamily: 'HankenGrotesk_400Regular', backgroundColor: p.surface }}
             />
             <Button
               title="Save"

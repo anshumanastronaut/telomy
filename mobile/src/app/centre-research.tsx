@@ -14,7 +14,7 @@ export default function CentreResearch() {
   if (!out.data || !ph.data) return <Screen edges={[]}><Loading what="Analysing every session…" /></Screen>;
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: 'Outcomes & research' }} />
+      <Stack.Screen options={{ title: '' }} />
       <T v="h1">What your machines do to people</T>
       <Section title="Therapy response phenotypes (cold)">
         <Card tone="teal">

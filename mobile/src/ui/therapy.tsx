@@ -84,14 +84,14 @@ export function SessionChart({ t, y, phases, unit, label, band, height = 150, de
           {[lo + m, (lo + hi) / 2, hi - m].map((v, i) => (
             <G key={i}>
               <Line x1={pad.l} x2={w - pad.r} y1={sy(v)} y2={sy(v)} stroke={p.border} strokeWidth={1} opacity={0.45} />
-              <SvgText x={pad.l - 5} y={sy(v) + 3} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Inter_400Regular">{fmt(v)}</SvgText>
+              <SvgText x={pad.l - 5} y={sy(v) + 3} fontSize={9} fill={p.muted} textAnchor="end" fontFamily="Geist_400Regular">{fmt(v)}</SvgText>
             </G>
           ))}
           <Path d={d} stroke={color ?? p.teal} strokeWidth={1.4} fill="none" />
           {s ? <G><Line x1={sx(s[0])} x2={sx(s[0])} y1={pad.t} y2={height - pad.b} stroke={p.muted} strokeWidth={1} /><Circle cx={sx(s[0])} cy={sy(s[1])} r={3.5} fill={p.copper} /></G> : null}
           {[0, 0.25, 0.5, 0.75, 1].map((f) => {
             const x = T0 + f * (T1 - T0);
-            return <SvgText key={f} x={sx(x)} y={height - 5} fontSize={9} fill={p.muted} textAnchor={f === 0 ? 'start' : f === 1 ? 'end' : 'middle'} fontFamily="Inter_400Regular">{Math.round(x / 60)}′</SvgText>;
+            return <SvgText key={f} x={sx(x)} y={height - 5} fontSize={9} fill={p.muted} textAnchor={f === 0 ? 'start' : f === 1 ? 'end' : 'middle'} fontFamily="Geist_400Regular">{Math.round(x / 60)}′</SvgText>;
           })}
         </Svg>
       </Pressable>
@@ -107,8 +107,8 @@ export function PhaseLegend({ phases }: { phases: { phase: string; start: number
         const c = ph === 'baseline' ? p.surfaceAlt : ph === 'recovery' || ph === 'decompression' || ph === 'hyperoxic' ? p.tealSoft : p.copperSoft;
         return (
           <Row key={ph} gap={4}>
-            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: c, borderWidth: 1, borderColor: p.border }} />
-            <Text style={{ color: p.muted, fontSize: 11, fontFamily: 'Inter_500Medium' }}>{phaseName(ph)}</Text>
+            <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: c }} />
+            <Text style={{ color: p.muted, fontSize: 11, fontFamily: 'Geist_500Medium' }}>{phaseName(ph)}</Text>
           </Row>
         );
       })}
@@ -121,7 +121,7 @@ export function HsaiCard({ h, onPress }: { h: any; onPress?: () => void }) {
   if (!h?.available) return null;
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Adaptability index ${h.score}`}>
-      <View style={{ backgroundColor: p.surface, borderRadius: 16, borderWidth: 1, borderColor: p.border, padding: 16, gap: 8 }}>
+      <View style={{ backgroundColor: p.surface, borderRadius: 16, padding: 16, gap: 8 }}>
         <Row>
           <View style={{ flex: 1 }}>
             <T v="label">Health-span adaptability (HSAI)</T>

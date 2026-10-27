@@ -25,7 +25,7 @@ export default function Activities() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'My activities' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">My activities</T>
         <T v="small">Track any activity the way you care about it — a bowling spell, a golf round, a padel match. Telomy builds your own baselines and shows what changes them.</T>
         {data.mine.map((a: any) => (
@@ -43,9 +43,9 @@ export default function Activities() {
         </Section>
         <Section title="Create your own">
           <TextInput value={name} onChangeText={setName} placeholder="Activity name (e.g. Padel match)" placeholderTextColor={p.faint}
-            style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
+            style={{ borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular' }} />
           <TextInput value={fields} onChangeText={setFields} placeholder="What to track, comma-separated (e.g. Games won, Unforced errors)" placeholderTextColor={p.faint}
-            style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
+            style={{ borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular' }} />
           <Button title="Create activity" disabled={!name.trim()} onPress={() => create()} />
           <Button kind="ghost" title="Or just tell Sinc: “bowled 6 overs, fastest 134”" icon="mic" onPress={() => router.push('/voice')} />
         </Section>

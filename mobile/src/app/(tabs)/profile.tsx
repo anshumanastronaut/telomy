@@ -1,45 +1,76 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
-import { api, useApi } from '@/lib/api';
+import { api, authStatus, logout, useApi } from '@/lib/api';
 import { useRole } from '@/lib/role';
 import { setAppearance, useAppearance, usePalette } from '@/lib/theme';
 import { Ring } from '@/ui/charts';
-import { Card, Chip, Divider, ListRow, Row, Screen, Section, Segmented, T } from '@/ui/core';
+import { Avatar, Card, Chip, Divider, Icon, ListRow, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
 
 export default function Profile() {
   const appearance = useAppearance();
   const p = usePalette();
   const prof = useApi<any>('/profile');
+  const photo = useApi<any>('/profile/photo');
   const comp = useApi<any>('/completeness');
   const health = useApi<any>('/health');
   const plans = useApi<any>('/plans');
   const { setRole } = useRole();
   const pr = prof.data;
+  // refresh the photo/profile when returning to the tab (e.g. after editing About you)
+  const first = React.useRef(true);
+  useFocusEffect(React.useCallback(() => {
+    if (first.current) { first.current = false; return; }
+    prof.reload(); photo.reload();
+  }, [prof.reload, photo.reload]));
   return (
-    <Screen onRefresh={() => { prof.reload(); comp.reload(); }} refreshing={prof.loading}>
-      <Row>
-        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: p.tealSoft, alignItems: 'center', justifyContent: 'center' }}>
-          <T v="h2" color={p.teal}>{pr?.first_name?.[0] ?? '·'}</T>
-        </View>
-        <View style={{ flex: 1 }}>
-          <T v="h2">{pr?.name ?? '—'}</T>
-          <T v="small">{pr ? `${pr.age} y · ${pr.sex} · ${pr.city}` : ''}</T>
-        </View>
-        {pr?.is_test_profile ? <Chip label="Test profile" fg={p.copper} bg={p.copperSoft} /> : null}
-      </Row>
+    <Screen onRefresh={() => { prof.reload(); comp.reload(); photo.reload(); }} refreshing={prof.loading}>
+      <Pressable onPress={() => router.push('/about' as any)} accessibilityRole="button" accessibilityLabel="About you">
+        <Row>
+          <Avatar uri={photo.data?.photo} name={pr?.first_name ?? pr?.name} size={56} />
+          <View style={{ flex: 1 }}>
+            <T v="h2">{pr?.name ?? '—'}</T>
+            <T v="small">{pr ? `${pr.age} y · ${pr.sex} · ${pr.city}` : ''}</T>
+          </View>
+          {pr?.is_test_profile ? <Chip label="Test profile" fg={p.copper} bg={p.copperSoft} /> : null}
+          <Icon name="chevron.right" size={14} color={p.faint} />
+        </Row>
+      </Pressable>
 
       <Card onPress={() => router.push('/completeness')}>
         <Row>
           <Ring value={comp.data?.score ?? null} size={52} />
           <View style={{ flex: 1 }}>
             <T v="h3">Vault completeness</T>
-            <T v="small">{comp.data ? `${comp.data.items.filter((i: any) => !i.done).length} things would make Sinc's reads sharper` : ''}</T>
+            <T v="small">{comp.data ? (() => { const n = comp.data.items.filter((i: any) => !i.done).length; return n === 0 ? 'Your Vault is complete' : `${n} thing${n === 1 ? '' : 's'} would make Sinc's reads sharper`; })() : ''}</T>
           </View>
         </Row>
       </Card>
+
+      <Card tone="teal" onPress={() => router.push('/insurance' as any)} accessibilityLabel="Make yourself fully insured">
+        <Row>
+          <Icon name="shield.checkered" color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="h3">Make yourself fully insured</T>
+            <T v="small">Cover matched to what your Vault shows — explained, not sold.</T>
+          </View>
+          <Icon name="chevron.right" size={13} color={p.faint} />
+        </Row>
+      </Card>
+
+      <Group title="Take care of yourself">
+        <ListRow icon="calendar.day.timeline.left" title="Your routine" subtitle="Your day, quantified — define it by talking to Sinc or editing here" onPress={() => router.push('/routine' as any)} />
+        <ListRow icon="heart.text.square" title="Vitals" subtitle="Your body by system, scored 0–100 with every contributor" onPress={() => router.push('/vitals' as any)} />
+        <ListRow icon="sparkles" title="What affects you" subtitle="Patterns in your own data — what lifts you, what drains you" onPress={() => router.push('/insights' as any)} />
+        <ListRow icon="list.bullet.clipboard" title="Your trackers" subtitle="Pain, symptoms, supplements, habits — anything you told Sinc" onPress={() => router.push('/trackers' as any)} />
+        <ListRow icon="pills.fill" title="Curated supplements" subtitle="Only what your labs support — dose, timing, evidence grade" onPress={() => router.push('/rx')} />
+        <ListRow icon="figure.stand" title="Whole-body scan & tests" subtitle="Blood panels, imaging, genetics — what to test next" onPress={() => router.push('/tests')} />
+        <ListRow icon="figure.run" title="Exercise & training" subtitle="Every workout, its load and your training status" onPress={() => router.push('/training' as any)} />
+        <ListRow icon="bolt.heart" title="Therapy" subtitle="Sessions, plans and recorded therapies" onPress={() => router.push('/therapy' as any)} />
+        <ListRow icon="waveform.path.ecg" title="Live ECG & devices" subtitle="Patch, ring, phone health — connect and monitor" onPress={() => router.push('/devices')} />
+      </Group>
 
       <Group title="Plan & doctor">
         <ListRow icon="star" title={`Plan · ${plans.data?.subscription.plan_detail.name ?? '—'}`} subtitle="Compare Free, Essential, Plus and Longevity Pro" onPress={() => router.push('/plans')} />
@@ -49,15 +80,19 @@ export default function Profile() {
       </Group>
 
       <Group title="Care">
+        <ListRow icon="cross.case.fill" title="Emergency & home care" subtitle="Ambulance, home nursing, elder & baby care, lab pickup" onPress={() => router.push('/assistance' as any)} />
         <ListRow icon="stethoscope" title="Clinicians & appointments" subtitle="Book, prepare a pre-clinic brief" onPress={() => router.push('/care')} />
+        <ListRow icon="waveform.badge.mic" title="Your visits" subtitle="Plain-language recaps of each clinic visit" onPress={() => router.push('/visits' as any)} />
         <ListRow icon="doc.richtext" title="Specialist pack" subtitle="PDF + FHIR for cardiology, endocrinology…" onPress={() => router.push('/brief')} />
         <ListRow icon="checkmark.seal" title="Review queue (Telomy Care)" subtitle="Sinc drafts awaiting sign-off" onPress={() => router.push('/queue')} />
+        <ListRow icon="person.text.rectangle" title="About you" subtitle="Date of birth, sex, height, weight" onPress={() => router.push('/about' as any)} />
         <ListRow icon="cross.case" title="Emergency card" subtitle="Blood type, allergies, contacts" onPress={() => router.push('/emergency')} />
         <ListRow icon="pills" title="Medications" subtitle="Schedule, adherence, interactions" onPress={() => router.push('/meds')} />
         <ListRow icon="fork.knife" title="Nutrition" subtitle="Trends and meal history" onPress={() => router.push('/nutrition')} />
       </Group>
 
       <Group title="Your data">
+        <ListRow icon="qrcode" title="ABHA · Health ID" subtitle="Link India's health ID; bring records into your Vault" onPress={() => router.push('/abha' as any)} />
         <ListRow icon="hand.raised" title="Consent centre" subtitle="Per-purpose, revocable, with history" onPress={() => router.push('/consent')} />
         <ListRow icon="person.2" title="Family Vault" subtitle="Scoped, time-boxed sharing" onPress={() => router.push('/family')} />
         <ListRow icon="brain" title="What Sinc remembers" subtitle="View and delete facts" onPress={() => router.push('/memory')} />
@@ -90,8 +125,21 @@ export default function Profile() {
       <T v="small" style={{ textAlign: 'center' }}>
         Telomy 0.1.0 · {health.data?.engine ?? ''} · Sinc: {health.data?.sinc ?? ''}
       </T>
+      <SignOut />
       <T v="small" style={{ textAlign: 'center', fontStyle: 'italic' }}>Where human biology becomes intelligent.</T>
     </Screen>
+  );
+}
+
+function SignOut() {
+  const p = usePalette();
+  const [multi, setMulti] = React.useState(false);
+  React.useEffect(() => { authStatus().then((st) => setMulti(st.accounts_enabled)).catch(() => {}); }, []);
+  if (!multi) return null;   // only shown when the server is multi-user (there is an account to sign out of)
+  return (
+    <ListRow icon="rectangle.portrait.and.arrow.right" title="Sign out" subtitle="Lock this Telomy and switch accounts"
+      onPress={() => Alert.alert('Sign out?', 'You will need to sign in again.', [{ text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive', onPress: () => logout() }])} />
   );
 }
 

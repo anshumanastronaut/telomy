@@ -3,30 +3,30 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { api } from '@/lib/api';
+import { EVENT_KINDS, kindOf, localIso } from '@/lib/events';
 import { radius, space, usePalette } from '@/lib/theme';
 import { Ring } from '@/ui/charts';
 import { Button, Card, Chip, Icon, Row, Screen, Spacer, Stat, T } from '@/ui/core';
 
-const KINDS = [
-  { k: 'meal', l: 'Meal', i: 'fork.knife' },
-  { k: 'alcohol', l: 'Alcohol', i: 'wineglass' },
-  { k: 'supplement', l: 'Supplement', i: 'pills' },
-  { k: 'medication', l: 'Medication', i: 'cross.vial' },
-  { k: 'symptom', l: 'Symptom', i: 'bandage' },
-  { k: 'mood', l: 'How I feel', i: 'face.smiling' },
-  { k: 'sauna', l: 'Sauna', i: 'flame' },
-  { k: 'workout_hard', l: 'Hard workout', i: 'figure.run' },
-  { k: 'late_meal', l: 'Late meal', i: 'moon' },
-  { k: 'caffeine_late', l: 'Late caffeine', i: 'cup.and.saucer' },
-  { k: 'stress', l: 'Stressful day', i: 'bolt' },
-  { k: 'travel', l: 'Travel', i: 'airplane' },
-  { k: 'life', l: 'Life event', i: 'house' },
-  { k: 'note', l: 'Note', i: 'note.text' },
-] as const;
+// Everything a person can log, from the single canonical registry (so caffeine, smoking, water, exercise, naps
+// and every therapy are all here — no more divergent lists), Custom included for anything that doesn't fit.
+const KINDS = EVENT_KINDS;
+
+// When something happened — anything in the last 24 h. Offsets are minutes before now.
+const WHEN: { label: string; min: number }[] = [
+  { label: 'Now', min: 0 }, { label: '15 min', min: 15 }, { label: '30 min', min: 30 },
+  { label: '1 h', min: 60 }, { label: '2 h', min: 120 }, { label: '3 h', min: 180 },
+  { label: '6 h', min: 360 }, { label: '12 h', min: 720 }, { label: '24 h', min: 1440 },
+];
+const clockAt = (min: number) =>
+  new Date(Date.now() - min * 60_000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 const SUGGEST: Record<string, string[]> = {
   alcohol: ['1 glass red wine', '2 beers', 'Whisky 60 ml'],
-  supplement: ['Magnesium glycinate 300 mg', 'Creatine 5 g', 'Omega-3 2 g', 'Vitamin D3 2000 IU'],
+  caffeine: ['Espresso', 'Filter coffee', '2 cups chai'],
+  smoking: ['1 cigarette', 'Vape', '2 cigarettes'],
+  water: ['250 ml', '500 ml', '1 L'],
+  supplement: ['Magnesium glycinate 300 mg', 'Creatine 5 g', 'Omega-3 2 g', 'Vitamin D3 2000 IU', 'Glutathione', 'NAC 600 mg'],
   symptom: ['Headache', 'Bloating', 'Fatigue', 'Joint pain'],
   mood: ['Calm', 'Anxious', 'Energetic', 'Low'],
   meal: ['2 rotis, dal and sabzi with salad', 'Masala oats with 2 eggs', 'Chicken biryani and a coke'],
@@ -35,19 +35,34 @@ const SUGGEST: Record<string, string[]> = {
 export default function Log() {
   const p = usePalette();
   const params = useLocalSearchParams<{ kind?: string }>();
-  const [kind, setKind] = useState<string>(params.kind ?? 'meal');
-  const [label, setLabel] = useState('');
+  // Multi-select: a person can tick several things that happened and log them in one go.
+  const [selected, setSelected] = useState<Set<string>>(new Set([params.kind ?? 'meal']));
+  const [note, setNote] = useState('');
   const [sev, setSev] = useState(3);
+  const [whenMin, setWhenMin] = useState(0);
   const [busy, setBusy] = useState(false);
   const [meal, setMeal] = useState<any>(null);
   const [result, setResult] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  const kinds = [...selected];
+  const onlyMeal = kinds.length === 1 && kinds[0] === 'meal';
+  const hasRating = kinds.some((k) => k === 'symptom' || k === 'mood');
+
+  function toggle(k: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
+    setMeal(null);
+  }
+
   async function analyze() {
     setBusy(true);
     setErr(null);
     try {
-      setMeal(await api('/meals/analyze', { body: { text: label } }));
+      setMeal(await api('/meals/analyze', { body: { text: note } }));
     } catch (e: any) {
       setErr(e.message);
     } finally {
@@ -59,18 +74,27 @@ export default function Log() {
     setBusy(true);
     setErr(null);
     try {
-      if (kind === 'meal') {
-        await api('/meals/analyze', { body: { text: label, save: true } });
-        setResult({ message: 'Saved. Sinc will look at it tonight.' });
+      const ts = localIso(Date.now() / 1000 - whenMin * 60);
+      if (onlyMeal) {
+        const r = await api('/meals/analyze', { body: { text: note, save: true, ts }, queue: true });
+        setResult({ message: r?.queued ? 'Saved on your phone. It will sync when the Telomy server is reachable.' : 'Saved. Sinc will look at it tonight.' });
       } else {
-        const r = await api('/events', { body: { kind, label: label || KINDS.find((x) => x.k === kind)!.l, severity: ['symptom', 'mood'].includes(kind) ? sev : null } });
-        setResult(r);
+        let last: any = null;
+        for (const k of kinds) {
+          last = await api('/events', { body: { kind: k, label: note || kindOf(k).label, severity: (k === 'symptom' || k === 'mood') ? sev : null, ts }, queue: true });
+        }
+        if (kinds.length > 1) setResult({ message: `Logged ${kinds.length} things${whenMin ? ` at ${clockAt(whenMin)}` : ''}.` });
+        else setResult(last?.queued ? { message: 'Saved on your phone. It will sync when the Telomy server is reachable.' } : last);
       }
     } catch (e: any) {
       setErr(e.message);
     } finally {
       setBusy(false);
     }
+  }
+
+  function reset() {
+    setResult(null); setNote(''); setMeal(null); setWhenMin(0);
   }
 
   return (
@@ -91,40 +115,62 @@ export default function Log() {
               <Button title="Set up the study" icon="flask" onPress={() => router.replace(`/studies?intervention=${encodeURIComponent(result.suggest.intervention)}`)} />
             </>
           ) : null}
-          <Button kind="secondary" title="Log something else" onPress={() => { setResult(null); setLabel(''); setMeal(null); }} />
+          <Button kind="secondary" title="Log something else" onPress={reset} />
           <Button kind="ghost" title="Done" onPress={() => router.back()} />
         </Card>
       ) : (
         <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {KINDS.map((x) => (
-              <Pressable key={x.k} onPress={() => { setKind(x.k); setMeal(null); setLabel(''); }} accessibilityRole="tab" accessibilityState={{ selected: kind === x.k }} style={{ alignItems: 'center', gap: 4, width: 76, paddingVertical: 10, borderRadius: radius.lg, borderWidth: 1, borderColor: kind === x.k ? p.teal : p.border, backgroundColor: kind === x.k ? p.tealSoft : p.surface }}>
-                <Icon name={x.i as any} color={kind === x.k ? p.teal : p.muted} />
-                <T v="small" style={{ fontSize: 11, textAlign: 'center' }} color={kind === x.k ? p.teal : p.muted}>{x.l}</T>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <T v="small" color={p.muted}>Tap everything that applies — log one thing or several at once.</T>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {KINDS.map((x) => {
+              const on = selected.has(x.k);
+              return (
+                <Pressable key={x.k} onPress={() => toggle(x.k)} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+                  style={{ alignItems: 'center', justifyContent: 'center', gap: 6, width: 76, height: 78, paddingHorizontal: 4, borderRadius: radius.lg, borderWidth: 1, borderColor: on ? p.teal : p.border, backgroundColor: on ? p.tealSoft : p.surface }}>
+                  <Icon name={x.icon as any} color={on ? p.teal : p.muted} />
+                  <T v="small" numberOfLines={2} style={{ fontSize: 11, lineHeight: 13, textAlign: 'center' }} color={on ? p.teal : p.muted}>{x.label}</T>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* When — anything in the last 24 hours */}
+          <View style={{ gap: 6 }}>
+            <Row>
+              <T v="label" style={{ flex: 1 }}>When</T>
+              <T v="small" color={p.muted}>{whenMin === 0 ? 'Now' : `${clockAt(whenMin)} · ${WHEN.find((w) => w.min === whenMin)?.label} ago`}</T>
+            </Row>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {WHEN.map((w) => (
+                <Pressable key={w.min} onPress={() => setWhenMin(w.min)} accessibilityRole="button" accessibilityState={{ selected: whenMin === w.min }}
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill, borderWidth: 1, borderColor: whenMin === w.min ? p.teal : p.border, backgroundColor: whenMin === w.min ? p.tealSoft : p.surface }}>
+                  <T v="small" color={whenMin === w.min ? p.teal : p.muted}>{w.min === 0 ? 'Now' : `${w.label} ago`}</T>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+
           <TextInput
-            value={label}
-            onChangeText={setLabel}
-            placeholder={kind === 'meal' ? 'e.g. 2 rotis, dal, salad' : 'Details (optional)'}
+            value={note}
+            onChangeText={setNote}
+            placeholder={onlyMeal ? 'e.g. 2 rotis, dal, salad' : kinds.length > 1 ? 'Optional note — applies to all selected' : 'Details (optional)'}
             placeholderTextColor={p.faint}
             multiline
             testID="log-input"
-            style={{ minHeight: 70, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, fontSize: 16, backgroundColor: p.surface }}
+            style={{ minHeight: 70, borderRadius: radius.md, padding: 12, color: p.text, fontSize: 16, backgroundColor: p.surface }}
           />
-          {SUGGEST[kind] ? (
+          {kinds.length === 1 && SUGGEST[kinds[0]] ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {SUGGEST[kind].map((s) => (
-                <Pressable key={s} onPress={() => setLabel(s)}>
+              {SUGGEST[kinds[0]].map((s) => (
+                <Pressable key={s} onPress={() => setNote(s)}>
                   <Chip label={s} />
                 </Pressable>
               ))}
             </View>
           ) : null}
-          {['symptom', 'mood'].includes(kind) ? (
+          {hasRating ? (
             <View style={{ gap: 6 }}>
-              <T v="label">{kind === 'mood' ? 'How good (1–5)' : 'Severity (1–5)'}</T>
+              <T v="label">{kinds.includes('mood') && !kinds.includes('symptom') ? 'How good (1–5)' : 'Severity (1–5)'}</T>
               <Row>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Pressable key={n} onPress={() => setSev(n)} style={{ flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: radius.md, borderWidth: 1, borderColor: sev === n ? p.teal : p.border, backgroundColor: sev === n ? p.tealSoft : p.surface }}>
@@ -135,12 +181,12 @@ export default function Log() {
             </View>
           ) : null}
 
-          {kind === 'meal' && meal ? <MealCard a={meal} /> : null}
+          {onlyMeal && meal ? <MealCard a={meal} /> : null}
           {err ? <T v="small" color={p.danger}>{err}</T> : null}
-          {kind === 'meal' && !meal ? (
-            <Button title="Analyse meal" icon="sparkle" disabled={!label.trim()} loading={busy} onPress={analyze} testID="analyze-meal" />
+          {onlyMeal && !meal ? (
+            <Button title="Analyse meal" icon="sparkle" disabled={!note.trim()} loading={busy} onPress={analyze} testID="analyze-meal" />
           ) : (
-            <Button title="Save" loading={busy} disabled={kind === 'meal' && !meal?.items?.length} onPress={save} testID="save-log" />
+            <Button title={kinds.length > 1 ? `Save ${kinds.length} entries` : 'Save'} loading={busy} disabled={kinds.length === 0} onPress={save} testID="save-log" />
           )}
           <T v="small">Saved events appear on your Vault timeline and in Sinc's correlation engine.</T>
         </>

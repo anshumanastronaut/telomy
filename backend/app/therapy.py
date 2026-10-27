@@ -774,6 +774,44 @@ def save_plan(pid: int, goal: str, per_week: int = 4) -> dict:
     return get_plan(pid_)
 
 
+def build_single(pid: int, modality: str, per_week: int = 2) -> dict:
+    """A one-modality plan the clinician prescribes directly from the chart (not the goal-based auto-plan)."""
+    if modality not in MODALITIES:
+        raise ValueError("Unknown therapy.")
+    scr = {s["modality"]: s for s in screen(pid)}
+    if scr.get(modality, {}).get("status") == "not_suitable":
+        raise ValueError(f"{MODALITIES[modality]['name']} is screened out for this patient.")
+    resp = {r["modality"]: r for r in response(pid)}
+    m = MODALITIES[modality]
+    per_week = max(1, min(int(per_week), 4))
+    params = dict(m["params"])
+    dr = resp.get(modality, {}).get("dose_response")
+    if dr and dr.get("best"):
+        params[dr["param"]] = dr["best"]["setting"]
+    hour = 8 if modality in ("cold", "cryo") else 17
+    week = {d: [] for d in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")}
+    slots = [d for d in (("Tue", "Thu", "Sat") if modality in ("cold", "cryo") else ("Mon", "Wed", "Fri", "Sun"))][:per_week]
+    for d in slots:
+        week[d].append({"modality": modality, "hour": hour})
+    v = resp.get(modality, {}).get("verdict")
+    reason = (f"Measurably helped you: {resp[modality]['why']}" if v == "helped"
+              else f"Evidence grade {m['evidence']}; Telomy will measure your own response.")
+    item = {"modality": modality, "name": m["name"], "per_week": len(slots), "params": params, "hour": hour,
+            "evidence": m["evidence"], "price": m["price"], "reason": reason, "safety": scr[modality],
+            "rules": [r[2] for r in RULES if r[0] == modality]}
+    return {"goal": "clinician", "goal_label": "Prescribed by your clinician", "per_week": per_week, "items": [item],
+            "week": week, "monthly_price": item["price"] * len(slots) * 4,
+            "checkpoints": ["Week 2: in-session fingerprint review", "Week 4: next-night effects on HRV and deep sleep"],
+            "note": "Prescribed directly by your clinician."}
+
+
+def save_single_plan(pid: int, modality: str, per_week: int = 2) -> dict:
+    plan = build_single(pid, modality, per_week)
+    pid_ = db.exec_("INSERT INTO therapy_plans (patient_id, goal, created_at, state, plan) VALUES (?,?,?,?,?)",
+                    (pid, "clinician", engine.now_iso(), "awaiting_doctor", db.j(plan)))
+    return get_plan(pid_)
+
+
 def get_plan(plan_id: int) -> dict | None:
     r = db.one("SELECT * FROM therapy_plans WHERE id = ?", (plan_id,))
     if r:

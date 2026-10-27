@@ -29,7 +29,7 @@ export default function Activity() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: d.type.name }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">{d.type.name}</T>
         <Row><Chip label={d.type.category} /><Chip label={`${d.sessions.length} sessions`} fg={p.teal} bg={p.tealSoft} /></Row>
         {d.insights.length ? <Card tone="teal">{d.insights.map((i: string) => <T key={i} v="body">• {i}</T>)}</Card> : null}
@@ -54,7 +54,7 @@ export default function Activity() {
             <Row key={f.key}>
               <T v="body" style={{ flex: 1 }}>{f.label}{f.unit ? ` (${f.unit})` : ''}</T>
               <TextInput value={vals[f.key] ?? ''} onChangeText={(v) => setVals({ ...vals, [f.key]: v })} keyboardType="decimal-pad" placeholder="—" placeholderTextColor={p.faint}
-                style={{ width: 90, borderWidth: 1, borderColor: p.border, borderRadius: radius.sm, padding: 8, color: p.text, textAlign: 'right', fontFamily: 'Inter_400Regular' }} />
+                style={{ width: 90, borderRadius: radius.sm, padding: 8, color: p.text, textAlign: 'right', fontFamily: 'HankenGrotesk_400Regular' }} />
             </Row>
           ))}
           <Button title="Save session" onPress={log} disabled={!Object.values(vals).some(Boolean)} />

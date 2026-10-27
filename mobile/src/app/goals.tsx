@@ -21,7 +21,7 @@ export default function Goals() {
           {F.map(([k, l]) => (
             <Row key={k}>
               <T v="body" style={{ flex: 1 }}>{l}</T>
-              <TextInput keyboardType="number-pad" value={String(g[k] ?? '')} onChangeText={(v) => setG({ ...g, [k]: Number(v) || 0 })} style={{ width: 100, textAlign: 'right', borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 8, color: p.text, fontFamily: 'Inter_400Regular' }} />
+              <TextInput keyboardType="number-pad" value={String(g[k] ?? '')} onChangeText={(v) => setG({ ...g, [k]: Number(v) || 0 })} style={{ width: 100, textAlign: 'right', borderRadius: radius.md, backgroundColor: p.surfaceAlt, padding: 8, color: p.text, fontFamily: 'HankenGrotesk_400Regular' }} />
             </Row>
           ))}
         </Card>

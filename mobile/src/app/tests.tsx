@@ -11,6 +11,7 @@ export default function Tests() {
   const p = usePalette();
   const rec = useApi<any[]>('/tests/recommended');
   const cat = useApi<any[]>('/tests');
+  const ordered = useApi<any[]>('/me/ordered-tests');
   const [tab, setTab] = useState<'next' | 'all'>('next');
   const [open, setOpen] = useState<string | null>(null);
   const { toast, show } = useToast();
@@ -29,8 +30,22 @@ export default function Tests() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'Tests & scans' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">Tests & scans</T>
+
+        {(ordered.data ?? []).length ? (
+          <Section title="Ordered by your doctor">
+            {ordered.data!.map((o: any) => (
+              <Card key={o.id} tone="teal">
+                <Row><T v="h3" style={{ flex: 1 }}>{o.name}</T><Chip label={o.status} fg={o.status === 'ordered' ? p.copper : p.teal} bg={p.surface} /></Row>
+                {o.reason ? <T v="small">{o.reason}</T> : null}
+                <Row style={{ flexWrap: 'wrap' }}><Chip label={o.category} /><Chip label={o.price ? inr(o.price) : 'Included'} />{o.ordered_by ? <Chip label={`by ${o.ordered_by}`} /> : null}</Row>
+                {o.status === 'ordered' ? <Button kind="secondary" title="Book at the centre" onPress={async () => { try { await api(`/me/ordered-tests/${o.id}/book`, { method: 'POST' }); show('Booked at the centre.', 'success'); ordered.reload(); } catch (e: any) { show(e.message, 'alert'); } }} /> : null}
+              </Card>
+            ))}
+          </Section>
+        ) : null}
+
         <Segmented options={[{ key: 'next', label: `For you · ${rec.data.length}` }, { key: 'all', label: `Catalogue · ${cat.data.length}` }]} value={tab} onChange={setTab} />
         {tab === 'next' ? (
           <>

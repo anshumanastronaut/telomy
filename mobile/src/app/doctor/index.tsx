@@ -2,62 +2,77 @@ import { router } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 
-import { fmtDate, useApi } from '@/lib/api';
+import { useApi } from '@/lib/api';
+import { staffOrg, staffSync } from '@/lib/staff';
 import { space, usePalette } from '@/lib/theme';
-import { Card, ErrorState, Loading, Row, Screen, Section, Stat, T } from '@/ui/core';
+import { Card, ErrorState, Icon, Loading, Row, Screen, Section, Stat, T } from '@/ui/core';
+import { TelomyLoader } from '@/ui/loader';
 import { Logo } from '@/ui/logo';
-import { PatientRow } from '@/ui/patient';
 
 export default function DoctorToday() {
   const p = usePalette();
-  const t = useApi<any>('/doctor/today');
-  const w = useApi<any>('/doctor/work');
-  if (t.error) return <Screen><ErrorState message={t.error} onRetry={t.reload} /></Screen>;
-  if (!t.data) return <Screen><Loading what="Preparing your day…" /></Screen>;
-  const d = t.data;
+  const org = staffOrg();
+  const me = staffSync();
+  const inbox = useApi<any>(`/mgmt/clinic/inbox?org=${encodeURIComponent(org)}`);
+  const panel = useApi<any[]>('/mgmt/doctor/patients');
+  if (inbox.error) return <Screen><ErrorState message={inbox.error} onRetry={() => { inbox.reload(); panel.reload(); }} /></Screen>;
+  if (!inbox.data) return <Screen><Loading what="Preparing your day…" /></Screen>;
+  const d = inbox.data;
+  const careN = d.care_queue?.length ?? 0;
+  const tasksN = d.open_tasks?.length ?? 0;
+  const patientsN = panel.data?.length ?? d.patients?.length ?? 0;
   return (
-    <Screen onRefresh={() => { t.reload(); w.reload(); }} refreshing={t.loading}>
+    <Screen onRefresh={() => { inbox.reload(); panel.reload(); }} refreshing={inbox.loading}>
       <Row gap={12}>
-        <Logo kind="mark" width={34} />
+        <TelomyLoader size="mark" />
         <View style={{ flex: 1 }}>
-          <T v="label" numberOfLines={1}>Telomy Care · Dr. Meera Rao</T>
+          <T v="label" numberOfLines={1}>Telomy Care · {me?.name ?? 'Doctor'}</T>
           <T v="h1">Today</T>
         </View>
       </Row>
       <Card>
         <Row>
-          <Stat label="Patients" value={d.patients} />
-          <Stat label="To review" value={d.awaiting_reviews} color={d.awaiting_reviews ? p.copper : undefined} />
-          <Stat label="Overdue labs" value={d.overdue_reports} />
+          <Stat label="Patients" value={patientsN} />
+          <Stat label="To review" value={careN} color={careN ? p.copper : undefined} />
+          <Stat label="Open tasks" value={tasksN} />
         </Row>
       </Card>
-      <Row gap={space[3]}>
-        <Card style={{ flex: 1 }} tone="copper" onPress={() => router.push('/doctor/work')}>
-          <T v="label">Monthly reports</T>
-          <T v="num">{w.data?.monthly_reports.length ?? '—'}</T>
-          <T v="small">awaiting your signature</T>
-        </Card>
-        <Card style={{ flex: 1 }} onPress={() => router.push('/doctor/work')}>
-          <T v="label">Consults</T>
-          <T v="num">{w.data ? w.data.consults.length + d.consults.length : '—'}</T>
-          <T v="small">on-demand + clinic</T>
-        </Card>
-      </Row>
-      <Section title="Needs attention" action="All patients" onAction={() => router.push('/doctor/patients')}>
-        <View style={{ gap: space[3] }}>{d.high_priority.map((x: any) => <PatientRow key={x.id} p={x} />)}</View>
+      <Card tone="teal" onPress={() => router.push('/doctor/copilot' as any)} accessibilityLabel="Ask Sinc">
+        <Row style={{ alignItems: 'center' }} gap={space[3]}>
+          <View style={{ width: 46, height: 28, alignItems: 'center', justifyContent: 'center' }}><TelomyLoader size="mark" /></View>
+          <View style={{ flex: 1 }}>
+            <T v="h3">Ask Sinc</T>
+            <T v="small">Summaries, analysis & next steps — grounded in your patients' records. You sign off.</T>
+          </View>
+          <Icon name="chevron.right" size={13} color={p.faint} />
+        </Row>
+      </Card>
+
+      <Section title="Care review queue" action="Work queue" onAction={() => router.push('/doctor/work')}>
+        {careN ? (
+          d.care_queue.slice(0, 6).map((c: any) => (
+            <Card key={`${c.patient_id}-${c.id}`} onPress={() => router.push(`/doctor/patient/${c.patient_id}` as any)} style={{ marginBottom: space[2] }}>
+              <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <T v="label" color={p.teal} numberOfLines={1} style={{ flex: 1 }}>{c.patient ?? 'Patient'}</T>
+                {c.confidence != null ? <T v="small" color={p.muted}>{Math.round(c.confidence * 100)}%</T> : null}
+              </Row>
+              <T v="body" style={{ marginTop: 4 }} numberOfLines={2}>{c.title}</T>
+            </Card>
+          ))
+        ) : <Card><T v="small">Nothing awaiting review. Inbox zero.</T></Card>}
       </Section>
-      {d.consults.length ? (
-        <Section title="Next clinic consultations">
+      <Section title="Open tasks" action="Patients" onAction={() => router.push('/doctor/patients')}>
+        {tasksN ? (
           <Card style={{ paddingVertical: 4 }}>
-            {d.consults.slice(0, 4).map((c: any, i: number) => (
-              <Row key={c.id} style={{ paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: p.border }}>
-                <T v="body" style={{ flex: 1 }}>{c.name}</T>
-                <T v="small">{fmtDate(c.ts)} {c.ts.slice(11, 16)}</T>
+            {d.open_tasks.slice(0, 6).map((t: any, i: number) => (
+              <Row key={t.id} style={{ paddingVertical: 10, borderTopWidth: i ? 1 : 0, borderTopColor: p.border }}>
+                <T v="body" style={{ flex: 1 }} numberOfLines={2}>{t.text}</T>
+                <T v="small">{['', 'Low', 'Normal', 'High'][t.priority] ?? ''}</T>
               </Row>
             ))}
           </Card>
-        </Section>
-      ) : null}
+        ) : <Card><T v="small">No open tasks.</T></Card>}
+      </Section>
     </Screen>
   );
 }

@@ -1,0 +1,69 @@
+{
+  "telomy_full": {
+    "n": 27340,
+    "n_features": 37,
+    "test_MAE_years": 8.792,
+    "test_R2": 0.639,
+    "test_pearson_r": 0.8,
+    "cv5_MAE_mean": 8.91,
+    "cv5_MAE_std": 0.196,
+    "elasticnet_MAE": 11.491
+  },
+  "telomy_clinic9": {
+    "n": 27791,
+    "n_features": 9,
+    "test_MAE_years": 12.2,
+    "test_R2": 0.357,
+    "test_pearson_r": 0.597,
+    "cv5_MAE_mean": 12.056,
+    "cv5_MAE_std": 0.236,
+    "elasticnet_MAE": 14.064
+  },
+  "telomy_cbc": {
+    "n": 27733,
+    "n_features": 13,
+    "test_MAE_years": 13.314,
+    "test_R2": 0.241,
+    "test_pearson_r": 0.491,
+    "cv5_MAE_mean": 13.438,
+    "cv5_MAE_std": 0.214,
+    "elasticnet_MAE": 14.063
+  },
+  "telomy_metabolic": {
+    "n": 27327,
+    "n_features": 8,
+    "test_MAE_years": 11.122,
+    "test_R2": 0.434,
+    "test_pearson_r": 0.659,
+    "cv5_MAE_mean": 11.11,
+    "cv5_MAE_std": 0.169,
+    "elasticnet_MAE": 13.266
+  },
+  "telomy_liverkidney": {
+    "n": 27280,
+    "n_features": 11,
+    "test_MAE_years": 12.075,
+    "test_R2": 0.358,
+    "test_pearson_r": 0.598,
+    "cv5_MAE_mean": 11.843,
+    "cv5_MAE_std": 0.148,
+    "elasticnet_MAE": 13.632
+  },
+  "phenoage_reference": {
+    "n": 16396,
+    "pearson_r_vs_chronological": 0.917,
+    "mean_age_accel_years": -2.237,
+    "std_age_accel_years": 8.911
+  },
+  "clinic9_marker_corr_with_age": {
+    "glucose": 0.222,
+    "albumin": -0.214,
+    "mcv": 0.206,
+    "creatinine": 0.184,
+    "rdw": 0.166,
+    "lymph_pct": -0.145,
+    "alp": 0.118,
+    "crp_mgL": 0.057,
+    "wbc": -0.016
+  }
+}

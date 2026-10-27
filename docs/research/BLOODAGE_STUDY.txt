@@ -1,0 +1,40 @@
+Baseline PhenoAge 19.5 at chronological age 28.5 (Δ -9.0 y)
+  assumed where the real report lacks them: {'glucose': 92.0, 'hscrp': 1.5}
+
+1) Each marker swept across its full plausible range (others at your values):
+   albumin       3.8→5.0   g/dL     PhenoAge  22.5→ 18.0   span  4.5 y
+   creatinine    0.6→1.3   mg/dL    PhenoAge  15.8→ 22.3   span  6.5 y
+   glucose        70→130   mg/dL    PhenoAge  16.9→ 24.1   span  7.2 y
+   hscrp         0.2→8.0   mg/L     PhenoAge  17.4→ 21.3   span  3.9 y
+   lymph_pct      18→48    %        PhenoAge  24.7→ 20.7   span  4.0 y
+   mcv            80→100   fL       PhenoAge  18.9→ 24.9   span  6.0 y
+   rdw          11.5→15.5  %        PhenoAge  10.7→ 25.4   span 14.7 y
+   alp            30→130   U/L      PhenoAge  19.4→ 21.5   span  2.1 y
+   wbc           3.5→11.0  10³/µL   PhenoAge  19.0→ 23.7   span  4.7 y
+
+2) 50000 random combinations — share of the blood-age spread each marker owns (R² 0.99):
+   rdw          51.1 %   raises age as it rises
+   glucose      12.4 %   raises age as it rises
+   creatinine   10.2 %   raises age as it rises
+   mcv           8.5 %   raises age as it rises
+   wbc           5.1 %   raises age as it rises
+   albumin       4.8 %   lowers age as it rises
+   lymph_pct     3.9 %   lowers age as it rises
+   hscrp         3.0 %   raises age as it rises
+   alp           1.0 %   raises age as it rises
+
+3) Achievable gain from moving ONE marker to a healthy target (others held at your values):
+   rdw          13.9→12.4  %        saves +5.5 y   via correct iron/B12/folate deficiency
+   hscrp         1.5→0.4   mg/L     saves +1.4 y   via lose visceral fat, treat infection/inflammation, omega-3, exercise [ASSUMED baseline]
+   glucose      92.0→83    mg/dL    saves +1.0 y   via diet, weight loss, exercise, sleep [ASSUMED baseline]
+   albumin       4.6→4.8   g/dL     saves +0.7 y   via adequate protein, treat inflammation
+   wbc          4.29→5.0   10³/µL   saves -0.5 y   via resolve infection/inflammation, stop smoking
+   alp          37.0→65    U/L      saves -0.6 y   via correct zinc/magnesium, liver/bone health
+   mcv          82.0→90    fL       saves -2.4 y   via correct B12/folate or iron
+
+4) Realistic combined protocol (all movable markers at target): PhenoAge 14.2 (from 19.5) — saves 5.3 y
+
+Caveat for your real data: your low PhenoAge is driven partly by lymphocytes 56.6 % and low ALP/WBC,
+which track with the LOW NEUTROPHIL count your doctor should review — not proof of slow ageing. Confirm the
+blood count is stable before reading the blood age as good news. Fasting glucose and hs-CRP were assumed;
+add them to the next test for a real number.

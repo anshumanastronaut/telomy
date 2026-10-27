@@ -5,13 +5,15 @@ import { router, Stack } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
+import { api } from '@/lib/api';
 import { Band } from '@/lib/band';
-import { EVENT_KINDS, kindOf } from '@/lib/events';
+import { EVENT_KINDS, kindOf, localIso } from '@/lib/events';
 import { radius, space, usePalette } from '@/lib/theme';
 import { fmtClock } from '@/lib/wellness';
 import { Button, Card, Icon, Row, Screen, Section, T, useToast } from '@/ui/core';
 
-const AGO = [{ m: 0, l: 'Now' }, { m: 5, l: '5 min ago' }, { m: 15, l: '15 min' }, { m: 30, l: '30 min' }, { m: 60, l: '1 h' }, { m: 120, l: '2 h' }];
+const AGO = [{ m: 0, l: 'Now' }, { m: 15, l: '15 min' }, { m: 30, l: '30 min' }, { m: 60, l: '1 h' }, { m: 120, l: '2 h' },
+  { m: 180, l: '3 h' }, { m: 360, l: '6 h' }, { m: 720, l: '12 h' }, { m: 1440, l: '24 h' }];
 
 export default function LogEvent() {
   const p = usePalette();
@@ -28,7 +30,11 @@ export default function LogEvent() {
 
   function save() {
     const t = Date.now() / 1000 - ago * 60;
-    const r = Band.addUserEvent({ kind, label: (kind === 'custom' ? label.trim() : label.trim() || k.label) || 'Event', note: note.trim() || undefined, t });
+    const text = (kind === 'custom' ? label.trim() : label.trim() || k.label) || 'Event';
+    const r = Band.addUserEvent({ kind, label: text, note: note.trim() || undefined, t });
+    // Also sync to the backend Vault so it shows on the longitudinal timeline (not only the on-phone log). The ts
+    // is the device-LOCAL wall-clock, so it lands at the time the user picked regardless of the server's timezone.
+    api('/events', { body: { kind, label: text, ts: localIso(t), data: note.trim() ? { note: note.trim() } : undefined }, queue: true }).catch(() => {});
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     show(r.captureId ? `Added to your recording at ${fmtClock(t)}` : `Logged at ${fmtClock(t)}`, 'success');
     setLabel(''); setNote(''); setAgo(0); load();
@@ -47,10 +53,10 @@ export default function LogEvent() {
               const on = x.k === kind;
               return (
                 <Pressable key={x.k} onPress={() => { Haptics.selectionAsync(); setKind(x.k); }} accessibilityRole="radio" accessibilityState={{ selected: on }}
-                  style={({ pressed }) => ({ width: '31%', alignItems: 'center', gap: 6, paddingVertical: 14, borderRadius: radius.lg,
+                  style={({ pressed }) => ({ width: '31%', height: 84, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 4, borderRadius: radius.lg,
                     backgroundColor: on ? x.color + '26' : p.surface, borderWidth: 1.5, borderColor: on ? x.color : p.border, transform: [{ scale: pressed ? 0.96 : 1 }] })}>
                   <Icon name={x.icon} size={20} color={x.color} />
-                  <T v="small" color={on ? p.text : p.muted} style={{ fontWeight: '600' }}>{x.label}</T>
+                  <T v="small" numberOfLines={2} color={on ? p.text : p.muted} style={{ fontWeight: '600', textAlign: 'center', lineHeight: 14 }}>{x.label}</T>
                 </Pressable>
               );
             })}

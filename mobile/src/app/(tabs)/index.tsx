@@ -1,15 +1,19 @@
+import { missingAbout } from '../about';
 import { router } from 'expo-router';
 import { SFSymbol } from 'expo-symbols';
 import React, { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { ago, fmtDate, useApi } from '@/lib/api';
-import { radius, space, usePalette } from '@/lib/theme';
+import { radius, signalColor, space, type, usePalette } from '@/lib/theme';
 import { Dial, Ring, Sparkline } from '@/ui/charts';
 import { Card, Chip, ErrorState, Icon, Loading, Prov, Row, Screen, Section, Spacer, StatusChip, T } from '@/ui/core';
 import { BandTools } from '@/ui/ecg';
+import { DoctorPlanCard } from '@/ui/doctorplan';
+import { SincBriefing } from '@/ui/sincbriefing';
 import { InsightCard } from '@/ui/insight';
 import { Logo } from '@/ui/logo';
+import { TelomyLoader } from '@/ui/loader';
 import { WellnessToday } from '@/ui/today';
 import { Band, bandAvailable } from '@/lib/band';
 
@@ -46,10 +50,10 @@ export default function Home() {
   return (
     <Wrap onRefresh={base.reload} refreshing={base.loading}>
       <Row gap={space[3]}>
-        <Logo kind="mark" width={34} />
+        <TelomyLoader size="mark" />
         <View style={{ flex: 1 }}>
           <T v="label">{rewind ? `Rewound to ${today}` : new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</T>
-          <T v="h2" numberOfLines={1}>{greet()}, {String(h.first_name ?? '').split(' ')[0]}</T>
+          <T v="h2" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{greet()}, {String(h.first_name ?? '').split(' ')[0]}</T>
         </View>
         <Pressable onPress={() => router.push('/notifications')} accessibilityLabel="Notifications" hitSlop={8} style={{ marginRight: 14 }}>
           <Icon name="bell" size={22} color={p.teal} />
@@ -68,9 +72,39 @@ export default function Home() {
 
       {!rewind ? <WellnessToday age={prof.data?.age} /> : null}
 
+      {!rewind ? <SincBriefing /> : null}
+
+      {!rewind ? <DoctorPlanCard /> : null}
+
       {h.is_test_profile ? <Chip label="Test profile · dummy data" fg={p.copper} bg={p.copperSoft} icon="flask" /> : null}
+      {prof.data && missingAbout(prof.data).length ? (
+        <Card onPress={() => router.push('/about' as any)} accessibilityLabel="Complete about you">
+          <T v="h3">Tell Telomy about you</T>
+          <T v="small">Date of birth, sex and height unlock your heart, kidney and body-composition results. Nothing is assumed until then.</T>
+        </Card>
+      ) : null}
 
       <T v="label" style={{ marginTop: space[2] }}>Your Vault</T>
+      <Card tone="teal" onPress={() => router.push('/overview')} accessibilityLabel="Your health summary">
+        <Row>
+          <Icon name="doc.text.magnifyingglass" size={20} color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="h3">Your health summary</T>
+            <T v="small">Labs, vitals, recovery, habits and reports — combined, with a grounded AI summary. The same view your clinician sees.</T>
+          </View>
+          <Icon name="chevron.right" size={16} color={p.muted} />
+        </Row>
+      </Card>
+      <Card onPress={() => router.push('/plan')} accessibilityLabel="Your longevity plan">
+        <Row>
+          <Icon name="checklist" size={20} color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="h3">Your longevity plan</T>
+            <T v="small">Evidence-graded interventions and your protein · fibre · fat fix, grounded in your own numbers.</T>
+          </View>
+          <Icon name="chevron.right" size={16} color={p.muted} />
+        </Row>
+      </Card>
       <Card onPress={() => router.push('/longevity')} testID="dial" accessibilityLabel="Longevity age details">
         <Row>
           <T v="label">Longevity age</T>
@@ -90,12 +124,21 @@ export default function Home() {
         <Prov source={la.method ? 'PhenoAge · blood panel' : undefined} when={la.as_of ? fmtDate(la.as_of, true) : null} confidence={la.confidence} />
       </Card>
 
-      <Row gap={space[3]}>
+      <Card onPress={() => router.push('/report' as any)} accessibilityLabel="Telomy Report">
+        <Row>
+          <T v="label">Telomy Report</T>
+          <Spacer />
+          <T v="small" color={p.teal} style={{ fontWeight: '600' }}>Open →</T>
+        </Row>
+        <T v="small">Your trained-model picture — blood age, biological &amp; muscular age, disease screen and 10-year risk, shown beside your clinical age.</T>
+      </Card>
+
+      <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
         {h.cards.filter((c: any) => !(hasBandNight && rewind === 0 && (c.id === 'hrv' || c.id === 'sleep_score'))).map((c: any) => (
           <DataCard key={c.id} c={c} asOf={h.as_of} />
         ))}
       </Row>
-      <Row gap={space[3]}>
+      <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
         {h.key_biomarker ? (
           <Card style={{ flex: 1 }} onPress={() => router.push(`/marker/${h.key_biomarker.id}`)}>
             <T v="label">{h.key_biomarker.label}</T>
@@ -186,8 +229,8 @@ export default function Home() {
                 <T v="body">{c.label}</T>
                 <T v="small">{c.value == null ? c.reason : `${c.source ?? ''} · ${ago(c.day, h.as_of)}`}</T>
               </View>
-              <Sparkline data={c.spark ?? []} />
-              <T v="num" style={{ fontSize: 18, minWidth: 64, textAlign: 'right' }}>
+              <Sparkline data={c.spark ?? []} color={signalColor(c.id ?? c.label)} />
+              <T v="num" style={{ fontSize: type.lead, minWidth: 64, textAlign: 'right' }}>
                 {c.value == null ? '—' : c.value.toLocaleString('en-IN')}
                 <T v="small"> {c.unit}</T>
               </T>
@@ -280,7 +323,7 @@ function DataCard({ c, asOf }: { c: any; asOf: string }) {
             <T v="num">{c.value}</T>
             <T v="small">{c.unit}</T>
           </Row>
-          <Sparkline data={c.spark} width={110} />
+          <Sparkline data={c.spark} width={110} color={signalColor(c.id ?? c.label)} />
           {c.delta != null ? (
             <T v="small" color={c.delta >= 0 ? p.success : p.danger}>
               {c.delta >= 0 ? '+' : ''}
@@ -297,7 +340,7 @@ function DataCard({ c, asOf }: { c: any; asOf: string }) {
 function Quick({ icon, label, onPress }: { icon: SFSymbol; label: string; onPress: () => void }) {
   const p = usePalette();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => ({ flex: 1, alignItems: 'center', gap: 6, paddingVertical: space[3], backgroundColor: p.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: p.border, opacity: pressed ? 0.8 : 1 })}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={({ pressed }) => ({ flex: 1, alignItems: 'center', gap: 6, paddingVertical: space[3], backgroundColor: p.surface, borderRadius: radius.lg, opacity: pressed ? 0.8 : 1 })}>
       <Icon name={icon} size={22} color={p.teal} />
       <T v="small" style={{ fontSize: 12 }}>{label}</T>
     </Pressable>

@@ -4,6 +4,8 @@
 Optimal ranges are longevity-oriented targets, distinct from the lab's own reference range,
 which is always stored from the report itself.
 """
+import re
+
 
 PANELS = {
     "blood": "Standard blood panel",
@@ -128,15 +130,35 @@ from .catalog_ext import EXT_MARKERS, EXT_PANELS  # noqa: E402
 PANELS.update(EXT_PANELS)
 MARKERS.update(EXT_MARKERS)
 
+from .catalog_routine import EXTRA_ALIASES, ROUTINE_MARKERS  # noqa: E402
+
+MARKERS.update(ROUTINE_MARKERS)
+for _mid, _al in EXTRA_ALIASES.items():
+    if _mid in MARKERS:
+        _s = list(MARKERS[_mid]); _s[6] = list(dict.fromkeys(list(_s[6]) + _al)); MARKERS[_mid] = tuple(_s)
+
+
+def _name_variants(test_name: str) -> list[str]:
+    """Lab names come as 'Cholesterol, Total', 'Aspartate Aminotransferase (AST)', 'Hematocrit (HCT) | PCV' or, after
+    PDF extraction, with brackets turned into double spaces. Try the name as printed, with brackets/punctuation
+    flattened, and with a trailing ', Total' moved to the front."""
+    n = re.sub(r"\s+", " ", test_name.replace("\x00", " ").strip().lower())
+    flat = re.sub(r"\s+", " ", re.sub(r"[()|]", " ", n)).strip()
+    out = [n, flat]
+    m = re.match(r"^(.+?),\s*(total|direct|indirect|random|fasting)$", flat)
+    if m:
+        out.append(f"{m.group(2)} {m.group(1)}")
+    return list(dict.fromkeys(out))
+
 
 def match_marker(test_name: str) -> str | None:
-    """Return canonical id for a lab line's test name, longest alias first."""
-    n = test_name.strip().lower()
+    """Return canonical id for a lab line's test name, longest alias first (alias must end at a word boundary)."""
     best, best_len = None, 0
-    for mid, spec in MARKERS.items():
-        for alias in spec[6]:
-            if n.startswith(alias) and len(alias) > best_len:
-                best, best_len = mid, len(alias)
+    for n in _name_variants(test_name):
+        for mid, spec in MARKERS.items():
+            for alias in spec[6]:
+                if n.startswith(alias) and len(alias) > best_len and (len(n) == len(alias) or not n[len(alias)].isalnum()):
+                    best, best_len = mid, len(alias)
     return best
 
 

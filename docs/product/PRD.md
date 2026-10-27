@@ -69,6 +69,9 @@ Priority: **P0** = required for v1.0 pilot, **P1** = v1.x, **P2** = later. Statu
 | ENG-7 | Structured N-of-1 studies (ABAB, washout, pre-registered primary marker) | P1 | Built |
 | ENG-8 | AI summary per report and per patient, grounded to values | P0 | Built |
 | ENG-9 | Daily reflection / memories referenced by Sinc | P1 | Built |
+| ENG-10 | Trained models (NHANES): blood-age & muscle-age clocks, 13-condition disease screen, 10-yr mortality — reconciled with the guideline bioage, served at `/me/*`. See [MODELS.md](../MODELS.md) | P0 | Built |
+| ENG-11 | Wearable-fusion risk on personal baselines (RHR/VO₂max/HR-recovery); supplement (doctor-gated), modality (Bonphul), food-quality & meal-nutrition engines | P1 | Built |
+| ENG-12 | Always-on, on-device voice: arousal/stress biomarkers, personal health agent, proactive self-tuning check-ins (privacy-first, raw audio dropped) | P1 | Built (engines) |
 
 ### 5.3 Therapies and centres
 

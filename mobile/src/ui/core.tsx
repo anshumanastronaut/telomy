@@ -1,8 +1,11 @@
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { SymbolView, SFSymbol } from 'expo-symbols';
 import React from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,26 +19,30 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ff, fonts, Palette, radius, space, statusColor, statusLabel, usePalette } from '@/lib/theme';
+import { depth, ff, fonts, Palette, radius, space, statusColor, statusLabel, usePalette } from '@/lib/theme';
+import { TelomyLoader } from './loader';
 
 type V = 'display' | 'h1' | 'h2' | 'h3' | 'body' | 'small' | 'label' | 'num' | 'numLg';
 
 export function T({ v = 'body', color, style, ...rest }: TextProps & { v?: V; color?: string }) {
   const p = usePalette();
   const base: Record<V, TextStyle> = {
-    display: { fontFamily: fonts.display, fontSize: 40, lineHeight: 46, color: p.text, letterSpacing: -0.8 },
-    h1: { fontFamily: fonts.display, fontSize: 32, lineHeight: 38, color: p.text, letterSpacing: -0.3 },
-    h2: { fontFamily: fonts.display, fontSize: 20, lineHeight: 26, color: p.text },
-    h3: { fontSize: 16, fontWeight: '600', lineHeight: 22, color: p.text },
-    body: { fontSize: 15, lineHeight: 22, color: p.text },
-    small: { fontSize: 13, lineHeight: 18, color: p.muted },
-    label: { fontSize: 11, letterSpacing: 1.4, fontWeight: '600', textTransform: 'uppercase', color: p.muted },
-    num: { fontFamily: fonts.display, fontSize: 24, fontVariant: ['tabular-nums'], color: p.text },
-    numLg: { fontFamily: fonts.display, fontSize: 52, lineHeight: 58, fontVariant: ['tabular-nums'], color: p.text, letterSpacing: -1 },
+    // Editorial hierarchy: Fraunces carries every headline and number, Inter carries reading and UI. Tight negative
+    // tracking on large serif sizes, generous line-height on body, one quiet micro-label style.
+    // Telomy brand face is a hero-only accent (h1 = each screen's title). display carries big numbers → mono.
+    display: { fontFamily: fonts.mono, fontSize: 44, color: p.text, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
+    h1: { fontFamily: fonts.display, fontSize: 32, lineHeight: 38, color: p.text, letterSpacing: 0.5 },
+    h2: { fontSize: 23, fontWeight: '600', lineHeight: 29, color: p.text, letterSpacing: -0.2 },
+    h3: { fontSize: 17, fontWeight: '600', lineHeight: 23, color: p.text, letterSpacing: -0.2 },
+    body: { fontSize: 16, lineHeight: 24, color: p.text },
+    small: { fontSize: 14, lineHeight: 20, color: p.muted },
+    label: { fontSize: 12, letterSpacing: 0.6, fontWeight: '600', color: p.muted },
+    num: { fontFamily: fonts.mono, fontSize: 25, fontVariant: ['tabular-nums'], color: p.text, letterSpacing: -0.6 },
+    numLg: { fontFamily: fonts.mono, fontSize: 52, lineHeight: 58, fontVariant: ['tabular-nums'], color: p.text, letterSpacing: -2 },
   };
   const flat = (StyleSheet.flatten([base[v], color ? { color } : null, style]) ?? {}) as TextStyle;
-  const isDisplay = flat.fontFamily === fonts.display;
-  const family = isDisplay ? fonts.display : ff(flat.fontWeight as any);
+  // Honour an explicit family (display serif / mono numerals); otherwise pick the UI weight.
+  const family = flat.fontFamily ?? ff(flat.fontWeight as any);
   // Native uppercase turns "µg/m³" into "ΜG/M³" (Greek capital mu); uppercase by hand and keep µ-units intact.
   if (flat.textTransform === 'uppercase' && typeof rest.children === 'string' && rest.children.includes('µ')) {
     const text = rest.children.split(/(µ[A-Za-z]+(?:\/[A-Za-z0-9³²]+)?)/).map((s, i) => (i % 2 ? s : s.toUpperCase())).join('');
@@ -49,6 +56,17 @@ export function Icon({ name, size = 20, color }: { name: SFSymbol; size?: number
   return <SymbolView name={name} size={size} tintColor={color ?? p.text} weight="regular" />;
 }
 
+/** A round profile photo, or the person's initial on a soft disc when there is no photo. */
+export function Avatar({ uri, name, size = 56 }: { uri?: string | null; name?: string | null; size?: number }) {
+  const p = usePalette();
+  if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: p.surfaceAlt }} contentFit="cover" />;
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: p.tealSoft, alignItems: 'center', justifyContent: 'center' }}>
+      <T v="h2" color={p.teal}>{(name?.trim()?.[0] ?? '·').toUpperCase()}</T>
+    </View>
+  );
+}
+
 export function Screen({
   children,
   onRefresh,
@@ -56,11 +74,14 @@ export function Screen({
   scroll = true,
   edges = ['top'],
   padded = true,
+  scrollEnabled = true,
 }: {
   children: React.ReactNode;
   onRefresh?: () => void;
   refreshing?: boolean;
   scroll?: boolean;
+  /** false while a child (e.g. the 3D twin) owns the gesture, so the page doesn't scroll under it */
+  scrollEnabled?: boolean;
   edges?: ('top' | 'bottom')[];
   padded?: boolean;
 }) {
@@ -74,7 +95,8 @@ export function Screen({
   return (
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: p.bg }}>
       <ScrollView
-        contentContainerStyle={{ padding: padded ? space[4] : 0, paddingBottom: 120, gap: space[4] }}
+        scrollEnabled={scrollEnabled}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: padded ? space[5] : 0, paddingTop: padded ? space[3] : 0, paddingBottom: 132, gap: space[4] }}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={p.teal} /> : undefined}
         keyboardShouldPersistTaps="handled">
         {children}
@@ -101,7 +123,10 @@ export function Card({
   const p = usePalette();
   const bg = tone === 'teal' ? p.tealSoft : tone === 'copper' ? p.copperSoft : p.surface;
   const inner = (
-    <View style={[{ backgroundColor: bg, borderRadius: radius.lg, borderWidth: 1, borderColor: p.border, padding: space[4], gap: space[2] }, style, onPress ? { width: undefined, flex: undefined, alignSelf: undefined } : null]}>
+    // No outlines: depth comes from surface tone (dark) or a soft shadow (light). Larger radius + padding = calmer.
+    <View style={[{ backgroundColor: bg, borderRadius: radius.xl, padding: space[5], gap: space[3] },
+      p.isDark ? null : { shadowColor: depth.shadow, shadowOpacity: 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 4 } },
+      style, onPress ? { width: undefined, flex: undefined, alignSelf: undefined } : null]}>
       {children}
     </View>
   );
@@ -132,9 +157,9 @@ export function Spacer() {
 export function Chip({ label, fg, bg, icon }: { label: string; fg?: string; bg?: string; icon?: SFSymbol }) {
   const p = usePalette();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: bg ?? p.surfaceAlt, alignSelf: 'flex-start' }}>
-      {icon ? <Icon name={icon} size={11} color={fg ?? p.muted} /> : null}
-      <Text style={{ fontSize: 11.5, fontFamily: ff('600'), color: fg ?? p.muted  }}>{label}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: bg ?? p.surfaceAlt, alignSelf: 'flex-start' }}>
+      {icon ? <Icon name={icon} size={12} color={fg ?? p.muted} /> : null}
+      <Text style={{ fontSize: 12.5, fontFamily: ff('600'), color: fg ?? p.muted }}>{label}</Text>
     </View>
   );
 }
@@ -231,13 +256,14 @@ export function Button({
 export function Section({ title, action, onAction, children }: { title: string; action?: string; onAction?: () => void; children: React.ReactNode }) {
   const p = usePalette();
   return (
-    <View style={{ gap: space[2] }}>
-      <Row>
-        <T v="label">{title}</T>
-        <Spacer />
+    // Sections open with an editorial serif title (not tiny caps) and sit further from the previous section than
+    // their own items sit from each other — proximity does the grouping, not boxes.
+    <View style={{ gap: space[3], marginTop: space[3] }}>
+      <Row style={{ alignItems: 'baseline' }}>
+        <T v="h2" style={{ flex: 1 }}>{/[a-z]/.test(title) ? title : title.charAt(0) + title.slice(1).toLowerCase()}</T>
         {action ? (
           <Pressable onPress={onAction} hitSlop={10} accessibilityRole="button">
-            <Text style={{ color: p.teal, fontSize: 13, fontFamily: ff('600')  }}>{action}</Text>
+            <Text style={{ color: p.teal, fontSize: 14, fontFamily: ff('600') }}>{action}</Text>
           </Pressable>
         ) : null}
       </Row>
@@ -246,13 +272,28 @@ export function Section({ title, action, onAction, children }: { title: string; 
   );
 }
 
-export function Loading({ what }: { what: string }) {
+/** A back control for screens that don't get a native header (e.g. detail screens inside the doctor/centre tab
+ * groups). Place it at the top of the Screen. Falls back to a route when there's no stack history to pop. */
+export function BackButton({ label = 'Back', fallback }: { label?: string; fallback?: string }) {
   const p = usePalette();
   return (
-    <Row style={{ padding: space[6], justifyContent: 'center' }}>
-      <ActivityIndicator color={p.teal} />
-      <T v="small">{what}</T>
-    </Row>
+    <Pressable
+      onPress={() => { if (router.canGoBack()) router.back(); else if (fallback) router.replace(fallback as any); }}
+      accessibilityRole="button" accessibilityLabel={label} hitSlop={10}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', paddingVertical: 4, marginBottom: 2 }}>
+      <Icon name="chevron.left" size={17} color={p.teal} />
+      <T v="body" color={p.teal}>{label}</T>
+    </Pressable>
+  );
+}
+
+export function Loading({ what }: { what: string }) {
+  // Fill the available space and centre the motion mark. The parent Screen's scroll container uses flexGrow:1, so
+  // flex:1 here fills exactly one viewport — the loader centres without overflowing into a scrollable area.
+  return (
+    <View style={{ flex: 1, minHeight: 240, alignItems: 'center', justifyContent: 'center' }}>
+      <TelomyLoader size="hero" message={what} />
+    </View>
   );
 }
 
@@ -283,6 +324,7 @@ export function ListRow({
   onPress,
   icon,
   testID,
+  tint,
 }: {
   title: string;
   subtitle?: string;
@@ -290,6 +332,8 @@ export function ListRow({
   onPress?: () => void;
   icon?: SFSymbol;
   testID?: string;
+  /** Colour the icon only when it carries meaning (a data signal, a warning). Default is neutral — colour is for data. */
+  tint?: string;
 }) {
   const p = usePalette();
   return (
@@ -300,15 +344,15 @@ export function ListRow({
       accessibilityRole={onPress ? 'button' : undefined}
       style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: space[3], paddingVertical: space[3], opacity: pressed ? 0.6 : 1, minHeight: 48 })}>
       {icon ? (
-        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: p.tealSoft, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name={icon} size={15} color={p.teal} />
+        <View style={{ width: 32, height: 32, borderRadius: radius.sm + 2, backgroundColor: tint ? tint + '22' : p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={15} color={tint ?? p.graphite} />
         </View>
       ) : null}
       <View style={{ flex: 1, gap: 2 }}>
-        <T v="body" style={{ fontWeight: '500' }}>
+        <T v="body" style={{ fontWeight: '500' }} numberOfLines={1}>
           {title}
         </T>
-        {subtitle ? <T v="small">{subtitle}</T> : null}
+        {subtitle ? <T v="small" numberOfLines={2}>{subtitle}</T> : null}
       </View>
       {right}
       {onPress ? <Icon name="chevron.right" size={13} color={p.faint} /> : null}
@@ -368,7 +412,7 @@ export function Stat({ label, value, unit, sub, color }: { label: string; value:
     <View style={{ flex: 1, gap: 2 }}>
       <T v="label">{label}</T>
       <Row gap={4} style={{ alignItems: 'baseline' }}>
-        <T v="num" color={color}>
+        <T v="num" color={color} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5} style={{ flexShrink: 1 }}>
           {value ?? '—'}
         </T>
         {unit ? <T v="small">{unit}</T> : null}

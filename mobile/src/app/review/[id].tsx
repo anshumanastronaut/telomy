@@ -25,7 +25,7 @@ export default function Review() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: s.panel_title }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">{s.report.title}</T>
         <T v="small">{fmtDate(s.report.collected_on, true)} · {s.report.source}{s.report.is_test_data ? ' · TEST DATA' : ''}</T>
         <Card tone="teal">
@@ -62,7 +62,7 @@ export default function Review() {
         <Section title="Your review">
           {s.reviews.map((r: any) => <T key={r.id} v="small">{r.doctor} · {r.action.replace('_', ' ')} · {fmtDate(r.ts, true)}: {r.note}</T>)}
           <TextInput value={note} onChangeText={setNote} placeholder="Note for the patient (required)" placeholderTextColor={p.faint} multiline
-            style={{ borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular' }} />
+            style={{ borderRadius: radius.md, padding: 12, minHeight: 70, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular' }} />
           <Row>
             <Button kind="secondary" title="Needs follow-up" style={{ flex: 1 }} disabled={!note.trim()} onPress={() => act('needs_followup')} />
             <Button title="Sign" style={{ flex: 1 }} disabled={!note.trim()} onPress={() => act('signed')} testID="sign-report" />

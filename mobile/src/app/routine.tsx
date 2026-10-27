@@ -29,16 +29,26 @@ export default function Routine() {
   async function mark(key: string, status: string) {
     today.setData(await api('/routine/mark', { body: { day: today.data.day, key, status } }));
   }
+  const [addText, setAddText] = useState('');
+  async function addLine() {
+    if (addText.trim().length < 3) return;
+    await api('/routine/add', { body: { text: addText } });
+    setAddText(''); cur.reload(); today.reload(); show('Added to your routine', 'success');
+  }
+  async function removeItem(key: string) {
+    await api('/routine/remove', { body: { key } });
+    cur.reload(); today.reload();
+  }
 
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: 'My routine' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">My routine</T>
         <T v="small">Describe a normal day — typed here or spoken to Sinc. Telomy turns it into a schedule, quantifies it, and learns from the days that differ.</T>
         <TextInput value={text} onChangeText={setText} multiline placeholder="e.g. I wake up around 8, coffee at 11, lunch at 1 with dal and eggs, gym Mon/Wed/Fri at 7 pm, sleep around 12…"
           placeholderTextColor={p.faint} testID="routine-text" autoCorrect={false} spellCheck={false} autoCapitalize="sentences"
-          style={{ minHeight: 110, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'Inter_400Regular', textAlignVertical: 'top' }} />
+          style={{ minHeight: 110, borderRadius: radius.md, padding: 12, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular', textAlignVertical: 'top' }} />
         <Row>
           <Button kind="secondary" title="Preview" style={{ flex: 1 }} disabled={text.trim().length < 20} onPress={parse} />
           <Button title="Save routine" style={{ flex: 1 }} disabled={text.trim().length < 20} onPress={save} />
@@ -78,9 +88,17 @@ export default function Routine() {
                       <T v="body">{it.label}</T>
                       {it.days?.length < 7 || it.condition || it.note ? <T v="small">{[it.days?.length < 7 ? it.days.join(' ') : null, it.condition?.replace('_', ' '), it.note].filter(Boolean).join(' · ')}</T> : null}
                     </View>
+                    {!preview ? <Pressable onPress={() => removeItem(it.key)} hitSlop={8} accessibilityLabel={`Remove ${it.label}`}><Icon name="xmark.circle.fill" size={18} color={p.faint} /></Pressable> : null}
                   </Row>
                 ))}
               </Card>
+              {!preview ? (
+                <Row style={{ marginTop: 8 }}>
+                  <TextInput value={addText} onChangeText={setAddText} placeholder="Add one thing — e.g. a 6 pm walk" placeholderTextColor={p.faint}
+                    autoCapitalize="sentences" style={{ flex: 1, borderRadius: radius.md, padding: 10, color: p.text, backgroundColor: p.surface, fontFamily: 'HankenGrotesk_400Regular' }} />
+                  <Button title="Add" disabled={addText.trim().length < 3} onPress={addLine} />
+                </Row>
+              ) : null}
             </Section>
           </>
         )}

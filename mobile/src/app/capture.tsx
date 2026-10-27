@@ -101,7 +101,7 @@ export default function Capture() {
     return () => { clearInterval(h); release.current?.(); };
   }, []);
 
-  if (!bandAvailable) return <Screen edges={[]}><Stack.Screen options={{ title: 'Therapy capture' }} /><Empty title="Needs the Telomy app" body="Therapy capture uses the ECG band through Telomy's native app." /></Screen>;
+  if (!bandAvailable) return <Screen edges={[]}><Stack.Screen options={{ title: '' }} /><Empty title="Needs the Telomy app" body="Therapy capture uses the ECG band through Telomy's native app." /></Screen>;
 
   const m = b.metrics;
   const connected = b.status?.state === 'streaming' || b.status?.state === 'connected';
@@ -132,7 +132,7 @@ export default function Capture() {
     return (
       <View style={{ flex: 1 }}>
         <Screen edges={[]}>
-          <Stack.Screen options={{ title: 'Therapy capture' }} />
+          <Stack.Screen options={{ title: '' }} />
           <T v="h1">Record a therapy session</T>
           <T v="small">Everything is saved on this phone, so it works without internet at the centre. Share sessions with your team from Saved sessions.</T>
           <Card tone={connected ? 'teal' : 'copper'} onPress={() => router.push('/monitor')}>
@@ -185,7 +185,7 @@ export default function Capture() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: therapy?.name ?? 'Recording' }} />
+        <Stack.Screen options={{ title: '' }} />
         <Card tone="teal">
           <Row>
             <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: p.danger }} />
@@ -227,7 +227,7 @@ export default function Capture() {
           <Button kind="secondary" icon="plus.circle" title="Log event · meal, supplement, drink, smoke…" onPress={() => router.push('/event')} />
           <Row>
             <TextInput value={mark} onChangeText={setMark} placeholder="Quick note (e.g. felt dizzy, door opened)" placeholderTextColor={p.faint}
-              style={{ flex: 1, color: p.text, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10 }} />
+              style={{ flex: 1, color: p.text, borderRadius: radius.md, padding: 10 }} />
             <Button kind="secondary" title="Mark" onPress={addMark} />
           </Row>
         </Section>
@@ -238,7 +238,7 @@ export default function Capture() {
         <Section title="How do you feel after?">
           <Card style={{ gap: space[3] }}>{RATINGS.map((k) => <Scale key={k} label={k} value={post[k]} onChange={(v) => setPost({ ...post, [k]: v })} />)}</Card>
           <TextInput value={notes} onChangeText={setNotes} placeholder="Notes for the team" multiline placeholderTextColor={p.faint}
-            style={{ minHeight: 70, color: p.text, borderWidth: 1, borderColor: p.border, borderRadius: radius.md, padding: 10 }} />
+            style={{ minHeight: 70, color: p.text, borderRadius: radius.md, padding: 10 }} />
         </Section>
         <Button kind="danger" title={therapy?.id === 'sleep' ? 'Good morning — stop & analyse the night' : 'Stop & save session'} icon="stop.circle" onPress={finish} />
       </Screen>

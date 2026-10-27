@@ -1,0 +1,87 @@
+<!doctype html><meta charset=utf-8><title>Telomy — panels used for your age</title>
+<style>body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;color:#111}
+h1{font-size:20px}.warn{background:#fff7e6;border:1px solid #f0c36d;padding:12px 14px;border-radius:8px}
+table{border-collapse:collapse;width:100%;margin-top:16px;font-size:13px}th,td{border:1px solid #e3e3e3;padding:6px 8px;text-align:left}
+th{background:#f6f6f6}td.name{font-weight:600}td.ref,small{color:#777;font-weight:400}
+.p{background:#e6f4ea;color:#137333;padding:1px 6px;border-radius:4px;font-size:11px}
+.u{background:#e8f0fe;color:#1a56db;padding:1px 6px;border-radius:4px;font-size:11px}
+.key{margin-top:10px;font-size:12px;color:#555}</style>
+<h1>Telomy — the panels behind your blood age</h1>
+<div class="warn"><b>These are SYNTHETIC TEST values, not your real labs.</b> Your real report (2026-08-20) is missing
+fasting glucose and hs-CRP, which PhenoAge needs, so Telomy computed the age on the synthetic Panel 3 (2026-09-25).
+This is an <b>engine-vs-engine comparison on identical inputs</b>, not your real biological age. For a real number,
+add fasting glucose + hs-CRP to your next blood test.</div>
+<p><b>Telomy blood age (PhenoAge, Levine 2018):</b> 19.3 at chronological 28.7 — computed from the 9 green markers of Panel 3.</p>
+<table><tr><th>Marker</th><th>Optimal</th><th>Panel 1<br><small>2026-02-15</small></th><th>Panel 2<br><small>2026-05-15</small></th><th>REAL report (Orange Health)<br><small>2026-08-20</small></th><th>Panel 3<br><small>2026-09-25</small></th><th>Used by</th></tr>
+<tr><td class='name'>Albumin <small>g/dL</small></td><td class='ref'>> 4.3</td><td>4.5</td><td>4.6</td><td>4.6</td><td>4.6</td><td class='tags'><span class="p">PhenoAge</span> <span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>ALP <small>U/L</small></td><td class='ref'>40 - 90</td><td>37.0</td><td>37.0</td><td>37.0</td><td>38.0</td><td class='tags'><span class="p">PhenoAge</span></td></tr>
+<tr><td class='name'>Creatinine <small>mg/dL</small></td><td class='ref'>0.7 - 1.1</td><td>1.0</td><td>1.0</td><td>1.0</td><td>1.0</td><td class='tags'><span class="p">PhenoAge</span> <span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>Fasting glucose <small>mg/dL</small></td><td class='ref'>< 90</td><td>102.0</td><td>97.0</td><td>—</td><td>92.0</td><td class='tags'><span class="p">PhenoAge</span> <span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>hs-CRP <small>mg/L</small></td><td class='ref'>< 1</td><td>3.2</td><td>2.1</td><td>—</td><td>1.4</td><td class='tags'><span class="p">PhenoAge</span> <span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>Lymphocytes % <small>%</small></td><td class='ref'>25 - 40</td><td>52.0</td><td>55.0</td><td>56.6</td><td>56.0</td><td class='tags'><span class="p">PhenoAge</span></td></tr>
+<tr><td class='name'>MCV <small>fL</small></td><td class='ref'>82 - 92</td><td>82.0</td><td>82.0</td><td>82.0</td><td>82.0</td><td class='tags'><span class="p">PhenoAge</span></td></tr>
+<tr><td class='name'>RDW <small>%</small></td><td class='ref'>< 13</td><td>13.9</td><td>13.9</td><td>13.9</td><td>13.8</td><td class='tags'><span class="p">PhenoAge</span></td></tr>
+<tr><td class='name'>WBC (total) <small>cells/mm³</small></td><td class='ref'>4000 - 10000</td><td>4600.0</td><td>4400.0</td><td>4290.0</td><td>4300.0</td><td class='tags'><span class="p">PhenoAge</span></td></tr>
+<tr><td class='name'>GGT <small>U/L</small></td><td class='ref'>< 25</td><td>60.0</td><td>50.0</td><td>32.0</td><td>41.0</td><td class='tags'><span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>HbA1c <small>%</small></td><td class='ref'>< 5.3</td><td>5.8</td><td>5.6</td><td>—</td><td>5.4</td><td class='tags'><span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>HDL cholesterol <small>mg/dL</small></td><td class='ref'>> 50</td><td>36.0</td><td>39.0</td><td>—</td><td>42.0</td><td class='tags'><span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>Fasting insulin <small>µIU/mL</small></td><td class='ref'>< 6</td><td>15.0</td><td>12.0</td><td>—</td><td>9.8</td><td class='tags'><span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>LDL cholesterol <small>mg/dL</small></td><td class='ref'>< 100</td><td>155.0</td><td>138.0</td><td>—</td><td>125.0</td><td class='tags'><span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>Triglycerides <small>mg/dL</small></td><td class='ref'>< 100</td><td>190.0</td><td>165.0</td><td>—</td><td>140.0</td><td class='tags'><span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>TSH <small>µIU/mL</small></td><td class='ref'>0.5 - 2.5</td><td>2.6</td><td>2.3</td><td>4.006</td><td>2.1</td><td class='tags'><span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>Vitamin D (25-OH) <small>ng/mL</small></td><td class='ref'>40 - 60</td><td>18.0</td><td>24.0</td><td>—</td><td>30.0</td><td class='tags'><span class="u">Ultrahuman</span></td></tr>
+<tr><td class='name'>ALT (SGPT) <small>U/L</small></td><td class='ref'>< 25</td><td>48.0</td><td>40.0</td><td>42.0</td><td>34.0</td><td class='tags'></td></tr>
+<tr><td class='name'>Apolipoprotein B <small>mg/dL</small></td><td class='ref'>< 80</td><td>118.0</td><td>105.0</td><td>—</td><td>96.0</td><td class='tags'></td></tr>
+<tr><td class='name'>AST (SGOT) <small>U/L</small></td><td class='ref'>< 25</td><td>40.0</td><td>36.0</td><td>45.0</td><td>30.0</td><td class='tags'></td></tr>
+<tr><td class='name'>Vitamin B12 <small>pg/mL</small></td><td class='ref'>500 - 900</td><td>300.0</td><td>340.0</td><td>—</td><td>380.0</td><td class='tags'></td></tr>
+<tr><td class='name'>Total cholesterol <small>mg/dL</small></td><td class='ref'>< 200</td><td>221.0</td><td>205.0</td><td>176.0</td><td>190.0</td><td class='tags'></td></tr>
+<tr><td class='name'>eGFR <small>mL/min/1.73m²</small></td><td class='ref'>> 90</td><td>108.0</td><td>110.0</td><td>105.0</td><td>112.0</td><td class='tags'></td></tr>
+<tr><td class='name'>Ferritin <small>ng/mL</small></td><td class='ref'>50 - 150</td><td>180.0</td><td>150.0</td><td>—</td><td>130.0</td><td class='tags'></td></tr>
+<tr><td class='name'>Folate <small>ng/mL</small></td><td class='ref'>> 10</td><td>6.5</td><td>7.4</td><td>—</td><td>8.2</td><td class='tags'></td></tr>
+<tr><td class='name'>Haemoglobin <small>g/dL</small></td><td class='ref'>13.5 - 16.5</td><td>14.6</td><td>14.6</td><td>14.4</td><td>14.6</td><td class='tags'></td></tr>
+<tr><td class='name'>HOMA-IR <small></small></td><td class='ref'>< 1.5</td><td>3.77</td><td>2.87</td><td>—</td><td>2.23</td><td class='tags'></td></tr>
+<tr><td class='name'>Homocysteine <small>µmol/L</small></td><td class='ref'>< 9</td><td>15.0</td><td>13.2</td><td>—</td><td>12.0</td><td class='tags'></td></tr>
+<tr><td class='name'>IL-6 <small>pg/mL</small></td><td class='ref'>< 2</td><td>2.9</td><td>2.2</td><td>—</td><td>1.7</td><td class='tags'></td></tr>
+<tr><td class='name'>Lipoprotein(a) <small>mg/dL</small></td><td class='ref'>< 30</td><td>34.0</td><td>34.0</td><td>—</td><td>33.0</td><td class='tags'></td></tr>
+<tr><td class='name'>MPV <small>fL</small></td><td class='ref'>7 - 13</td><td>14.8</td><td>15.0</td><td>15.2</td><td>15.1</td><td class='tags'></td></tr>
+<tr><td class='name'>Platelets <small>10³/µL</small></td><td class='ref'>175 - 300</td><td>110.0</td><td>101.0</td><td>96.0</td><td>98.0</td><td class='tags'></td></tr>
+<tr><td class='name'>Uric acid <small>mg/dL</small></td><td class='ref'>< 5.5</td><td>6.9</td><td>6.4</td><td>6.8</td><td>6.0</td><td class='tags'></td></tr>
+<tr><td class='name'>abc <small>/mm³</small></td><td class='ref'>0 100</td><td>—</td><td>—</td><td>0.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>aec <small>/mm³</small></td><td class='ref'>20 500</td><td>—</td><td>—</td><td>26.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>ag_ratio <small>Ratio</small></td><td class='ref'>0.8 2</td><td>—</td><td>—</td><td>1.7</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>alc <small>/mm³</small></td><td class='ref'>1000 3000</td><td>—</td><td>—</td><td>2428.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>amc <small>/mm³</small></td><td class='ref'>200 1000</td><td>—</td><td>—</td><td>403.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>anc <small>/mm³</small></td><td class='ref'>2000 7000</td><td>—</td><td>—</td><td>1433.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>ast_alt_ratio <small></small></td><td class='ref'>0.7 1.4</td><td>—</td><td>—</td><td>1.1</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>baso_pct <small>%</small></td><td class='ref'>0 2</td><td>—</td><td>—</td><td>0.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>bilirubin_direct <small>mg/dL</small></td><td class='ref'>0 0.3</td><td>—</td><td>—</td><td>0.3</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>bilirubin_indirect <small>mg/dL</small></td><td class='ref'>0.1 1.1</td><td>—</td><td>—</td><td>0.93</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>bilirubin_total <small>mg/dL</small></td><td class='ref'>0.2 1.3</td><td>—</td><td>—</td><td>1.18</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>bun <small>mg/dL</small></td><td class='ref'>6 20</td><td>—</td><td>—</td><td>11.7</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>bun_creat_ratio <small>Ratio</small></td><td class='ref'>10 20</td><td>—</td><td>—</td><td>11.7</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>calcium <small>mg/dL</small></td><td class='ref'>8.4 10.2</td><td>—</td><td>—</td><td>9.2</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>chloride <small>mmol/L</small></td><td class='ref'>98 107</td><td>—</td><td>—</td><td>104.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>eos_pct <small>%</small></td><td class='ref'>1 6</td><td>—</td><td>—</td><td>0.6</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>globulin <small>g/dL</small></td><td class='ref'>2.3 3.5</td><td>—</td><td>—</td><td>2.7</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>glucose_random <small>mg/dL</small></td><td class='ref'>70 140</td><td>—</td><td>—</td><td>88.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>hct <small>%</small></td><td class='ref'>40 50</td><td>—</td><td>—</td><td>43.6</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>mch <small>pg</small></td><td class='ref'>27 32</td><td>—</td><td>—</td><td>27.1</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>mchc <small>g/dL</small></td><td class='ref'>31.5 34.5</td><td>—</td><td>—</td><td>33.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>monocyte_pct <small>%</small></td><td class='ref'>2 10</td><td>—</td><td>—</td><td>9.4</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>neutrophil_pct <small>%</small></td><td class='ref'>40 80</td><td>—</td><td>—</td><td>33.4</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>nlr <small>Ratio</small></td><td class='ref'>1 3</td><td>—</td><td>—</td><td>0.6</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>phosphorus <small>mg/dL</small></td><td class='ref'>2.5 4.5</td><td>—</td><td>—</td><td>4.1</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>plateletcrit <small>%</small></td><td class='ref'>0.2 0.5</td><td>—</td><td>—</td><td>0.147</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>potassium <small>mmol/L</small></td><td class='ref'>3.5 5.5</td><td>—</td><td>—</td><td>5.2</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>rbc <small>mill/mm³</small></td><td class='ref'>4.5 5.5</td><td>—</td><td>—</td><td>5.32</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>sodium <small>mmol/L</small></td><td class='ref'>137 145</td><td>—</td><td>—</td><td>140.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>t3_total <small>ng/mL</small></td><td class='ref'>0.97 1.69</td><td>—</td><td>—</td><td>1.05</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>t4_total <small>µg/dL</small></td><td class='ref'>5.53 11</td><td>—</td><td>—</td><td>6.07</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>total_protein <small>g/dL</small></td><td class='ref'>6 8.3</td><td>—</td><td>—</td><td>7.4</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>u_ph <small></small></td><td class='ref'>5 8</td><td>—</td><td>—</td><td>5.0</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>u_sg <small></small></td><td class='ref'>1.001 1.035</td><td>—</td><td>—</td><td>1.01</td><td>—</td><td class='tags'></td></tr>
+<tr><td class='name'>urea <small>mg/dL</small></td><td class='ref'>19 43</td><td>—</td><td>—</td><td>25.0</td><td>—</td><td class='tags'></td></tr>
+</table>
+<div class="key"><span class="p">PhenoAge</span> = one of the 9 markers Telomy's blood age uses ·
+<span class="u">Ultrahuman</span> = one of the 12 contributors Ultrahuman's blood age uses (from its app).
+To compare: upload Panel 3 (2026-09-25 column) to Ultrahuman and read its blood age.</div>

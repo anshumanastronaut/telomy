@@ -77,7 +77,7 @@ export default function Session() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]}>
-        <Stack.Screen options={{ title: s.name }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">{s.name}</T>
         <T v="small">{fmtDate(s.ts)} · {s.ts.slice(11, 16)} · {s.device?.name ?? 'Centre device'}</T>
         <Row style={{ flexWrap: 'wrap' }}>

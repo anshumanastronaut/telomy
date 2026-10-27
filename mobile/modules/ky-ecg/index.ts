@@ -72,8 +72,13 @@ export type RecordingEvent =
 export type HealthDay = {
   date: string; steps?: number; distanceKm?: number; activeKcal?: number; exerciseMin?: number; flights?: number;
   restingHr?: number; walkingHr?: number; hrvSdnn?: number; respRate?: number; spo2?: number; vo2max?: number;
-  weightKg?: number; bodyFatPct?: number; sleepMin?: number; workouts?: { type: number; min: number; start: number }[];
+  weightKg?: number; bodyFatPct?: number; sleepMin?: number; workouts?: { type: number; min: number; start: number; end?: number; kcal?: number; km?: number; source?: string }[];
 };
+/** One Apple Health sleep segment. stage: 0 awake, 1 core/light, 2 deep, 3 REM, 4 asleep (unstaged), 5 in bed. */
+export type HealthSleepSegment = { start: number; end: number; stage: 0 | 1 | 2 | 3 | 4 | 5; source: string; watch: boolean };
+/** On-device voice biomarkers (KYVoice.swift; same maths as backend voice.acoustics). */
+export type VoiceFeatures = { voiced_s: number; duration_s?: number; f0_mean?: number; f0_sd?: number; f0_cv?: number; jitter_pct?: number;
+  shimmer_pct?: number; hnr_db?: number; rate_per_s?: number; pause_ratio?: number; energy_db?: number };
 export type UserEvent = { kind: string; label: string; note?: string; t?: number; amount?: string };
 export type FoundDevice = { id: string; name: string; rssi: number };
 export type CaptureMeta = {
@@ -93,10 +98,20 @@ type Events = {
   onRingStatus: (s: RingStatus) => void;
   onRingData: (s: RingStatus) => void;
   onRingDevice: (d: FoundDevice) => void;
+  onRingHistory: (h: RingHistory) => void;
+  onRingSleep: (s: { nights: RingSleepRecord[] }) => void;
+  onPpgFrame: (f: PpgFrame) => void;
 };
 
+export type PpgFrame = { t?: number; r?: number; g?: number; b?: number; error?: string };
+
 type Native = {
-  ringStatus(): RingStatus; ringScan(): void; ringConnect(id: string): void; ringDisconnect(): void;
+  startPpg(): void; stopPpg(): void;
+  ringStatus(): RingStatus; ringScan(): void; ringAutoConnect(): void; ringSyncHistory(): void;
+  ringStartRaw(ecg: boolean, imu: boolean, ppg: boolean): void; ringStopRaw(): void;
+  ringStartOvernight(): void; ringStopOvernight(): void; autoSleep(): boolean; setAutoSleep(on: boolean): void; autoRecord(): boolean; setAutoRecord(on: boolean): void;
+  phoneActivity(hours: number): Promise<PhoneActivity[]>;
+  ringConnect(id: string): void; ringDisconnect(): void;
   ringForget(): void; ringStartMeasure(type: number): void; ringStopMeasure(type: number): void; ringReadBattery(): void;
   getStatus(): BandStatus;
   startScan(): void;
@@ -123,30 +138,66 @@ type Native = {
   addUserEvent(e: Record<string, unknown>): { captureId?: string; t?: number };
   healthAuthorize(): Promise<{ ok: boolean; error?: string }>;
   healthDaily(days: number): Promise<HealthDay[]>;
+  healthSleep(days: number): Promise<HealthSleepSegment[]>;
+  voiceFeatures(path: string, del: boolean): Promise<VoiceFeatures>;
   wellnessRead(kind: string, days: number): Promise<Record<string, any>[]>;
   reanalyseCapture(id: string): Promise<{ id?: string; summary?: Record<string, any>; error?: string }>;
   addListener<K extends keyof Events>(event: K, listener: Events[K]): EventSubscription;
 };
 
-export type RingStatus = { state: string; battery: number; name: string; hr?: number; spo2?: number; temp?: number; rememberedId?: string };
+export type RingStatus = { state: string; battery: number; name: string; hr?: number; hrv?: number; spo2?: number; temp?: number; rememberedId?: string;
+  capturing?: boolean; overnight?: boolean; rawCounts?: Record<string, number> };
+/** A longitudinal dump pulled from the ring's flash log. Each sample is one timestamped record; the "all" dump (type 9)
+ *  carries hr and hrv together, which Telomy uses to study the HR↔HRV relationship and cross-check against the patch. */
+/** A run of one activity from the phone's motion coprocessor (Apple's on-device classifier, 7 days of history). */
+export type PhoneActivity = { type: 'still' | 'walking' | 'running' | 'cycling' | 'driving' | 'unknown'; start: number; end: number; confidence: number };
+export const phoneActivity = (hours = 24): Promise<PhoneActivity[]> => native?.phoneActivity(hours) ?? Promise.resolve([]);
+export type RingHistorySample = { t: number; hr?: number; hrv?: number; cvrr?: number; spo2?: number; temp?: number };
+export type RingHistory = { type: number; samples: RingHistorySample[] };
+/** Segment types: 241 deep, 242 light, 243 REM, 244 awake. `coverage` = segment seconds / record span (< 0.8 = cut by a BLE drop). */
+export type RingSleepRecord = { start: number; end: number; coverage: number; segments: { type: number; start: number; len: number }[] };
 
 export const Ring = {
   status: (): RingStatus | null => native?.ringStatus() ?? null,
   scan: () => native?.ringScan(),
+  /** Reconnect to the last-known ring in the background (used by the app's auto-connect on launch). */
+  autoConnect: () => native?.ringAutoConnect(),
+  /** Pull everything logged since the last sync (also runs automatically every ~10 min while connected). */
+  syncHistory: () => native?.ringSyncHistory(),
+  /** Research capture of the ring's raw streams (ECG / IMU / PPG + PPI) to Documents/ring-raw. */
+  startRaw: (o: { ecg: boolean; imu: boolean; ppg: boolean }) => native?.ringStartRaw(o.ecg, o.imu, o.ppg),
+  stopRaw: () => native?.ringStopRaw(),
+  /** Overnight mode: live HR + movement, motion-gated SpO₂/temp, ring sleep score pulled at stop. */
+  startOvernight: () => native?.ringStartOvernight(),
+  stopOvernight: () => native?.ringStopOvernight(),
+  /** Automatic sleep detection (default on): starts/stops the night from patch and/or ring signals, no tap needed. */
+  autoSleep: (): boolean => native?.autoSleep() ?? false,
+  setAutoSleep: (on: boolean) => native?.setAutoSleep(on),
   connect: (id: string) => native?.ringConnect(id),
   disconnect: () => native?.ringDisconnect(),
   forget: () => native?.ringForget(),
-  /** 1 = heart rate, 2 = SpO2, 4 = temperature. */
+  /** 0 = live heart rate, 2 = SpO2, 4 = temperature (never 1 — that is blood-pressure estimation in this SDK). */
   startMeasure: (type: number) => native?.ringStartMeasure(type),
   stopMeasure: (type: number) => native?.ringStopMeasure(type),
   readBattery: () => native?.ringReadBattery(),
   onStatus(cb: (s: RingStatus) => void) { return native ? native.addListener('onRingStatus', cb) : { remove() {} }; },
   onData(cb: (s: RingStatus) => void) { return native ? native.addListener('onRingData', cb) : { remove() {} }; },
+  onHistory(cb: (h: RingHistory) => void) { return native ? native.addListener('onRingHistory', cb) : { remove() {} }; },
+  /** The ring's own sleep records (its accelerometer-based detection), decoded from Health_HistorySleep. */
+  onSleep(cb: (s: { nights: RingSleepRecord[] }) => void) { return native ? native.addListener('onRingSleep', cb) : { remove() {} }; },
 };
 
 const native = requireOptionalNativeModule<Native>('KyEcg');
 
 export const isAvailable = native != null;
+
+/** Camera photoplethysmography: fingertip over the back lens + torch. `start` opens the camera and streams
+ *  per-frame average R/G/B via `onFrame`; JS (lib/ppg.ts) turns the series into HR + HRV. `stop` closes it. */
+export const Ppg = {
+  start: () => native?.startPpg(),
+  stop: () => native?.stopPpg(),
+  onFrame(cb: (f: PpgFrame) => void) { return native ? native.addListener('onPpgFrame', cb) : { remove() {} }; },
+};
 
 const noop = () => {};
 export const Band = {
@@ -175,9 +226,16 @@ export const Band = {
   deleteCapture: (id: string) => native?.deleteCapture(id),
   /** Log a user event (meal, supplement, alcohol, custom…) into the running capture and the on-phone store. */
   /** Ask for read access to Apple Health (steps, energy, exercise, vitals, sleep, workouts). */
+  /** Record the patch's ECG continuously whenever it is on the skin (rolling 2-h All-day ECG records). Default on. */
+  autoRecord: (): boolean => native?.autoRecord?.() ?? false,
+  setAutoRecord: (on: boolean) => native?.setAutoRecord?.(on),
   healthAuthorize: async () => (native ? native.healthAuthorize() : { ok: false, error: 'Not available' }),
   /** Daily Apple Health summaries for the last `days` days, oldest first. */
   healthDaily: async (days: number): Promise<HealthDay[]> => (native ? native.healthDaily(days) : []),
+  /** Voice biomarkers from a recording, computed on the phone; `del` deletes the audio file right after reading it. */
+  voiceFeatures: async (path: string, del = true): Promise<VoiceFeatures> => (native?.voiceFeatures ? native.voiceFeatures(path, del) : { voiced_s: 0 }),
+  /** Raw Apple Health sleep segments (Watch stages when present), oldest first. */
+  healthSleep: async (days: number): Promise<HealthSleepSegment[]> => (native?.healthSleep ? native.healthSleep(days) : []),
   addUserEvent: (e: UserEvent) => native?.addUserEvent(e as any) ?? { },
   /** Append a record to the on-phone wellness store (Documents/wellness/<kind>/<day>.jsonl). */
   wellnessAppend: (kind: string, record: Record<string, unknown>) => native?.wellnessAppend(kind, record),

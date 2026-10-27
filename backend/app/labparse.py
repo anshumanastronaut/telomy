@@ -64,6 +64,12 @@ def classify_panel(text: str) -> str:
 
 
 def _date(text: str) -> str | None:
+    m = re.search(r"Collected\s*:?\s*(\d{2})/(\d{2})/(\d{4})", text)          # 20/08/2026 (DD/MM/YYYY, Indian labs)
+    if m:
+        try:
+            return datetime(int(m.group(3)), int(m.group(2)), int(m.group(1))).date().isoformat()
+        except ValueError:
+            pass
     m = re.search(r"Collected\s+(\d{2}-[A-Za-z]{3}-\d{4}(?:\s+\d{2}:\d{2})?)", text)
     raw = m.group(1) if m else None
     if not raw:
@@ -157,7 +163,9 @@ def _is_name_line(line: str) -> str | None:
     mid = match_marker(line)
     if not mid:
         return None
-    alias = max((a for a in MARKERS[mid][6] if line.lower().startswith(a)), key=len)
+    alias = max((a for a in MARKERS[mid][6] if line.lower().startswith(a)), key=len, default=None)
+    if alias is None:               # matched only after normalisation ('Cholesterol, Total') — not a bare name cell
+        return None
     rest = re.sub(r"^\s*(\([^)]*\))?\s*", "", line[len(alias):])
     return mid if rest == "" else None
 
@@ -206,6 +214,64 @@ def parse_cells(lines: list[str], panel: str) -> list[dict]:
     return out
 
 
+RESULT = re.compile(rf"^({NUM})\s+(?:([<>≤≥])\s*({NUM})|({NUM})\s+({NUM})|({NUM}))\s*$")
+
+
+def parse_blocks(lines: list[str]) -> list[dict]:
+    """Block layout used by many Indian labs (Orange Health, Lal PathLabs, SRL…): the test name on its own line(s),
+    then the method on its own line, then 'value low high' (or 'value < high'), then the unit. Found 2026-10-19: the
+    first real report parsed 9 of ~50 values with the one-line parsers."""
+    out, seen = [], set()
+    for i, raw in enumerate(lines):
+        line = raw
+        nm = re.match(rf"^({NUM})\s+Normal\s*:?[^\d]*({NUM})", line)   # '105 Normal: ⇒ 90  Mild decrease: 60-89 …'
+        if nm:
+            line = f"{nm.group(1)} > {nm.group(2)}"
+        if re.search(r"[A-Za-z]", line):                 # result lines are numbers only (a method like 'Pyridoxal-5…' is not)
+            continue
+        ambiguous = False
+        # Some lab fonts extract the en dash and '<' as NUL (2026-10-19, Orange Health): '0.2 \x00 1.3', '42 \x00 50'
+        if "\x00" in line or re.match(rf"^{NUM}\s+{NUM}\s*[-–]\s*{NUM}$", line):
+            nums = re.findall(NUM, line.replace("\x00", " ").replace("–", " ").replace(" - ", " "))
+            if len(nums) == 3:
+                line = f"{nums[0]} {nums[1]} {nums[2]}"
+            elif len(nums) == 2 and "\x00" in line:
+                line = f"{nums[0]} < {nums[1]}"
+                ambiguous = True                         # the NUL may have been '<' or '≥'; resolved by the marker below
+        m = RESULT.match(line)
+        if not m:
+            continue
+        mid = None
+        for back in range(1, 5):                       # name is 1–4 lines up (a method line may sit in between)
+            if i - back < 0:
+                break
+            cand = lines[i - back]
+            if RESULT.match(cand):
+                break
+            mid = match_marker(cand) or (match_marker(lines[i - back - 1] + " " + cand) if i - back - 1 >= 0 else None)
+            if mid:
+                break
+        if not mid or mid in seen:
+            continue
+        value = float(m.group(1))
+        if m.group(2) in ("<", "≤"):
+            lo, hi = None, float(m.group(3))
+        elif m.group(2) in (">", "≥"):
+            lo, hi = float(m.group(3)), None
+        elif m.group(4):
+            lo, hi = float(m.group(4)), float(m.group(5))
+        else:
+            lo, hi = None, float(m.group(6))           # a lone bound is an upper limit ('<50' printed without '<')
+        if ambiguous and MARKERS[mid][5] == "high" and lo is None and hi is not None:
+            lo, hi = hi, None                            # eGFR 'Normal ≥ 90' printed with a NUL: a lower limit
+        unit = lines[i + 1] if i + 1 < len(lines) and len(lines[i + 1]) <= 14 and not RESULT.match(lines[i + 1]) \
+            and not match_marker(lines[i + 1]) else MARKERS[mid][2]
+        seen.add(mid)
+        out.append({"marker_id": mid, "name": MARKERS[mid][0], "value": value, "unit": unit, "ref_low": lo, "ref_high": hi,
+                    "ref_text": line[len(m.group(1)):].strip(), "flag": "", "status": status_for(mid, value, lo, hi, "")})
+    return out
+
+
 def parse_pdf(pdf_bytes: bytes, filename: str = "") -> dict:
     text = _text(pdf_bytes)
     lines = [l.strip() for l in text.splitlines() if l.strip()]
@@ -217,6 +283,10 @@ def parse_pdf(pdf_bytes: bytes, filename: str = "") -> dict:
                    "glucose", "allergy", "urine", "function", "assessment"])), filename)
     panel = classify_panel(text)
     markers, unmatched = parse_cells(lines, panel), []
+    blocks = parse_blocks(lines)
+    good = lambda ms: sum(1 for m in ms if isinstance(m["value"], (int, float)) and (m["ref_low"] is not None or m["ref_high"] is not None))  # noqa: E731
+    if good(blocks) > good(markers):                   # whichever layout yields more real numeric results with ranges
+        markers = blocks
     if not markers:  # fall back to one-row-per-line layouts
         seen = set()
         for line in lines:

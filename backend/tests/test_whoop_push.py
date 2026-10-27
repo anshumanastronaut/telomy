@@ -1,0 +1,109 @@
+"""NOOP self-hosted push receiver (protocol 1.0) — contract tests with synthetic records only."""
+import gzip
+import json
+import os
+import tempfile
+import uuid
+from datetime import datetime, timedelta, timezone
+
+os.environ.setdefault("TELOMY_DB", os.path.join(tempfile.mkdtemp(), "test.db"))
+os.environ.setdefault("TELOMY_TODAY", "2026-10-06")
+os.environ["TELOMY_WHOOP_TOKEN"] = "test-whoop-token"
+
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
+
+AUTH = {"Authorization": "Bearer test-whoop-token"}
+SRC = str(uuid.uuid4())
+
+
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as c:
+        yield c
+
+
+def ndjson(header, records):
+    lines = [json.dumps(header)] + [json.dumps({"type": "record", **r}) for r in records]
+    return ("\n".join(lines) + "\n").encode()
+
+
+def post(client, body, gz=True):
+    h = {**AUTH, "Content-Type": "application/x-ndjson; charset=utf-8"}
+    if gz:
+        body, h["Content-Encoding"] = gzip.compress(body), "gzip"
+    return client.post("/whoop/push", content=body, headers=h)
+
+
+def test_capabilities_need_token_and_version(client):
+    assert client.get("/whoop/push").status_code == 401
+    assert client.get("/whoop/push", headers={**AUTH, "NOOP-Push-Accept-Version": "2.0"}).status_code == 406
+    c = client.get("/whoop/push", headers={**AUTH, "NOOP-Push-Accept-Version": "1.0"}).json()
+    assert c["type"] == "capabilities" and c["protocolVersion"] == "1.0" and "gravitySample" in c["streams"] and len(c["streams"]) == 12
+
+
+def test_append_is_idempotent_and_conflicts_are_rejected(client):
+    bid = str(uuid.uuid4())
+    h = {"type": "batch", "protocolVersion": "1.0", "batchId": bid, "sourceId": SRC, "deviceId": "strap1", "stream": "hrSample",
+         "delivery": "append", "recordCount": 2, "startCursor": None, "endCursor": {"rowId": 2, "keySha256": "b" * 64}}
+    body = ndjson(h, [{"key": {"ts": 1000}, "data": {"bpm": 61}}, {"key": {"ts": 1001}, "data": {"bpm": 62}}])
+    a = post(client, body).json()
+    assert a == {"protocolVersion": "1.0", "batchId": bid, "stream": "hrSample", "deviceId": "strap1",
+                 "endCursor": {"rowId": 2, "keySha256": "b" * 64}, "acceptedRows": 2, "status": "accepted"}
+    assert post(client, body, gz=False).json() == a                       # same entity, other coding → same ack
+    other = ndjson({**h, "recordCount": 1}, [{"key": {"ts": 1002}, "data": {"bpm": 70}}])
+    r = post(client, other)
+    assert r.status_code == 409 and r.json()["code"] == "batch_conflict"
+    assert client.get("/whoop/status").json()["streams"]["hrSample"]["n"] == 2
+
+
+def test_replace_window_multipart_deletes_absent_rows(client):
+    # /whoop/nights runs the sleep-fusion credibility layer, which rejects any "night" under 3 h (a
+    # lying-still fragment) and treats a session starting in [08:00, 20:00) local as a nap. So the
+    # window's sessions must be real multi-hour nights starting at night: 22:30 IST, split by a short
+    # mid-night awakening into two adjacent sessions that nights() merges back into one ~7 h night.
+    IST = timezone(timedelta(hours=5, minutes=30))
+    A = int(datetime(2026, 10, 5, 22, 30, tzinfo=IST).timestamp())   # night of 5→6 Oct, first block
+    B = A + 4 * 3600 + 20 * 60                                        # second block, 20 min after the first (gap < 90 min)
+    lo, hi = A - 3600, A + 12 * 3600                                  # authoritative window around that night
+
+    def part(rid, n, parts, recs):
+        h = {"type": "batch", "protocolVersion": "1.0", "batchId": str(uuid.uuid4()), "sourceId": SRC, "deviceId": "strap1",
+             "stream": "sleepSession", "delivery": "replace_window", "recordCount": len(recs), "startCursor": None, "endCursor": None,
+             "window": {"replacementId": rid, "selector": "startTs", "startInclusive": lo, "endExclusive": hi, "part": n, "parts": parts}}
+        return post(client, ndjson(h, recs))
+    night = lambda start, hours: {"key": {"startTs": start}, "data": {"endTs": start + hours * 3600, "userEdited": False, "stagesJSON": "[]"}}
+    r1 = str(uuid.uuid4())
+    assert part(r1, 1, 2, [night(A, 4)]).json()["status"] == "accepted"
+    assert len(client.get("/whoop/nights").json()["nights"]) == 0        # not applied until every part is in
+    part(r1, 2, 2, [night(B, 3)])
+    ns = client.get("/whoop/nights").json()["nights"]   # both sessions are stored; nights() merges adjacent ones
+    assert [n["start"] for n in ns] == [A] and ns[0].get("mergedSessions") == 2
+    r2 = str(uuid.uuid4())
+    part(r2, 1, 1, [night(B, 4)])                                          # A is gone from the authoritative window
+    assert [n["start"] for n in client.get("/whoop/nights").json()["nights"]] == [B]
+    assert part(r1, 1, 2, [night(A, 4)]).status_code == 409              # late part of a superseded/complete generation
+
+
+def test_whoop_day_detects_planted_workout(client):
+    """Synthetic day: resting 60 bpm, still; 30-min run at ~150 bpm with wrist motion at 18:00 IST → one workout found,
+    strain > a still day's, stress computed only on still minutes."""
+    import math
+    day0 = 1792348200 - 86400 * 2                                    # 2026-10-17 00:00 IST
+    hr, grav = [], []
+    for t in range(day0 + 6 * 3600, day0 + 22 * 3600):
+        run = day0 + 18 * 3600 <= t < day0 + 18 * 3600 + 1800
+        hr.append({"key": {"ts": t}, "data": {"bpm": 150 if run else 60 + (t % 7)}})
+        a = 0.3 * math.sin(t) if run else 0.0
+        grav.append({"key": {"ts": t}, "data": {"x": a, "y": 0.0, "z": 1.0, "dynAccel": None}})
+    for stream, recs in (("hrSample", hr), ("gravitySample", grav)):
+        for i in range(0, len(recs), 5000):
+            chunk = recs[i:i + 5000]
+            h = {"type": "batch", "protocolVersion": "1.0", "batchId": str(uuid.uuid4()), "sourceId": SRC, "deviceId": "strap-day",
+                 "stream": stream, "delivery": "append", "recordCount": len(chunk), "startCursor": None, "endCursor": {"rowId": i + len(chunk), "keySha256": "c" * 64}}
+            assert post(client, ndjson(h, chunk)).json()["status"] == "accepted"
+    r = client.get("/whoop/day", params={"day": "2026-10-17"}).json()
+    assert r["ok"] and len(r["workouts"]) == 1 and 28 <= r["workouts"][0]["min"] <= 31
+    assert r["strain"] > 5 and r["stress"]["minutes"] > 0

@@ -45,7 +45,7 @@ export default function Captures() {
   return (
     <View style={{ flex: 1 }}>
       <Screen edges={[]} onRefresh={refresh}>
-        <Stack.Screen options={{ title: 'Saved sessions' }} />
+        <Stack.Screen options={{ title: '' }} />
         <T v="h1">Therapy sessions</T>
         <T v="small">Stored on this phone. Share sends one file per session (raw ECG, beats, HR/HRV every second, phases, settings, ratings, events), format telomy.capture/1.</T>
         {!list.length ? <Empty title="No sessions yet" body="Record one from Therapy capture." actions={[{ title: 'Record a session', onPress: () => router.push('/capture') }]} /> : null}

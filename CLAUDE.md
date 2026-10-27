@@ -6,8 +6,14 @@ Context for Claude Code (and any new engineer). Read this first, then `docs/READ
 
 Telomy is a longevity-intelligence platform: one Vault for labs, imaging, wearables, therapy sessions, medicines and life events;
 Sinc, an evidence-first AI that drafts while a clinician signs; and tools for doctors and longevity centres. One Expo app serves three
-roles (member, doctor, centre owner) against a FastAPI backend. **Status: v0.4 prototype on fictitious data; next is production**
-(see `docs/production/PRODUCTION_PLAN.md`).
+roles (member, doctor, centre owner) against a FastAPI backend. **Status: v0.4 prototype; founder is the first n-of-1 test subject on
+real data (private, on an always-on cloud); next is production** (see `docs/production/PRODUCTION_PLAN.md`).
+
+Two layers sit on the Vault: the **guideline path** (PhenoAge bioage, pace-of-ageing — see `docs/ENGINE.md`) and the **trained-model
+intelligence layer** (`backend/app/telomy_ml.py` + `backend/app/llx/`): NHANES-trained blood/muscle age clocks, a 13-condition disease
+screen, 10-yr mortality, wearable fusion, and the supplement / modality / nutrition / voice / check-in engines, served additively at
+`/me/*`. **Read [`docs/MODELS.md`](docs/MODELS.md) before touching anything under `telomy_ml.py` or `llx/`.** Every number is a grounded
+tool result — engines (and the Telomy-LLX SLM) narrate, they never invent a value.
 
 ## Commands
 
@@ -38,6 +44,13 @@ make docs    # regenerate docs/API.md and docs/DATA_MODEL.md after route/schema 
 - Every behaviour change gets a test in `backend/tests/test_backend.py`; tests run against the fixture world with planted effects.
 - Mobile: expo-router screens in `mobile/src/app`; components from `mobile/src/ui/core.tsx`; colours and fonts only via
   `mobile/src/lib/theme.ts` tokens; every screen handles loading, empty and error; data via `useApi(path)`.
+- Design rules (enforced by `node mobile/tools/design-lint.mjs` — counts may only go down):
+  - Colour: chrome from `usePalette()`; any signal (HR, SpO₂, sleep…) from `data.*` — never a hex literal.
+  - Type: sizes from `type.*` via `<T v=…>`; Fraunces only for display numbers/headlines, Inter for everything else.
+  - Space/shape: `space.*`, `radius.*` only. Group with proximity (gap inside a card < gap between cards).
+  - Motion: `motion.easeOut` for entering, `motion.spring` for press/toggle; no linear easing, nothing over 360 ms.
+  - Build progressively: get one widget right on its own, then compose; reuse an existing `ui/` component before
+    writing a new one.
 - Copy: plain and specific; sentence case; errors say what happened and what to do.
 
 ## Where things are
@@ -47,7 +60,9 @@ make docs    # regenerate docs/API.md and docs/DATA_MODEL.md after route/schema 
 | Product scope and priorities | `docs/product/PRD.md` |
 | Architecture now and target | `docs/ARCHITECTURE.md`, `docs/architecture/HLD.md` |
 | Module internals | `docs/architecture/LLD.md`, `docs/ENGINE.md` |
+| Trained models & engines (clocks, disease, fusion, supplements…) | `docs/MODELS.md`; code in `backend/app/telomy_ml.py`, `backend/app/llx/`, assets in `backend/app/assets/`; training in `research/` |
 | Routes / tables | `docs/API.md`, `docs/DATA_MODEL.md` (generated) |
+| Cloud deploy / device builds (Oracle VM, HTTPS, multi-user) | `deploy/oracle/`, `docs/DEVICE_INTEGRATION.md`, `docs/history/DECISIONS.md` |
 | Design tokens, components, brand assets | `docs/design/DESIGN_SYSTEM.md` |
 | Original specs (DPR, engineering guide, UI system, Echo OS, PINN) | `docs/requirements/source/` + traceability in `docs/requirements/README.md` |
 | Why things are the way they are | `docs/history/DECISIONS.md`, `docs/history/ITERATIONS.md` |
@@ -57,6 +72,22 @@ make docs    # regenerate docs/API.md and docs/DATA_MODEL.md after route/schema 
 
 ## Production work: read before touching data access
 
-The member Vault is single-user today (only 5 of 48 tables have `patient_id`) and there is no auth. Phase 1 of the production plan adds
-`user_id`/`org_id` ownership, JWT auth, per-route policies and Postgres RLS. New tables and queries must already carry an owner column
-and filter by it.
+Consumer multi-user tenancy now exists: `accounts.py` (email/password + token) gives each member their **own SQLite file**
+(`backend/data_local/users/<id>.db`), bound per-request by `_bind_user` in `main.py`; when accounts exist, the single-user access-password
+lock is bypassed (`main.py` `_require_password`). This is how the two-account testing (demo + founder) and the cloud run. The per-user DB
+schema is initialised by `accounts._ensure_user_db` — **any new domain module that owns a table must be added to its init list** (a drift
+there caused a missing `vitals_ts`/`goals` table in prod). Still ahead for real production (PRODUCTION_PLAN Phase 1): `org_id` ownership on
+the management plane, JWT, per-route policies, Postgres + RLS. New tables and queries carry an owner column and filter by it.
+
+## Org, sibling repos & the engineering team
+
+Telomy spans several repos; read `ENGINEERING.md` (this repo root) for the full map, operating cadence
+and definition-of-done. Sibling repos under `/Users/anshuman/`:
+- `telomy-slm` — Telomy-LLX tool-grounded longevity SLM (Qwen2.5; calls the clocks, never guesses numbers).
+- `telomy-vision` — meal-photo→nutrition (USDA + IFCT 2017 India), medical-image/report ingestion, genomics annotation.
+- `telomy-lab` — ECG/PPG/sleep signal R&D and validation.
+- `research/ageclock` & `research/muscleclock` — trained aging-clock families (blood, muscle) + the DPR.
+
+The virtual engineering team lives in `.claude/agents/` (ml-research, data-engineering, backend-eng,
+mobile-eng, devops-sre, clinical-regulatory, qa-security) — invoke a specialist by name for scoped work.
+Operate with the enabled **Engineering** and **Data** plugin skills; deep reviews via `/code-review ultra`.

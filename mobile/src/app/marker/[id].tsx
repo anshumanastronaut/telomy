@@ -19,7 +19,7 @@ export default function Marker() {
   const c = statusColor(p, last?.status);
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: m.name }} />
+      <Stack.Screen options={{ title: '' }} />
       <View style={{ gap: 4 }}>
         <Row style={{ flexWrap: 'wrap' }}>
           <Chip label={m.panel_title} />

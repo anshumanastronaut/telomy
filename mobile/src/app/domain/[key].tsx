@@ -16,7 +16,7 @@ export default function Domain() {
   if (!d) return <Screen edges={[]}><Loading what="Scoring…" /></Screen>;
   return (
     <Screen edges={[]}>
-      <Stack.Screen options={{ title: d.title }} />
+      <Stack.Screen options={{ title: '' }} />
       <Card>
         <Row>
           <Ring value={d.score} size={84} stroke={8} color={d.score >= 80 ? p.success : d.score >= 60 ? p.warn : p.danger} />

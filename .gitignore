@@ -31,3 +31,31 @@ backend/data/ddinter/
 share/
 
 mobile/ios/build-sim/
+web/dist/
+backend/.whoop-token
+backend/backups/
+backend/logs/
+
+# research artifacts (regenerable via the download/train scripts) — keep code+docs+results+models, skip raw/venv
+research/*/raw/
+research/*/.venv/
+research/.Telomy-installed.app/
+**/__pycache__/
+*.xpt
+*.tsv
+*.csv.gz
+research/ageclock/nhanes_bloodpanel.csv
+research/diseasemodel/disease_dataset.csv
+research/*/nhanes_*.csv
+
+# local multi-user data (contains real PHI) — never commit
+backend/data_local/
+backend/telomy.db
+backend/_setup_accounts.py
+
+# never commit — live-capture DB WAL/SHM (real PHI) and rig credentials
+backend/telomy-live.db*
+*.db-shm
+*.db-wal
+research/validation/RIG_CREDENTIALS.md
+research/ppg-validation/welltory-ppg-dataset/
