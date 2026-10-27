@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import uuid
+from datetime import datetime, timedelta, timezone
 
 os.environ.setdefault("TELOMY_DB", os.path.join(tempfile.mkdtemp(), "test.db"))
 os.environ.setdefault("TELOMY_TODAY", "2026-10-06")
@@ -59,22 +60,31 @@ def test_append_is_idempotent_and_conflicts_are_rejected(client):
 
 
 def test_replace_window_multipart_deletes_absent_rows(client):
+    # /whoop/nights runs the sleep-fusion credibility layer, which rejects any "night" under 3 h (a
+    # lying-still fragment) and treats a session starting in [08:00, 20:00) local as a nap. So the
+    # window's sessions must be real multi-hour nights starting at night: 22:30 IST, split by a short
+    # mid-night awakening into two adjacent sessions that nights() merges back into one ~7 h night.
+    IST = timezone(timedelta(hours=5, minutes=30))
+    A = int(datetime(2026, 10, 5, 22, 30, tzinfo=IST).timestamp())   # night of 5→6 Oct, first block
+    B = A + 4 * 3600 + 20 * 60                                        # second block, 20 min after the first (gap < 90 min)
+    lo, hi = A - 3600, A + 12 * 3600                                  # authoritative window around that night
+
     def part(rid, n, parts, recs):
         h = {"type": "batch", "protocolVersion": "1.0", "batchId": str(uuid.uuid4()), "sourceId": SRC, "deviceId": "strap1",
              "stream": "sleepSession", "delivery": "replace_window", "recordCount": len(recs), "startCursor": None, "endCursor": None,
-             "window": {"replacementId": rid, "selector": "startTs", "startInclusive": 0, "endExclusive": 10_000, "part": n, "parts": parts}}
+             "window": {"replacementId": rid, "selector": "startTs", "startInclusive": lo, "endExclusive": hi, "part": n, "parts": parts}}
         return post(client, ndjson(h, recs))
-    s = lambda t: {"key": {"startTs": t}, "data": {"endTs": t + 100, "userEdited": False, "stagesJSON": "[]"}}
+    night = lambda start, hours: {"key": {"startTs": start}, "data": {"endTs": start + hours * 3600, "userEdited": False, "stagesJSON": "[]"}}
     r1 = str(uuid.uuid4())
-    assert part(r1, 1, 2, [s(100)]).json()["status"] == "accepted"
+    assert part(r1, 1, 2, [night(A, 4)]).json()["status"] == "accepted"
     assert len(client.get("/whoop/nights").json()["nights"]) == 0        # not applied until every part is in
-    part(r1, 2, 2, [s(200)])
+    part(r1, 2, 2, [night(B, 3)])
     ns = client.get("/whoop/nights").json()["nights"]   # both sessions are stored; nights() merges adjacent ones
-    assert [n["start"] for n in ns] == [100] and ns[0].get("mergedSessions") == 2
+    assert [n["start"] for n in ns] == [A] and ns[0].get("mergedSessions") == 2
     r2 = str(uuid.uuid4())
-    part(r2, 1, 1, [s(200)])                                               # 100 is gone from the authoritative window
-    assert [n["start"] for n in client.get("/whoop/nights").json()["nights"]] == [200]
-    assert part(r1, 1, 2, [s(300)]).status_code == 409                    # late part of a superseded/complete generation
+    part(r2, 1, 1, [night(B, 4)])                                          # A is gone from the authoritative window
+    assert [n["start"] for n in client.get("/whoop/nights").json()["nights"]] == [B]
+    assert part(r1, 1, 2, [night(A, 4)]).status_code == 409              # late part of a superseded/complete generation
 
 
 def test_whoop_day_detects_planted_workout(client):
