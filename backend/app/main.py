@@ -2923,6 +2923,96 @@ def mgmt_prescribe_therapy(pid: int, body: dict, authorization: str = _Hdr(defau
         return {"ok": True, "modality": modality, "name": therapy.MODALITIES.get(modality, {}).get("name", modality), "prescriber": me.get("name")}
 
 
+# ---- Consult scribe: visit transcript → SOAP + patient recap + action drafts the clinician signs ----
+class ConsultIn(BaseModel):
+    transcript: str = ""
+
+
+@app.post("/mgmt/clinic/patients/{pid}/consult")
+def mgmt_consult(pid: int, body: ConsultIn, authorization: str = _Hdr(default="")):
+    me = _require_staff(authorization)
+    from . import patient_data, consult
+    if patient_data._resolve_user_id(pid) is None:
+        raise HTTPException(400, "Patient has no linked record.")
+    if len((body.transcript or "").strip()) < 20:
+        raise HTTPException(400, "Transcript too short — record or paste the visit first.")
+    pt = None
+    try:
+        pt = (patient_data.overview(pid) or {}).get("patient")
+    except Exception:  # noqa: BLE001
+        pt = None
+    with patient_data._patient_db(pid):
+        return consult.scribe(body.transcript, me.get("name", "doctor"), pt)
+
+
+@app.get("/mgmt/clinic/patients/{pid}/consults")
+def mgmt_consults(pid: int, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    from . import patient_data, consult
+    if patient_data._resolve_user_id(pid) is None:
+        return []
+    with patient_data._patient_db(pid):
+        consult.init()
+        return consult.recent()
+
+
+@app.get("/mgmt/clinic/patients/{pid}/consult/{cid}")
+def mgmt_consult_get(pid: int, cid: int, authorization: str = _Hdr(default="")):
+    _require_staff(authorization)
+    from . import patient_data, consult
+    with patient_data._patient_db(pid):
+        c = consult.get(cid)
+    if not c:
+        raise HTTPException(404, "No such consult.")
+    return c
+
+
+@app.post("/mgmt/clinic/patients/{pid}/consult/{cid}/apply")
+def mgmt_consult_apply(pid: int, cid: int, body: dict, authorization: str = _Hdr(default="")):
+    """Apply selected action drafts from a consult: medications → signed Rx, tests → ordered, follow-up / tasks /
+    free-text meds → a clinic task on the patient. Records what was applied back on the consult."""
+    me = _require_staff(authorization)
+    from . import patient_data, consult
+    if patient_data._resolve_user_id(pid) is None:
+        raise HTTPException(400, "Patient has no linked record.")
+    idxs = body.get("indices")
+    applied = []
+    with patient_data._patient_db(pid):
+        c = consult.get(cid)
+        if not c:
+            raise HTTPException(404, "No such consult.")
+        acts = c["actions"]
+        chosen = [acts[i] for i in (idxs if idxs is not None else range(len(acts)))
+                  if 0 <= i < len(acts) and (idxs is not None or acts[i].get("selected"))]
+        cat = {t["id"]: t for t in diagnostics.catalogue()}
+        for a in chosen:
+            try:
+                if a["type"] == "medication" and a.get("ref") and a["ref"] in rx.PRODUCTS:
+                    rx.prescribe_product(a["ref"], 1, f"From consult by {me.get('name', 'doctor')}", me.get("name", "doctor"))
+                    applied.append({"type": "medication", "label": a["label"], "ok": True})
+                elif a["type"] == "test" and a.get("ref") and a["ref"] in cat:
+                    _ensure_ordered_tests()
+                    t = cat[a["ref"]]
+                    db.exec_("INSERT INTO ordered_tests (test_id, name, category, price, reason, ordered_by, ordered_at, status) VALUES (?,?,?,?,?,?,?,'ordered')",
+                             (a["ref"], t["name"], t["category"], t.get("price", 0), "Ordered from consult", me.get("name"), datetime.now().isoformat()))
+                    applied.append({"type": "test", "label": a["label"], "ok": True})
+                else:
+                    clinicmod.add_task(me.get("org", "default"), a["label"], pid, me.get("name", ""), None, 2)
+                    applied.append({"type": a["type"], "label": a["label"], "ok": True})
+            except Exception as e:  # noqa: BLE001
+                applied.append({"type": a["type"], "label": a["label"], "ok": False, "error": str(e)[:80]})
+        db.exec_("UPDATE consult_notes SET applied = ? WHERE id = ?", (db.j(applied), cid))
+    return {"ok": True, "applied": applied}
+
+
+@app.get("/me/consults")
+def me_consults():
+    """The member's own visit recaps (plain-language summaries their clinician generated)."""
+    from . import consult
+    consult.init()
+    return [{"id": c["id"], "ts": c["ts"], "doctor": c["doctor"], "recap": c["recap"]} for c in consult.recent()]
+
+
 @app.post("/mgmt/staff/{sid}/profile")
 def mgmt_staff_profile(sid: int, body: dict, authorization: str = _Hdr(default="")):
     me = _require_staff(authorization)

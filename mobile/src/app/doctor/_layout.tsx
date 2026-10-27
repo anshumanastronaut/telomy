@@ -17,6 +17,7 @@ export default function DoctorLayout() {
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person.crop.circle', 'person-circle') }} />
       <Tabs.Screen name="patient/[id]" options={{ href: null }} />
       <Tabs.Screen name="templates" options={{ href: null }} />
+      <Tabs.Screen name="consult" options={{ href: null }} />
     </RoleTabs>
   );
 }

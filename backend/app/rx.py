@@ -309,6 +309,21 @@ def submit(goal: str, pid: int = 1, chosen: list[str] | None = None) -> dict:
     return get(pid_)
 
 
+def prescribe_product(key: str, pid: int = 1, note: str = "", doctor: str = "doctor") -> dict:
+    """Prescribe one specific formulary product directly (e.g. from a consult), bypassing the goal-based draft filter,
+    and sign it. Returns the approved plan."""
+    p = PRODUCTS.get(key)
+    if not p:
+        raise ValueError("Unknown product.")
+    goal = (p.get("goals") or ["longevity"])[0]
+    item = {"id": key, "name": p["name"], "kind": p["kind"], "rx": p["rx"], "evidence": p["evidence"],
+            "dose": p["dose"], "price": p["price"], "why": "Prescribed during a consult.", "interactions": []}
+    plan = {"goal": goal, "goal_label": GOALS.get(goal, goal), "items": [item], "nof1": None}
+    pid_ = db.exec_("INSERT INTO rx_plans (patient_id, goal, created_at, state, plan) VALUES (?,?,?,?,?)",
+                    (pid, goal, engine.now_iso(), "awaiting_doctor", db.j(plan)))
+    return decide(pid_, True, note or "Prescribed during a consult.", keep=[key], doctor=doctor)
+
+
 def get(plan_id: int) -> dict | None:
     r = db.one("SELECT * FROM rx_plans WHERE id = ?", (plan_id,))
     if r:

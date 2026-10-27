@@ -144,6 +144,8 @@ export default function DoctorPatient() {
 
       <Button kind="secondary" icon="sparkles" title="Ask Sinc about this patient"
         onPress={() => router.push(`/doctor/copilot?pid=${id}&name=${encodeURIComponent(pt.name ?? '')}` as any)} />
+      <Button kind="secondary" icon="waveform.badge.mic" title="Scribe a consult"
+        onPress={() => router.push(`/doctor/consult?pid=${id}&name=${encodeURIComponent(pt.name ?? '')}` as any)} />
 
       {ov.data.ai_summary?.text ? (
         <Card tone="teal">

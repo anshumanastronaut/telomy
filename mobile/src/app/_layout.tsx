@@ -145,6 +145,7 @@ export default function RootLayout() {
         <Stack.Screen name="activities" options={{ title: 'My activities' }} />
         <Stack.Screen name="activity/[id]" options={{ title: 'Activity' }} />
         <Stack.Screen name="environment" options={{ title: 'Environment' }} />
+        <Stack.Screen name="visits" options={{ title: '' }} />
         <Stack.Screen name="insights" options={{ title: '' }} />
         <Stack.Screen name="assistance" options={{ title: '' }} />
       </Stack>
