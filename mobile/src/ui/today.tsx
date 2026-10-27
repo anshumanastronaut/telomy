@@ -232,8 +232,9 @@ function ActivityCard() {
   }
   const t = h.today, week = h.data.slice(-7), max = Math.max(1, ...week.map((d) => d.steps ?? 0));
   return (
-    <View style={{ gap: space[3], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface }}>
-      <Row gap={8}><Icon name="figure.walk" size={15} color={data.activity} /><T v="label" style={{ flex: 1 }}>Activity</T><T v="small">Apple Health</T></Row>
+    <Pressable onPress={() => router.push('/activity')} accessibilityRole="button" accessibilityLabel="Open Activity and recovery"
+      style={({ pressed }) => ({ gap: space[3], padding: space[4], borderRadius: radius.xl, backgroundColor: p.surface, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.99 : 1 }] })}>
+      <Row gap={8}><Icon name="figure.walk" size={15} color={data.activity} /><T v="label" style={{ flex: 1 }}>Activity</T><T v="small" style={{ marginRight: 4 }}>Apple Health</T><Icon name="chevron.right" size={11} color={p.faint} /></Row>
       <Row style={{ alignItems: 'flex-end' }}>
         <View style={{ flex: 1 }}>
           <Row gap={4} style={{ alignItems: 'baseline' }}><T v="num" style={{ fontSize: type.h1 }}>{t?.steps != null ? Math.round(t.steps).toLocaleString('en-IN') : '—'}</T><T v="small">steps</T></Row>
@@ -245,7 +246,7 @@ function ActivityCard() {
           {week.map((d) => <View key={d.date} style={{ width: 8, height: Math.max(3, ((d.steps ?? 0) / max) * 44), borderRadius: 3, backgroundColor: d === t ? data.activity : p.surfaceAlt }} />)}
         </Row>
       </Row>
-    </View>
+    </Pressable>
   );
 }
 
