@@ -1085,6 +1085,13 @@ def environment():
     return exposome.personal()
 
 
+@app.get("/environment/here")
+def environment_here(lat: float, lon: float):
+    """Live conditions at the member's current GPS: real-time AQI/UV/weather + an outdoor-activity score and alerts.
+    Stateless (no location is stored) — the app passes coordinates only when the member grants location."""
+    return exposome.here(lat, lon)
+
+
 @app.get("/environment/compare")
 def environment_compare(a: str = "Delhi", b: str = "Bengaluru"):
     """Compare any two of the 7,482 WHO cities (name-resolved, with a nearest-station fallback)."""

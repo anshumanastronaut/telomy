@@ -321,3 +321,107 @@ def live_week() -> dict:
             out[c] = round(sum(v) / len(v), 1) if v else None
     _LIVE.update(t=_time.time(), end=end, v=out)
     return out
+
+
+# ---- live "right here, right now": real-time AQI/UV/weather → an outdoor-activity score + actionable alerts --------
+_HERE: dict = {}          # "lat,lon" (2dp ≈ 1 km) -> {"t": ts, "v": result}
+_HERE_TTL = 900           # 15 min — current conditions change slowly; don't hammer Open-Meteo on every screen open
+
+_WX = {0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 48: "Fog", 51: "Light drizzle",
+       53: "Drizzle", 55: "Heavy drizzle", 56: "Freezing drizzle", 57: "Freezing drizzle", 61: "Light rain", 63: "Rain",
+       65: "Heavy rain", 66: "Freezing rain", 67: "Freezing rain", 71: "Light snow", 73: "Snow", 75: "Heavy snow",
+       77: "Snow grains", 80: "Showers", 81: "Showers", 82: "Heavy showers", 85: "Snow showers", 86: "Snow showers",
+       95: "Thunderstorm", 96: "Thunderstorm w/ hail", 99: "Thunderstorm w/ hail"}
+
+
+def _r(x, n: int = 1):
+    return round(x, n) if isinstance(x, (int, float)) else None
+
+
+def _aqi_cat(pm25):
+    if pm25 is None:
+        return "Unknown"
+    if pm25 <= 12: return "Good"
+    if pm25 <= 35: return "Moderate"
+    if pm25 <= 55: return "Poor"
+    if pm25 <= 150: return "Unhealthy"
+    return "Hazardous"
+
+
+def _reverse_geocode(lat: float, lon: float):
+    r = _get(f"https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={lat}&longitude={lon}&localityLanguage=en")
+    if r:
+        return r.get("city") or r.get("locality") or r.get("principalSubdivision") or r.get("countryName")
+    return None
+
+
+def here(lat: float, lon: float) -> dict:
+    """Current conditions right where the person is: live AQI/UV/weather + a 0–100 outdoor-activity score and
+    actionable alerts (UV/sun, air, heat, cold). Cached ~15 min per ~1 km cell."""
+    key = f"{round(lat, 2)},{round(lon, 2)}"
+    c = _HERE.get(key)
+    if c and _time.time() - c["t"] < _HERE_TTL:
+        return c["v"]
+    aq = _get(f"https://air-quality-api.open-meteo.com/v1/air-quality?latitude={lat}&longitude={lon}"
+              f"&current=pm2_5,pm10,nitrogen_dioxide,ozone,uv_index,us_aqi&timezone=auto")
+    wx = _get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
+              f"&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m"
+              f"&daily=uv_index_max,temperature_2m_max,temperature_2m_min,sunrise,sunset&forecast_days=1&timezone=auto")
+    if not aq and not wx:
+        return {"ok": False, "reason": "Couldn't reach the live air-quality / weather service — check connectivity."}
+    a = (aq or {}).get("current", {})
+    w = (wx or {}).get("current", {})
+    daily = (wx or {}).get("daily", {})
+    pm25, uv = a.get("pm2_5"), a.get("uv_index")
+    temp, feels, hum = w.get("temperature_2m"), w.get("apparent_temperature"), w.get("relative_humidity_2m")
+    is_day, wcode = bool(w.get("is_day")), w.get("weather_code")
+    cat = _aqi_cat(pm25)
+
+    score = 100.0
+    if pm25 is not None:
+        score -= min(60.0, max(0.0, (pm25 - 10) * 1.2))          # clean air below ~10 µg/m³
+    if uv is not None and is_day:
+        score -= min(25.0, max(0.0, (uv - 5) * 5))               # UV above 5 taxes an outdoor session
+    if temp is not None:
+        if temp > 30: score -= min(25.0, (temp - 30) * 2.5)
+        elif temp < 8: score -= min(20.0, (8 - temp) * 2)
+    if wcode in (61, 63, 65, 80, 81, 82, 95, 96, 99, 71, 73, 75):
+        score -= 15.0
+    score = max(0, round(score))
+    band = "Great" if score >= 80 else "Good" if score >= 60 else "Fair" if score >= 40 else "Poor"
+
+    alerts = []
+    if pm25 is not None and pm25 > 35:
+        alerts.append({"level": "warn" if pm25 <= 55 else "danger", "icon": "aqi.medium",
+                       "text": f"Air {cat.lower()} — PM2.5 {round(pm25)} µg/m³. An N95 helps; move hard cardio indoors."})
+    if uv is not None and is_day and uv >= 6:
+        alerts.append({"level": "warn" if uv < 8 else "danger", "icon": "sun.max.fill",
+                       "text": f"UV {round(uv)} — {'very high' if uv >= 8 else 'high'}. SPF 30+, hat and shade; peak 11am–3pm."})
+    if temp is not None and temp >= 35:
+        alerts.append({"level": "warn", "icon": "thermometer.sun.fill",
+                       "text": f"Hot — {round(temp)}°C (feels {round(feels)}°C). Hydrate; train early morning or evening."})
+    if temp is not None and temp <= 5:
+        alerts.append({"level": "warn", "icon": "thermometer.snowflake",
+                       "text": f"Cold — {round(temp)}°C. Warm up longer and cover extremities."})
+    if uv is not None and is_day and 3 <= uv < 6 and not alerts:
+        alerts.append({"level": "ok", "icon": "sun.max",
+                       "text": f"UV {round(uv)} — moderate. ~15 min of midday sun makes vitamin D; longer needs SPF."})
+    if not alerts and score >= 70:
+        alerts.append({"level": "ok", "icon": "figure.walk",
+                       "text": "Clean air and comfortable conditions — a good window for a walk or outdoor training."})
+
+    out = {"ok": True, "place": _reverse_geocode(lat, lon) or "Your location", "lat": lat, "lon": lon,
+           "as_of": a.get("time") or w.get("time"),
+           "current": {"pm2_5": _r(pm25), "pm10": _r(a.get("pm10")), "no2": _r(a.get("nitrogen_dioxide")),
+                       "ozone": _r(a.get("ozone")), "us_aqi": a.get("us_aqi"), "uv_index": _r(uv),
+                       "aqi_category": cat, "temp_c": _r(temp), "feels_like_c": _r(feels), "humidity": _r(hum),
+                       "wind_kmh": _r(w.get("wind_speed_10m")), "is_day": is_day,
+                       "weather": _WX.get(wcode) if wcode is not None else None},
+           "uv_max_today": _r((daily.get("uv_index_max") or [None])[0]),
+           "temp_min_today": _r((daily.get("temperature_2m_min") or [None])[0]),
+           "temp_max_today": _r((daily.get("temperature_2m_max") or [None])[0]),
+           "sunrise": (daily.get("sunrise") or [None])[0], "sunset": (daily.get("sunset") or [None])[0],
+           "outdoor_score": score, "outdoor_band": band, "alerts": alerts,
+           "source": "Open-Meteo (CAMS air quality + weather) · place via BigDataCloud"}
+    _HERE[key] = {"t": _time.time(), "v": out}
+    return out
