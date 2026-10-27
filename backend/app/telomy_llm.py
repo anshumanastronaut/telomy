@@ -75,16 +75,16 @@ def _call_anthropic(system: str, user: str, history: list[dict], schema: dict, m
     client = anthropic.Anthropic(timeout=timeout)
     msgs = [{"role": m["role"], "content": m["content"]} for m in history[-10:] if m["role"] in ("user", "assistant")]
     msgs.append({"role": "user", "content": user})
-    kwargs = dict(model=model_name(), max_tokens=max_tokens, system=system, messages=msgs,
-                  output_config={"effort": "medium", "format": {"type": "json_schema", "schema": schema}})
-    try:
-        resp = client.beta.messages.create(betas=["server-side-fallback-2026-07-01"], fallbacks="default", **kwargs)
-    except TypeError:
-        resp = client.messages.create(**kwargs)
+    # Standard Messages API + JSON-in-prompt (stable across SDK/model versions; the beta output_config shape the API
+    # rejected with a 400 is gone). The caller's grounding guard still checks the returned answer against the context.
+    sysmsg = system + ('\n\nReturn ONLY a single JSON object and nothing else: '
+                       '{"answer": string, "evidence_ids": [string], "confidence": number between 0 and 1, "medical": boolean}.')
+    resp = client.messages.create(model=model_name(), max_tokens=max_tokens, system=sysmsg, messages=msgs)
     if getattr(resp, "stop_reason", None) == "refusal":
         return {"_refusal": True, "engine": resp.model}
-    text = next((b.text for b in resp.content if b.type == "text"), "{}")
-    out = json.loads(text)
+    text = next((b.text for b in resp.content if getattr(b, "type", None) == "text"), "{}")
+    m = re.search(r"\{.*\}", text, re.S)
+    out = json.loads(m.group(0) if m else text)
     out["engine"] = resp.model
     return out
 
