@@ -101,6 +101,8 @@ export default function Activity() {
 
       <WhatAffectsYou />
 
+      <MetGoal zones={w.today.zones} worn={w.today.worn} />
+
       {move.length ? (
         <Section title="Movement today">
           <Card style={{ gap: space[4] }}>
@@ -203,6 +205,48 @@ export default function Activity() {
         <T v="small">Energy ("body battery") charges from your overnight recovery and sleep and drains with today's exertion and sustained stress. Recovery compares last night's HRV and lowest heart rate with your own previous 30 nights, adjusted for sleep, breathing and yesterday's strain (green 67+, amber 34–66, red 33 or less). Strain weights every minute by heart-rate zone (Edwards TRIMP) on a 0–21 scale. Stress compares daytime heart rate and HRV with your calm baseline. Usual ranges are your own mean ± 1.5 standard deviations.</T>
       </Card>
     </Screen>
+  );
+}
+
+// Approx METs for HR zones 1–5 (light→max); minutes in higher zones count for much more metabolic work.
+const MET_PER_ZONE = [3, 4.5, 6, 8, 10.5];
+const MET_GOAL = 150; // MET-minutes/day — a longevity-oriented target (~1,000/week, WHO 2020)
+const ZONE_COLORS = ['#4FD08F', '#7FD06B', '#E7C14E', '#E79B4B', '#E0574B'];
+
+/** Welltory-style "longevity goal": today's activity weighted by intensity (MET-minutes) on a gradient zone bar. */
+function MetGoal({ zones, worn }: { zones: number[]; worn: number }) {
+  const p = usePalette();
+  if (!zones?.length || worn < 10) return null;
+  const metMin = zones.reduce((s, m, i) => s + m * (MET_PER_ZONE[i] ?? 3), 0);
+  const pct = Math.min(1, metMin / MET_GOAL);
+  const denom = Math.max(metMin, MET_GOAL);
+  return (
+    <Section title="Longevity goal">
+      <Card style={{ gap: space[3] }}>
+        <Row style={{ alignItems: 'flex-end' }}>
+          <View style={{ flex: 1 }}>
+            <Row gap={4} style={{ alignItems: 'baseline' }}>
+              <T v="num" style={{ fontSize: type.lead }}>{Math.round(metMin)}</T>
+              <T v="small">/ {MET_GOAL} MET-min</T>
+            </Row>
+            <T v="small">{pct >= 1 ? "You've hit today's longevity target" : `${Math.round(MET_GOAL - metMin)} MET-min to go`}</T>
+          </View>
+          <Chip label={pct >= 1 ? 'On track' : 'Keep moving'} fg={pct >= 1 ? p.teal : p.copper} bg={pct >= 1 ? p.tealSoft : p.copperSoft} />
+        </Row>
+        <View style={{ flexDirection: 'row', height: 14, borderRadius: 7, overflow: 'hidden', backgroundColor: p.surfaceAlt }}>
+          {zones.map((m, i) => {
+            const frac = (m * (MET_PER_ZONE[i] ?? 3)) / denom;
+            return frac > 0 ? <View key={i} style={{ width: `${Math.min(100, frac * 100)}%`, backgroundColor: ZONE_COLORS[i] }} /> : null;
+          })}
+        </View>
+        <Row style={{ flexWrap: 'wrap' }} gap={10}>
+          {zones.map((m, i) => (m > 0 ? (
+            <Row key={i} gap={4}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: ZONE_COLORS[i] }} /><T v="small" color={p.muted}>Z{i + 1} · {Math.round(m)}m</T></Row>
+          ) : null))}
+        </Row>
+        <T v="small">Minutes count more in higher heart-rate zones (METs). About 150 MET-minutes a day — roughly 1,000 a week — is linked to the lowest mortality (WHO 2020 physical-activity guidelines).</T>
+      </Card>
+    </Section>
   );
 }
 
