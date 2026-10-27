@@ -391,6 +391,15 @@ def overview(pid: int) -> dict:
         organs = _organs_current() if live else None
         environment = _environment_current() if live else None
         care = _care_activity() if live else {"therapies": None, "devices": None, "medications": []}
+        if live:   # a face + skin type the clinician can see — recognition, and skin type calibrates SpO₂/UV reads
+            try:
+                from . import engine as _eng
+                ident["skin_type"] = (_eng.profile() or {}).get("skin_type")
+                a = db.one("SELECT data FROM avatar WHERE id = 1") if db.one(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='avatar'") else None
+                ident["photo"] = a["data"] if a else None
+            except Exception:  # noqa: BLE001
+                pass
     models = _risk(pid, bm)
     narrative = _narrative(ident, bm, vit, rec, hab, rep, models)
     return {

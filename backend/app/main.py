@@ -1013,6 +1013,23 @@ def routine_get():
     return routine.active() or {}
 
 
+@app.post("/routine/add")
+def routine_add(body: RoutineIn):
+    """Append one natural-language line to the routine (person- or Sinc-driven), without re-describing the whole day."""
+    if len(body.text.strip()) < 3:
+        raise HTTPException(400, "Say what to add, e.g. 'a 6 pm walk'.")
+    return routine.add_text(body.text)
+
+
+class RoutineKey(BaseModel):
+    key: str
+
+
+@app.post("/routine/remove")
+def routine_remove(body: RoutineKey):
+    return routine.remove_item(body.key)
+
+
 @app.get("/routine/today")
 def routine_today(day: str | None = None, drinking: bool | None = None):
     return routine.today(day, drinking)
@@ -1247,6 +1264,56 @@ def put_profile(body: dict):
     p = {**engine.profile(), **body}
     db.exec_("INSERT OR REPLACE INTO profile (id, data) VALUES (1, ?)", (db.j(p),))
     return p
+
+
+# ---- profile photo (a small square avatar, resized server-side so the stored copy stays tiny) --------------------
+def _avatar_resize(data_url: str, size: int = 320) -> str | None:
+    """Decode a data URL, centre-crop to a square and shrink to `size`px JPEG. Keeps the stored avatar a few KB and
+    strips EXIF. Returns a compact data URL, or None if the input can't be decoded as an image."""
+    import base64 as _b64, io as _io
+    try:
+        b64 = data_url.split(",", 1)[1] if "," in data_url else data_url
+        raw = _b64.b64decode(b64)
+        from PIL import Image
+        im = Image.open(_io.BytesIO(raw)).convert("RGB")
+        w, h = im.size
+        m = min(w, h)
+        im = im.crop(((w - m) // 2, (h - m) // 2, (w + m) // 2, (h + m) // 2)).resize((size, size), Image.LANCZOS)
+        buf = _io.BytesIO()
+        im.save(buf, format="JPEG", quality=80)
+        return "data:image/jpeg;base64," + _b64.b64encode(buf.getvalue()).decode()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _avatar_init():
+    db.exec_("CREATE TABLE IF NOT EXISTS avatar (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT)")
+
+
+@app.get("/profile/photo")
+def get_profile_photo():
+    _avatar_init()
+    r = db.one("SELECT data FROM avatar WHERE id = 1")
+    return {"photo": r["data"] if r else None}
+
+
+@app.put("/profile/photo")
+def put_profile_photo(body: dict):
+    _avatar_init()
+    img = _avatar_resize((body or {}).get("photo") or "")
+    if not img:
+        raise HTTPException(400, "Couldn't read that image.")
+    db.exec_("INSERT OR REPLACE INTO avatar (id, data) VALUES (1, ?)", (img,))
+    db.exec_("INSERT OR REPLACE INTO profile (id, data) VALUES (1, ?)", (db.j({**engine.profile(), "has_photo": True}),))
+    return {"ok": True, "has_photo": True}
+
+
+@app.delete("/profile/photo")
+def delete_profile_photo():
+    _avatar_init()
+    db.exec_("DELETE FROM avatar WHERE id = 1")
+    db.exec_("INSERT OR REPLACE INTO profile (id, data) VALUES (1, ?)", (db.j({**engine.profile(), "has_photo": False}),))
+    return {"ok": True}
 
 # ------------------------------------------------------------------ home
 

@@ -28,12 +28,13 @@ export const EVENT_KINDS: EventKind[] = [
   { k: 'symptom', label: 'Symptom', icon: 'exclamationmark.bubble', color: '#FF6B57', cat: 'state', hint: 'e.g. headache, dizzy' },
   // ── therapy (centre / device sessions) ───────────────────────────────────────────────
   { k: 'sauna', label: 'Sauna', icon: 'flame', color: '#E0794B', cat: 'therapy', hint: 'e.g. 20 min, 80 °C' },
-  { k: 'cold', label: 'Cold plunge / cryo', icon: 'snowflake', color: '#5BA8D6', cat: 'therapy', hint: 'ice bath / whole-body cryo' },
+  { k: 'cold', label: 'Cold plunge', icon: 'drop', color: '#5BA8D6', cat: 'therapy', hint: 'ice bath / cold-water immersion' },
+  { k: 'cryo', label: 'Cryotherapy', icon: 'snowflake', color: '#7FC4E8', cat: 'therapy', hint: 'whole-body / local cryo' },
   { k: 'redlight', label: 'Red / NIR light', icon: 'light.max', color: '#E05B9A', cat: 'therapy', hint: 'photobiomodulation' },
   { k: 'vibroacoustic', label: 'Vibroacoustic', icon: 'waveform', color: '#A07BE0', cat: 'therapy', hint: 'sound/vibration therapy' },
   { k: 'hbot', label: 'HBOT', icon: 'lungs', color: '#4FD0C0', cat: 'therapy', hint: 'hyperbaric oxygen' },
   { k: 'pemf', label: 'PEMF', icon: 'dot.radiowaves.left.and.right', color: '#9E8CF0', cat: 'therapy', hint: 'pulsed electromagnetic field' },
-  { k: 'hydrogen', label: 'Molecular hydrogen', icon: 'aqi.medium', color: '#78C8E0', cat: 'therapy', hint: 'H₂ inhalation / water' },
+  { k: 'hydrogen', label: 'Molecular hydrogen', icon: 'atom', color: '#78C8E0', cat: 'therapy', hint: 'H₂ inhalation / water' },
   // ── life ─────────────────────────────────────────────────────────────────────────────
   { k: 'travel', label: 'Travel', icon: 'airplane', color: '#7FB3D5', cat: 'life', hint: 'flight, time-zone change' },
   { k: 'life', label: 'Life event', icon: 'house', color: '#A5ABA8', cat: 'life', hint: 'anything notable' },

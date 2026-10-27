@@ -130,7 +130,7 @@ export default function Sinc() {
             <Icon name="square.and.pencil" color={p.teal} />
           </Pressable>
         </Row>
-        <ScrollView ref={scroll} contentContainerStyle={{ padding: space[4], gap: space[3], paddingBottom: 30 }} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={{ padding: space[4], gap: space[3], paddingBottom: 30 }} keyboardShouldPersistTaps="handled">
           {history ? (
             <View style={{ gap: 8 }}>
               <T v="label">History</T>
@@ -182,11 +182,11 @@ export default function Sinc() {
             msgs.map((m, i) => <Bubble key={i} m={m} onDraft={draft} />)
           )}
         </ScrollView>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: space[4], paddingBottom: 6, gap: space[2], alignItems: 'center' }}>
+        {/* mode row: a quiet wrapping row (never a horizontal scroll), with vertical room so chips aren't clipped */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space[2], paddingHorizontal: space[4], paddingBottom: 6 }}>
           {(['normal', 'deep'] as const).map((m) => (
             <Pressable key={m} onPress={() => setMode(m)} accessibilityRole="tab" accessibilityState={{ selected: mode === m }} testID={`mode-${m}`}>
-              <Chip label={m === 'normal' ? 'Quick answer' : 'Deep research · with citations'} fg={mode === m ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={mode === m ? p.teal : p.surfaceAlt} icon={m === 'deep' ? 'books.vertical' : 'bolt'} />
+              <Chip label={m === 'normal' ? 'Quick answer' : 'Deep research'} fg={mode === m ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={mode === m ? p.teal : p.surfaceAlt} icon={m === 'deep' ? 'books.vertical' : 'bolt'} />
             </Pressable>
           ))}
           {slm.available ? (
@@ -195,7 +195,7 @@ export default function Sinc() {
               <Chip label={slm.on ? 'On this iPhone' : 'On-device'} fg={slm.on ? (p.isDark ? p.bg : p.onAccent) : p.text} bg={slm.on ? p.copper : p.surfaceAlt} icon="iphone" />
             </Pressable>
           ) : null}
-        </ScrollView>
+        </View>
         {slmCard && !slm.ready ? (
           <View style={{ marginHorizontal: space[4], marginBottom: 6, padding: 12, gap: 8, borderRadius: radius.md, backgroundColor: p.surface }}>
             <T v="body" style={{ fontWeight: '600' }}>Sinc on this iPhone</T>

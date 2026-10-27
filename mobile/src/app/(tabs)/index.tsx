@@ -133,12 +133,12 @@ export default function Home() {
         <T v="small">Your trained-model picture — blood age, biological &amp; muscular age, disease screen and 10-year risk, shown beside your clinical age.</T>
       </Card>
 
-      <Row gap={space[3]}>
+      <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
         {h.cards.filter((c: any) => !(hasBandNight && rewind === 0 && (c.id === 'hrv' || c.id === 'sleep_score'))).map((c: any) => (
           <DataCard key={c.id} c={c} asOf={h.as_of} />
         ))}
       </Row>
-      <Row gap={space[3]}>
+      <Row gap={space[3]} style={{ alignItems: 'stretch' }}>
         {h.key_biomarker ? (
           <Card style={{ flex: 1 }} onPress={() => router.push(`/marker/${h.key_biomarker.id}`)}>
             <T v="label">{h.key_biomarker.label}</T>

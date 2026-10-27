@@ -1,35 +1,43 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
 import { api, authStatus, logout, useApi } from '@/lib/api';
 import { useRole } from '@/lib/role';
 import { setAppearance, useAppearance, usePalette } from '@/lib/theme';
 import { Ring } from '@/ui/charts';
-import { Card, Chip, Divider, Icon, ListRow, Row, Screen, Section, Segmented, T } from '@/ui/core';
+import { Avatar, Card, Chip, Divider, Icon, ListRow, Row, Screen, Section, Segmented, T } from '@/ui/core';
 import { Logo } from '@/ui/logo';
 
 export default function Profile() {
   const appearance = useAppearance();
   const p = usePalette();
   const prof = useApi<any>('/profile');
+  const photo = useApi<any>('/profile/photo');
   const comp = useApi<any>('/completeness');
   const health = useApi<any>('/health');
   const plans = useApi<any>('/plans');
   const { setRole } = useRole();
   const pr = prof.data;
+  // refresh the photo/profile when returning to the tab (e.g. after editing About you)
+  const first = React.useRef(true);
+  useFocusEffect(React.useCallback(() => {
+    if (first.current) { first.current = false; return; }
+    prof.reload(); photo.reload();
+  }, [prof.reload, photo.reload]));
   return (
-    <Screen onRefresh={() => { prof.reload(); comp.reload(); }} refreshing={prof.loading}>
-      <Row>
-        <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: p.tealSoft, alignItems: 'center', justifyContent: 'center' }}>
-          <T v="h2" color={p.teal}>{pr?.first_name?.[0] ?? '·'}</T>
-        </View>
-        <View style={{ flex: 1 }}>
-          <T v="h2">{pr?.name ?? '—'}</T>
-          <T v="small">{pr ? `${pr.age} y · ${pr.sex} · ${pr.city}` : ''}</T>
-        </View>
-        {pr?.is_test_profile ? <Chip label="Test profile" fg={p.copper} bg={p.copperSoft} /> : null}
-      </Row>
+    <Screen onRefresh={() => { prof.reload(); comp.reload(); photo.reload(); }} refreshing={prof.loading}>
+      <Pressable onPress={() => router.push('/about' as any)} accessibilityRole="button" accessibilityLabel="About you">
+        <Row>
+          <Avatar uri={photo.data?.photo} name={pr?.first_name ?? pr?.name} size={56} />
+          <View style={{ flex: 1 }}>
+            <T v="h2">{pr?.name ?? '—'}</T>
+            <T v="small">{pr ? `${pr.age} y · ${pr.sex} · ${pr.city}` : ''}</T>
+          </View>
+          {pr?.is_test_profile ? <Chip label="Test profile" fg={p.copper} bg={p.copperSoft} /> : null}
+          <Icon name="chevron.right" size={14} color={p.faint} />
+        </Row>
+      </Pressable>
 
       <Card onPress={() => router.push('/completeness')}>
         <Row>
@@ -53,6 +61,7 @@ export default function Profile() {
       </Card>
 
       <Group title="Take care of yourself">
+        <ListRow icon="calendar.day.timeline.left" title="Your routine" subtitle="Your day, quantified — define it by talking to Sinc or editing here" onPress={() => router.push('/routine' as any)} />
         <ListRow icon="heart.text.square" title="Vitals" subtitle="Your body by system, scored 0–100 with every contributor" onPress={() => router.push('/vitals' as any)} />
         <ListRow icon="sparkles" title="What affects you" subtitle="Patterns in your own data — what lifts you, what drains you" onPress={() => router.push('/insights' as any)} />
         <ListRow icon="list.bullet.clipboard" title="Your trackers" subtitle="Pain, symptoms, supplements, habits — anything you told Sinc" onPress={() => router.push('/trackers' as any)} />

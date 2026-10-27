@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView, SFSymbol } from 'expo-symbols';
 import React from 'react';
@@ -55,6 +56,17 @@ export function Icon({ name, size = 20, color }: { name: SFSymbol; size?: number
   return <SymbolView name={name} size={size} tintColor={color ?? p.text} weight="regular" />;
 }
 
+/** A round profile photo, or the person's initial on a soft disc when there is no photo. */
+export function Avatar({ uri, name, size = 56 }: { uri?: string | null; name?: string | null; size?: number }) {
+  const p = usePalette();
+  if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: p.surfaceAlt }} contentFit="cover" />;
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: p.tealSoft, alignItems: 'center', justifyContent: 'center' }}>
+      <T v="h2" color={p.teal}>{(name?.trim()?.[0] ?? '·').toUpperCase()}</T>
+    </View>
+  );
+}
+
 export function Screen({
   children,
   onRefresh,
@@ -84,7 +96,7 @@ export function Screen({
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: p.bg }}>
       <ScrollView
         scrollEnabled={scrollEnabled}
-        contentContainerStyle={{ paddingHorizontal: padded ? space[5] : 0, paddingTop: padded ? space[3] : 0, paddingBottom: 132, gap: space[4] }}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: padded ? space[5] : 0, paddingTop: padded ? space[3] : 0, paddingBottom: 132, gap: space[4] }}
         refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={p.teal} /> : undefined}
         keyboardShouldPersistTaps="handled">
         {children}
@@ -276,10 +288,10 @@ export function BackButton({ label = 'Back', fallback }: { label?: string; fallb
 }
 
 export function Loading({ what }: { what: string }) {
-  // Centre the motion mark in the viewport (not pinned to the top of the scroll view).
-  const h = Dimensions.get('window').height;
+  // Fill the available space and centre the motion mark. The parent Screen's scroll container uses flexGrow:1, so
+  // flex:1 here fills exactly one viewport — the loader centres without overflowing into a scrollable area.
   return (
-    <View style={{ minHeight: h * 0.9, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ flex: 1, minHeight: 240, alignItems: 'center', justifyContent: 'center' }}>
       <TelomyLoader size="hero" message={what} />
     </View>
   );

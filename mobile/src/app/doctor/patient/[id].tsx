@@ -8,9 +8,10 @@ import React from 'react';
 import { Alert, Pressable, TextInput, View } from 'react-native';
 
 import { api, useApi } from '@/lib/api';
+import { skinLabel } from '@/lib/skin';
 import { staffOrg } from '@/lib/staff';
 import { space, usePalette } from '@/lib/theme';
-import { BackButton, Button, Card, Chip, ErrorState, Loading, Row, Screen, Section, T, useToast } from '@/ui/core';
+import { Avatar, BackButton, Button, Card, Chip, ErrorState, Loading, Row, Screen, Section, T, useToast } from '@/ui/core';
 
 const GOALS: { key: string; label: string }[] = [
   { key: 'heart', label: 'Heart & lipids' }, { key: 'metabolic', label: 'Blood sugar' }, { key: 'longevity', label: 'Healthy ageing' },
@@ -137,8 +138,14 @@ export default function DoctorPatient() {
 
       {/* case header */}
       <Card>
-        <T v="h2">{pt.name ?? `#${id}`}</T>
-        <T v="small" color={p.muted}>{[pt.age ? `${Math.round(pt.age)} y` : null, pt.sex, pt.city].filter(Boolean).join(' · ') || '—'}{pt.linked ? ' · live record' : ' · no linked record'}</T>
+        <Row>
+          <Avatar uri={pt.photo} name={pt.name} size={52} />
+          <View style={{ flex: 1 }}>
+            <T v="h2">{pt.name ?? `#${id}`}</T>
+            <T v="small" color={p.muted}>{[pt.age ? `${Math.round(pt.age)} y` : null, pt.sex, pt.city].filter(Boolean).join(' · ') || '—'}{pt.linked ? ' · live record' : ' · no linked record'}</T>
+          </View>
+          {skinLabel(pt.skin_type) ? <Chip label={skinLabel(pt.skin_type)!} /> : null}
+        </Row>
         {pt.conditions?.length ? <Row style={{ flexWrap: 'wrap', marginTop: 6 }}>{pt.conditions.map((c: string) => <Chip key={c} label={c} fg={p.danger} bg={p.dangerSoft} />)}</Row> : null}
       </Card>
 

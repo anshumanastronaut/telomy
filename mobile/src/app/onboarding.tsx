@@ -47,6 +47,7 @@ export default function Onboarding() {
   const [fitz, setFitz] = useState(''); const [body, setBody] = useState(''); const [activity, setActivity] = useState('');
   // routine
   const [wake, setWake] = useState(''); const [sleep, setSleep] = useState(''); const [work, setWork] = useState('');
+  const [routineText, setRoutineText] = useState('');
   const [diet, setDiet] = useState(''); const [smoke, setSmoke] = useState(''); const [alcohol, setAlcohol] = useState('');
   // medical
   const [conds, setConds] = useState<Record<string, boolean>>({}); const [allergies, setAllergies] = useState(''); const [family, setFamily] = useState('');
@@ -68,7 +69,8 @@ export default function Onboarding() {
     const prof: any = { onboarded: true, first_name: name, goal };
     if (dob) prof.dob = dob; if (sex) prof.sex = sex.toLowerCase(); if (city) prof.city = city;
     if (height) prof.height_cm = Number(height); if (weight) prof.weight_kg = Number(weight);
-    if (fitz) prof.fitzpatrick = fitz; if (body) prof.body_type = body; if (activity) prof.activity_level = activity;
+    if (fitz) { prof.fitzpatrick = fitz; prof.skin_type = ['I', 'II', 'III', 'IV', 'V', 'VI'].indexOf(fitz) + 1; }
+    if (body) prof.body_type = body; if (activity) prof.activity_level = activity;
     const routine: any = {}; if (wake) routine.wake = wake; if (sleep) routine.sleep = sleep; if (work) routine.work = work;
     if (Object.keys(routine).length) prof.routine = routine;
     if (diet) prof.diet = diet; if (smoke) prof.smoker = smoke !== 'Never' ? smoke : false; if (alcohol) prof.alcohol = alcohol;
@@ -76,6 +78,8 @@ export default function Onboarding() {
     if (conditions.length) prof.conditions = conditions;
     if (allergies.trim()) prof.allergies = allergies.trim(); if (family.trim()) prof.family_history = family.trim();
     await api('/profile', { method: 'PUT', body: prof }).catch(() => {});
+    // a free-text day becomes the structured, quantified routine (schedule + metrics) via the routine parser
+    if (routineText.trim().length >= 20) await api('/routine', { body: { text: routineText } }).catch(() => {});
     for (const m of meds.split(',').map((x) => x.trim()).filter(Boolean)) await api('/meds', { body: { name: m } }).catch(() => {});
     for (const s of supps.split(',').map((x) => x.trim()).filter(Boolean)) await api('/events', { body: { kind: 'supplement', label: `Started ${s}` }, queue: true }).catch(() => {});
     for (const [k, v] of Object.entries(granted)) await api(`/consents/${k}`, { body: { granted: v } }).catch(() => {});
@@ -153,7 +157,9 @@ export default function Onboarding() {
       {step === 3 && (
         <>
           <T v="h1">Your routine</T>
-          <T v="small" color={p.muted}>Type it, or tap the mic to tell Sinc about your day.</T>
+          <T v="small" color={p.muted}>Describe a normal day in your own words — Telomy turns it into your schedule automatically. Or tap the mic to tell Sinc.</T>
+          <TextInput value={routineText} onChangeText={setRoutineText} multiline placeholder="e.g. Wake around 7, coffee at 11, lunch at 1 with dal and eggs, gym Mon/Wed/Fri at 7 pm, dinner by 8:30, sleep around 12…"
+            placeholderTextColor={p.faint} autoCapitalize="sentences" style={[inp(p), { minHeight: 100, textAlignVertical: 'top' }]} />
           <Row gap={10}>
             <TextInput value={wake} onChangeText={setWake} placeholder="Wake (e.g. 06:30)" placeholderTextColor={p.faint} style={[inp(p), { flex: 1 }]} />
             <TextInput value={sleep} onChangeText={setSleep} placeholder="Sleep (e.g. 23:00)" placeholderTextColor={p.faint} style={[inp(p), { flex: 1 }]} />

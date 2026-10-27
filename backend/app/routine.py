@@ -131,7 +131,10 @@ def parse(text: str) -> dict:
             tm = win[0]
         elif r1:
             g = r1.groups()
-            tm = _clock(float(g[0]) + (int(g[1]) / 60 if g[1] else 0), g[-1] if g[-1] in ("am", "pm") else None, kind_hint, wake_h)
+            # two regex shapes land here: (hour, minutes, am/pm) from "at 6:30 pm", or (hour, am/pm) from a bare
+            # "6 pm" with no preposition. Normalise so the am/pm is never misread as minutes.
+            hour, minute, ap = (g[0], g[1], g[2]) if len(g) == 3 else (g[0], None, g[1])
+            tm = _clock(float(hour) + (int(minute) / 60 if minute else 0), ap if ap in ("am", "pm") else None, kind_hint, wake_h)
         anchor = "after waking" if "after wak" in c else "after lunch" if "after lunch" in c else None
         if not tm and "evening" in c:
             tm = "19:00"
@@ -348,6 +351,34 @@ def active() -> dict | None:
     if not r:
         return None
     return {"id": r["id"], "text": r["text"], "items": db.unj(r["items"], []), "metrics": db.unj(r["metrics"], {})}
+
+
+def _resave(r: dict | None, items: list[dict]) -> dict:
+    """Persist an edited item list onto the active routine (or create one), recomputing the quantified metrics."""
+    items = _dedupe(items)
+    m = metrics(items)
+    if r:
+        db.exec_("UPDATE routines SET items = ?, metrics = ? WHERE id = ?", (db.j(items), db.j(m), r["id"]))
+        return {"id": r["id"], "text": r["text"], "items": items, "metrics": m}
+    rid = db.exec_("INSERT INTO routines (created_at, text, items, metrics, active) VALUES (?,?,?,?,1)",
+                   (engine.now_iso(), "", db.j(items), db.j(m)))
+    return {"id": rid, "text": "", "items": items, "metrics": m}
+
+
+def add_text(text: str) -> dict:
+    """Natural-language add: parse a short phrase ('a 3 pm walk', 'green tea at 4') and append its items to the
+    active routine — so a person (or Sinc) can grow the routine one line at a time instead of re-describing it all."""
+    r = active()
+    new = parse(text)["items"] if text and text.strip() else []
+    return _resave(r, (r["items"] if r else []) + new)
+
+
+def remove_item(key: str) -> dict:
+    """Remove one schedule item from the active routine by its key."""
+    r = active()
+    if not r:
+        return {"items": [], "metrics": {}}
+    return _resave(r, [it for it in r["items"] if it.get("key") != key])
 
 
 def today(day: str | None = None, drinking: bool | None = None) -> dict:
