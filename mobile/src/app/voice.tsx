@@ -18,6 +18,7 @@ const WAV16: RecordingOptions = {
 // Read-aloud passage for the voice check-in: the same words every time make pitch, rate and pauses comparable day to day.
 const PASSAGE = 'When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colours.';
 import { radius, space, usePalette } from '@/lib/theme';
+import { LineChart } from '@/ui/charts';
 import { Button, Card, Chip, Icon, Row, Screen, Section, Segmented, T, useToast } from '@/ui/core';
 import { TelomyLoader } from '@/ui/loader';
 
@@ -204,10 +205,24 @@ export default function Voice() {
           </Card>
         </Section>
 
-        <Section title="Voice stress">
+        <Section title="Voice tone over time">
           <Card>
-            <T v="body">{stress.data?.n ?? 0} voice samples. {stress.data?.baseline_ready ? 'Your personal baseline is ready.' : 'Telomy learns your normal voice from your first 5 samples.'}</T>
-            <T v="small">{stress.data?.how}</T>
+            {(() => {
+              const samples = (stress.data?.samples ?? []).filter((s: any) => s.stress != null);
+              const latest = samples.length ? samples[samples.length - 1].stress : null;
+              return (
+                <>
+                  <Row style={{ alignItems: 'center' }}>
+                    <T v="body" style={{ flex: 1 }}>{stress.data?.n ?? 0} voice samples{stress.data?.baseline_ready ? '' : ' · baseline after 5'}</T>
+                    {latest != null ? <Chip label={`latest ${latest}`} fg={latest >= 55 ? p.copper : p.teal} bg={latest >= 55 ? p.copperSoft : p.tealSoft} /> : null}
+                  </Row>
+                  {samples.length >= 2 ? (
+                    <LineChart points={samples.map((s: any) => ({ x: s.ts, y: s.stress }))} height={130} unit="/100" band={[0, 55]} dots />
+                  ) : <T v="small" color={p.muted} style={{ marginTop: 6 }}>Talk to Sinc or do a read-aloud check-in a few times and your voice-tone trend appears here.</T>}
+                  <T v="small" color={p.muted} style={{ marginTop: 6 }}>{stress.data?.how}</T>
+                </>
+              );
+            })()}
           </Card>
         </Section>
         {design.data ? (
