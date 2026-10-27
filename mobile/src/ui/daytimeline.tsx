@@ -61,7 +61,7 @@ export function DayTimelineVitals() {
   return (
       <Card style={{ gap: space[2] }}>
         <Row>
-          <T v="label" style={{ flex: 1 }}>Your day so far</T>
+          <T v="label" style={{ flex: 1 }}>Vitals · today</T>
           {data?.coverage_hours ? <T v="small" color={p.muted}>{data.coverage_hours} h</T> : null}
           <Pressable onPress={() => router.push('/log')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Log an event"
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.pill, backgroundColor: p.tealSoft }}>

@@ -98,10 +98,12 @@ export function RecoveryDial({ value, size = 212, label }: { value: number | nul
           <T v="h3" color={onInk.secondary} style={{ textAlign: 'center' }} numberOfLines={1} adjustsFontSizeToFit>{label}</T>
         </View>
       ) : (
-        <View style={{ position: 'absolute', top: size * 0.25, alignItems: 'center' }}>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: size, alignItems: 'center', justifyContent: 'center', gap: 2, paddingBottom: size * 0.05 }}>
           <Row gap={2} style={{ alignItems: 'flex-start' }}>
+            {/* a spacer the width of the "%" so the big number sits on the dial's centre, not pushed left by the % */}
+            <View style={{ width: 20 }} />
             <T v="display" color="#fff" style={{ fontSize: type.display + 8, lineHeight: type.display + 16, letterSpacing: -1.5 }}>{shown}</T>
-            <T v="h2" color={onInk.muted} style={{ marginTop: 14 }}>%</T>
+            <T v="h2" color={onInk.muted} style={{ marginTop: 14, width: 20 }}>%</T>
           </Row>
           <T v="h3" color={col} style={{ letterSpacing: 0.3 }} numberOfLines={1}>{label}</T>
         </View>
