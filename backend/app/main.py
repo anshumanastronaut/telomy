@@ -21,7 +21,8 @@ from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancy
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
-from . import activities, band, brief, clinevidence, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import activities, band, brief, clinevidence, db, derived, devices, diagnostics, drugref, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import calculators as clincalc  # aliased: an existing /calculators endpoint function shadows the name
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -1957,6 +1958,35 @@ def nutrition_trends(days: int = 7):
     return {"days": out, "goals": goals}
 
 
+@app.get("/me/protocols")
+def me_protocols():
+    """Evidence-graded protocols to discuss — lifestyle & supplements shown fully; drugs/hormones/peptides are
+    clinician-gated (name only, routed to the doctor). Member-safe wrapper over the geroprotector engine."""
+    from . import protocols
+    return protocols.for_member()
+
+
+@app.get("/retest")
+def retest_plan():
+    """Closed-loop retest: what's due to re-measure, what improved/worsened since last draw, and the schedule."""
+    from . import retest
+    return retest.plan()
+
+
+@app.get("/score")
+def telomy_score():
+    """The composite Telomy Score + domain sub-scores + biological-age readout from the member's labs."""
+    from . import score as score_mod
+    return score_mod.compute()
+
+
+@app.get("/biomarkers/ratios")
+def biomarker_ratios():
+    """Derived biomarker ratios & indices from the member's own labs (atherogenic + insulin-resistance signals)."""
+    from . import biomarkers
+    return biomarkers.ratios()
+
+
 @app.get("/calculators")
 def calculators():
     """BMR (Mifflin–St Jeor), protein from lean mass, macro split, body-fat (Navy if measurements exist)."""
@@ -2082,6 +2112,38 @@ def clinical_search(q: str, k: int = 6):
     if not q.strip():
         raise HTTPException(400, "Provide a query.")
     return {"citations": clinevidence.search(q.strip(), max(3, min(10, k)))}
+
+
+@app.get("/clinical/calcs")
+def clinical_calcs():
+    """The point-of-care calculator registry (names, inputs) for the doctor platform."""
+    return {"calculators": clincalc.list_all()}
+
+
+class CalcBody(BaseModel):
+    id: str
+    values: dict = {}
+
+
+@app.post("/clinical/calc")
+def clinical_calc(body: CalcBody):
+    """Compute one clinical score from its inputs (deterministic — no LLM)."""
+    return clincalc.compute(body.id, body.values)
+
+
+@app.get("/clinical/kb/stats")
+def clinical_kb_stats():
+    """Status of the local clinical knowledge base (ingested corpus) powering evidence answers."""
+    from . import kb
+    return kb.stats()
+
+
+@app.get("/clinical/drug")
+def clinical_drug(name: str):
+    """Drug reference from the FDA label (openFDA) + RxNorm + FAERS adverse-event counts."""
+    if not name.strip():
+        raise HTTPException(400, "Enter a drug name.")
+    return drugref.lookup(name.strip())
 
 
 @app.post("/sinc/ask")

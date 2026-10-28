@@ -178,7 +178,18 @@ def ask(question: str, k: int = 6) -> dict:
     q = (question or "").strip()
     if not q:
         return {"error": "Ask a clinical question."}
-    arts = search(q, k)
+    # Prefer the local knowledge base (ingested, graded corpus) when present; fall back to live PubMed.
+    from . import kb
+    arts: list[dict] = []
+    if kb.available():
+        arts = [{
+            "pmid": ch["doc_id"].split(":", 1)[1] if ch["doc_id"].startswith("pmid:") else "",
+            "title": ch["title"], "journal": ch["source"], "year": ch.get("year", ""),
+            "abstract": ch["body"], "grade": ch["grade"], "grade_label": ch["grade_label"],
+            "url": ch["url"], "pub_types": [],
+        } for ch in kb.search(q, k)]
+    if not arts:
+        arts = search(q, k)
     if arts and arts[0].get("_error"):
         return {"answer": "", "citations": [], "error": "Couldn't reach PubMed just now — try again.",
                 "disclaimer": DISCLAIMER}

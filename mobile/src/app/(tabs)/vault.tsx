@@ -94,6 +94,12 @@ function Markers() {
           <Row gap={6}><Icon name="stethoscope" size={15} color={p.teal} /><T v="label" style={{ flex: 1 }}>Clinician notes</T><Icon name="chevron.right" size={10} color={p.faint} /></Row>
           <T v="small">Top 3 priorities + TL;DR</T>
         </Card>
+        <Card style={{ flex: 1 }} onPress={() => router.push('/ratios' as any)} testID="ratios-link">
+          <Row gap={6}><Icon name="function" size={15} color={p.teal} /><T v="label" style={{ flex: 1 }}>Lab insights</T><Icon name="chevron.right" size={10} color={p.faint} /></Row>
+          <T v="small">Ratios & indices</T>
+        </Card>
+      </Row>
+      <Row gap={space[2]}>
         <Card style={{ flex: 1 }} onPress={() => router.push('/browse')} testID="browse-link">
           <Row gap={6}><Icon name="square.grid.2x2" size={15} color={p.teal} /><T v="label" style={{ flex: 1 }}>Browse</T><Icon name="chevron.right" size={10} color={p.faint} /></Row>
           <T v="small">By health category</T>
