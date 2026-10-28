@@ -19,6 +19,8 @@ export default function DoctorLayout() {
       <Tabs.Screen name="templates" options={{ href: null }} />
       <Tabs.Screen name="consult" options={{ href: null }} />
       <Tabs.Screen name="evidence" options={{ href: null }} />
+      <Tabs.Screen name="calculators" options={{ href: null }} />
+      <Tabs.Screen name="drug" options={{ href: null }} />
     </RoleTabs>
   );
 }

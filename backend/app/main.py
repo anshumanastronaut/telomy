@@ -21,7 +21,7 @@ from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancy
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
-from . import activities, band, brief, clinevidence, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import activities, band, brief, calculators, clinevidence, db, derived, devices, diagnostics, drugref, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -2082,6 +2082,31 @@ def clinical_search(q: str, k: int = 6):
     if not q.strip():
         raise HTTPException(400, "Provide a query.")
     return {"citations": clinevidence.search(q.strip(), max(3, min(10, k)))}
+
+
+@app.get("/clinical/calcs")
+def clinical_calcs():
+    """The point-of-care calculator registry (names, inputs) for the doctor platform."""
+    return {"calculators": calculators.list_all()}
+
+
+class CalcBody(BaseModel):
+    id: str
+    values: dict = {}
+
+
+@app.post("/clinical/calc")
+def clinical_calc(body: CalcBody):
+    """Compute one clinical score from its inputs (deterministic — no LLM)."""
+    return calculators.compute(body.id, body.values)
+
+
+@app.get("/clinical/drug")
+def clinical_drug(name: str):
+    """Drug reference from the FDA label (openFDA) + RxNorm + FAERS adverse-event counts."""
+    if not name.strip():
+        raise HTTPException(400, "Enter a drug name.")
+    return drugref.lookup(name.strip())
 
 
 @app.post("/sinc/ask")

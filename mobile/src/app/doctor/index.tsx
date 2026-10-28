@@ -61,6 +61,23 @@ export default function DoctorToday() {
         </Row>
       </Card>
 
+      <Row gap={space[3]}>
+        <Card onPress={() => router.push('/doctor/calculators' as any)} accessibilityLabel="Clinical calculators" style={{ flex: 1 }}>
+          <View style={{ alignItems: 'center', gap: 6, paddingVertical: space[1] }}>
+            <Icon name="function" size={22} color={p.teal} />
+            <T v="h3">Calculators</T>
+            <T v="small" color={p.muted} style={{ textAlign: 'center' }}>Point-of-care scores</T>
+          </View>
+        </Card>
+        <Card onPress={() => router.push('/doctor/drug' as any)} accessibilityLabel="Drug reference" style={{ flex: 1 }}>
+          <View style={{ alignItems: 'center', gap: 6, paddingVertical: space[1] }}>
+            <Icon name="pills" size={22} color={p.teal} />
+            <T v="h3">Drug reference</T>
+            <T v="small" color={p.muted} style={{ textAlign: 'center' }}>Label · interactions</T>
+          </View>
+        </Card>
+      </Row>
+
       <Section title="Care review queue" action="Work queue" onAction={() => router.push('/doctor/work')}>
         {careN ? (
           d.care_queue.slice(0, 6).map((c: any) => (
