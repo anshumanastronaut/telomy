@@ -2102,6 +2102,13 @@ def clinical_calc(body: CalcBody):
     return clincalc.compute(body.id, body.values)
 
 
+@app.get("/clinical/kb/stats")
+def clinical_kb_stats():
+    """Status of the local clinical knowledge base (ingested corpus) powering evidence answers."""
+    from . import kb
+    return kb.stats()
+
+
 @app.get("/clinical/drug")
 def clinical_drug(name: str):
     """Drug reference from the FDA label (openFDA) + RxNorm + FAERS adverse-event counts."""
