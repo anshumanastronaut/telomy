@@ -1958,6 +1958,13 @@ def nutrition_trends(days: int = 7):
     return {"days": out, "goals": goals}
 
 
+@app.get("/biomarkers/ratios")
+def biomarker_ratios():
+    """Derived biomarker ratios & indices from the member's own labs (atherogenic + insulin-resistance signals)."""
+    from . import biomarkers
+    return biomarkers.ratios()
+
+
 @app.get("/calculators")
 def calculators():
     """BMR (Mifflin–St Jeor), protein from lean mass, macro split, body-fat (Navy if measurements exist)."""
