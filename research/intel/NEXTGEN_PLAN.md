@@ -88,6 +88,15 @@ labs import + biomarker dashboards · Sinc (on-device + cloud) + file uploads ·
 - **B4 ✅** — `backend/app/retest.py` closed loop: per-marker last-tested + next-due (sooner when out of optimal) +
   direction-aware improved/worsened since the previous draw (reuses `engine.marker_history`/`marker_trend`). `/retest`
   + `mobile/src/app/retest.tsx` (due now / improving / moved-wrong-way / schedule) + entry card on the Score screen.
+- **B5 ✅ (already present)** — member↔clinician care exists: `/clinicians`, `/consults`, `/appointments`,
+  `care.tsx`/`consult.tsx`, `/care/queue`, `/me/care-config`. Protocols screen's "Ask my care team" routes into it.
+- **B6 ✅** — `backend/app/protocols.py` (member-safe wrapper over `llx/geroprotectors.recommend` — matching, grading,
+  safety screening, prescriber gate already done there). `/me/protocols` + `mobile/src/app/protocols.tsx`: FOUNDATION
+  (lifestyle, full) + SUPPLEMENTS (graded, "discuss") shown fully; CLINICIAN-LED (drugs/hormones/peptides) by NAME
+  ONLY, routed to the doctor — never recommended to the member directly (CDSCO/DPDP). Entry on the Score screen.
+- **B7 ✅ (already present)** — `mobile/src/app/marketplace.tsx` ("Protocol Marketplace") already registered.
+- **A-track remaining is infra-gated** (dense/hybrid vectors + bulk/India ingest need the ingest box + embeddings) —
+  code-complete except the box; everything buildable on a laptop is done.
 
 ### A2 — remaining (needs the ingest box)
 The bulk corpus (PMC-OA commercial subset ~millions of chunks, full DailyMed, India guideline PDFs) is too large to

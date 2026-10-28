@@ -104,6 +104,17 @@ export default function TelomyScore() {
         );
       })}
 
+      <Card onPress={() => router.push('/protocols' as any)} accessibilityLabel="Protocols to discuss">
+        <Row style={{ alignItems: 'center' }} gap={space[3]}>
+          <Icon name="list.bullet.clipboard" size={20} color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="h3">Protocols to discuss</T>
+            <T v="small">Evidence-graded lifestyle, supplement & clinician-led options matched to your biomarkers.</T>
+          </View>
+          <Icon name="chevron.right" size={13} color={p.faint} />
+        </Row>
+      </Card>
+
       <Card onPress={() => router.push('/retest' as any)} accessibilityLabel="Retest plan">
         <Row style={{ alignItems: 'center' }} gap={space[3]}>
           <Icon name="arrow.triangle.2.circlepath" size={20} color={p.teal} />

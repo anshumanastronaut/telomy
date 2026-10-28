@@ -1958,6 +1958,14 @@ def nutrition_trends(days: int = 7):
     return {"days": out, "goals": goals}
 
 
+@app.get("/me/protocols")
+def me_protocols():
+    """Evidence-graded protocols to discuss — lifestyle & supplements shown fully; drugs/hormones/peptides are
+    clinician-gated (name only, routed to the doctor). Member-safe wrapper over the geroprotector engine."""
+    from . import protocols
+    return protocols.for_member()
+
+
 @app.get("/retest")
 def retest_plan():
     """Closed-loop retest: what's due to re-measure, what improved/worsened since last draw, and the schedule."""
