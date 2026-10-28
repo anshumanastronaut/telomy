@@ -82,6 +82,12 @@ labs import + biomarker dashboards · Sinc (on-device + cloud) + file uploads ·
 - **B2 ✅** — `backend/app/score.py`: composite **Telomy Score** (7 longevity-weighted domains, each marker scored vs
   its catalog optimal band) + biological age from the best available clock. `/score` + `mobile/src/app/score.tsx`
   (headline ring + bio-age Δ + domain bars, weakest-first) + entry card on `/age`.
+- **B3 ✅ (already present)** — the marker detail screen (`mobile/src/app/marker/[id].tsx` ← `/vault/marker/{mid}`)
+  already does plain-language `sinc_read`, optimal-band-vs-lab-range on the trend chart, history, and retest prep. No
+  rebuild needed; the B2 Score → domain → marker flow now routes into it.
+- **B4 ✅** — `backend/app/retest.py` closed loop: per-marker last-tested + next-due (sooner when out of optimal) +
+  direction-aware improved/worsened since the previous draw (reuses `engine.marker_history`/`marker_trend`). `/retest`
+  + `mobile/src/app/retest.tsx` (due now / improving / moved-wrong-way / schedule) + entry card on the Score screen.
 
 ### A2 — remaining (needs the ingest box)
 The bulk corpus (PMC-OA commercial subset ~millions of chunks, full DailyMed, India guideline PDFs) is too large to

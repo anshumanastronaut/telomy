@@ -104,6 +104,17 @@ export default function TelomyScore() {
         );
       })}
 
+      <Card onPress={() => router.push('/retest' as any)} accessibilityLabel="Retest plan">
+        <Row style={{ alignItems: 'center' }} gap={space[3]}>
+          <Icon name="arrow.triangle.2.circlepath" size={20} color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="h3">Retest plan</T>
+            <T v="small">What to re-measure, what's improved since last time, and when each marker is next due.</T>
+          </View>
+          <Icon name="chevron.right" size={13} color={p.faint} />
+        </Row>
+      </Card>
+
       <Row style={{ alignItems: 'flex-start', paddingHorizontal: space[1], marginTop: space[1] }}>
         <Icon name="info.circle" size={14} color={p.faint} />
         <T v="small" color={p.faint} style={{ flex: 1, marginLeft: space[2] }}>{d.note}</T>

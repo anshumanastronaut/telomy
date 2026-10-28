@@ -151,6 +151,7 @@ export default function RootLayout() {
         <Stack.Screen name="measure" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         <Stack.Screen name="ratios" options={{ title: 'Lab insights' }} />
         <Stack.Screen name="score" options={{ title: 'Telomy Score' }} />
+        <Stack.Screen name="retest" options={{ title: 'Retest plan' }} />
       </Stack>
       {locked && !intro ? <LockScreen /> : null}
     </ThemeProvider>

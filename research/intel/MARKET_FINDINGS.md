@@ -2271,3 +2271,105 @@ Sources:
 - [Fortis Q1 FY27 transcript (AlphaStreet)](https://alphastreet.com/india/fortis-healthcare-ltd-fortis-q1-2027-earnings-call-transcript/), [investywise](https://www.investywise.com/fortis-healthcare-q1-fy27-earnings-conference-call-transcript/), [multibagg.ai](https://www.multibagg.ai/market-pulse/articles/fortis-q1fy27-97423), [whalesbook](https://www.whalesbook.com/corporate-news/English/healthcarebiotech/Fortis-Healthcare-Q1FY27-Revenue-Jumps-175percent-to-indian-rupee2545-Cr-PAT-indian-rupee273-Cr/6a795e0310bce1fd20474e1d)
 - [MyFortis Doc — Google Play](https://play.google.com/store/apps/details?id=com.myfortis.doctor&hl=en_US), [myFortis (updatestar)](https://myfortis.updatestar.com/), [Fortis Bangalore packages](https://healthcheck.fortisbangalore.com/all-packages.php), [Agilus Care](https://agilusdiagnostics.com/agiluscare), [Agilus Total 1 Pune](https://agilusdiagnostics.com/package/pune/200025538/agilus-total-1)
 - [Healthcare IT News: Fortis AI mental health](https://www.healthcareitnews.com/news/asia/fortis-healthcare-gets-ai-boost-mental-health-vertical), [#ConsultFirst campaign](https://www.passionateinmarketing.com/fortis-healthcare-and-repindia-turn-everyday-search-habits-into-a-healthcare-message-with-consultfirst/), [Business Standard: IHH tech-led expansion via Fortis](https://www.business-standard.com/companies/news/ihh-bets-on-tech-led-healthcare-expansion-in-india-through-fortis-126070500494_1.html), [Fortis Escorts AI hybrid cath lab](https://www.digitalhealthnews.com/fortis-escorts-unveils-ai-enabled-hybrid-cath-lab-to-support-complex-cardiac-procedures)
+
+---
+
+## 2026-10-28 — GOQii (Smart Vital bands · personal coaching · Health Protect / Insure+ · Diabetes Care · Sanjeevini / XPRIZE Healthspan)
+
+*Roster note: GOQii is the last unprofiled India entry (after Max/Fortis); next run starts the Clinic /
+enterprise block with Fountain Life. Sources: GOQii's own store and App Store listing, retailer
+listings (Amazon, 1mg), Longevity.Technology, BioVoiceNews, Inc42 and an Economic Times post. GOQii's
+own homepage, about page and Sanjeevini page returned almost no text to the fetcher, so programme
+detail comes from press. Revenue and funding figures from aggregators disagree and are flagged.*
+
+**Basic features.**
+- **Smart Vital bands** (Max, Lite, Smart Vital, Junior) at ₹1,699–2,199 sale price (MRP ₹4,999–5,999),
+  each with 3 months of coaching. HR, SpO₂, sleep, steps; Smart Vital adds 24×7 skin temperature and
+  "blood pressure". One store page calls it CDSCO-registered; the store's main listing names no
+  certification. Most bands showed **out of stock** on store.goqii.com (Oct 2026). An older Vital ECG
+  band appears in roundups; current availability unclear. Also a smart scale (11 metrics, 8 users),
+  smart skipping rope, yoga mat — all sold with 3 months coaching. No smart ring found, although the
+  store's page title says "Smart Rings".
+- **Personal coaching** is the core since 2014: 24×7 chat with a coach, coach tele-calls, live PRO
+  classes, diet plans, goal setting and habit formation. Reviews are mixed. Some say coach messages
+  feel pre-canned; others report dead-on-arrival bands, unreliable step counts, sync failures, and
+  support that is hard to reach (mostly 2022 and later, on consumer-complaint sites, Flipkart and the
+  app stores; small samples).
+- **Health Protect** (₹6,999/yr on store; ₹8,999 Amazon bundle with a band): one-time 65+-test
+  check-up, 4 teleconsults/month (48/yr) across specialties, ₹2,000 doctor wallet for in-person
+  visits, ₹2,000 lab wallet / 12% off prescribed tests. The wallet does not cover medicines or scans.
+- **Insure+**: listings say up to ₹5 L health + ₹1 L life cover, plus coaching, resident-doctor
+  teleconsults, health locker and content. The insurer and policy terms (waiting periods, OPD vs
+  hospitalisation) are not on the current pages. An aggregator names a Kotak Life/General tie-up.
+- **Programmes:** Diabetes Care ₹15,999 (from ₹19,999) aimed at fasting sugar and HbA1c, with no
+  published outcomes found. TRANSFORM weight programme ₹11,499 for 3 months, with coach + expert +
+  online doctor.
+- **App:** Health Locker (family lab reports and Rx, unlimited cloud), Health Risk Assessment → risk
+  score reviewed by the "GOQii Care Team", challenges/Arena, GOQii Cash (redeem in the GOQii Health
+  Store, India only) and Karma (1 point per 390 steps, donated to NGOs). The App Store listing says it
+  is "general wellness", not a medical device.
+
+**Advanced features.**
+- **GOQii Sanjeevini / XPRIZE Healthspan.** It reached Top 40 with a $250k Milestone 1 award (May 2025)
+  and was named one of **20 finalists on 11 Aug 2026**. It was **not** among the 10 teams given $1M
+  Milestone 2 awards (Longevity.Technology). GOQii calls itself "India's ONLY finalist". The programme
+  pitches an "A.L.I.V.E. OS": habit missions, continuous biomarker tracking, rewards, AI avatars + human
+  coaches, and a digital avatar that shows biological age. Partners named include Ashoka University
+  (Anurag Agrawal), Immuneel, Acrannolife Genomics (cfDNA) and Luke Coutinho. The endpoints are
+  immune, cognitive and muscle function plus bio-age (cfDNA, telomere length, microbiome). Its pilot
+  had 40 people aged 50–80 at 3 centres (Jaipur, Delhi, Mumbai). **No results published.** XPRIZE
+  trials run 2026–29 in adults 50–90.
+- **"GOQii 2.0"** positioning: its site says "in 2026 GOQii becomes the operating system for human
+  longevity" (wearables + diagnostics + AI + coaching for individuals, employers, insurers and public
+  health). We found no shipped consumer bio-age, risk-model or AI-coach feature to back this; it reads
+  as positioning for now. Its "India Fit Report 2026" frames lifespan vs healthspan (63% of Indian
+  deaths from NCDs).
+- **AI stance:** at Nasscom People Summit 2026 the founder spoke about why he "fired his own AI
+  assistant" (context loss, costly mistakes). He holds that judgment and accountability stay human,
+  which fits a coach-first model.
+- No CGM, no Rx/GLP-1 pathway, no imaging, no genomics product sold to consumers, no fall/SOS found.
+
+**Pricing.** Bands ₹1,699–2,199 (3 months coaching); Health Protect ₹6,999/yr; TRANSFORM ₹11,499 (3
+months); Diabetes Care ₹15,999. Retailer prices vary (1mg lists 12-month bundles at ~₹4,199) and many
+listings are 1–2 years old.
+
+**Weaknesses.**
+- **Shrinking business:** FY24 revenue ~₹30.1 cr, down 48% from ₹58.4 cr (Inc42). Tracxn shows FY25
+  in a ₹10–50 cr band with −24% growth (units unclear). Aggregator estimates of $56–93M are not
+  credible. Funding totals of $103–115M also vary by source.
+- **Hardware is commodity and thinly stocked:** low-cost bands, most out of stock. A Supreme Court
+  customs-duty fight (Jun 2026) over whether bands are pedometers or communication devices squeezes
+  margin further.
+- **Science is ahead of product:** bio-age, cfDNA and genomics live in an unpublished competition
+  trial, not in the app. "Longevity OS" is a claim for now.
+- **Quality/support complaints** on devices, sync and refunds; coaching quality varies by coach.
+- Insurance bundles don't name the insurer or terms on the store, which is a trust gap.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **Insurer-grade risk output** (new row): GOQii sells *cover* bundled with a band. The better
+     position is to sell *underwriting signal*: our 10-year mortality, disease risk and bio-age, with
+     confidence intervals, as an insurer API for premium discounts or wellness riders. This turns
+     GOQii's bundle idea into something only validated models can do.
+  2. **Functional-age panel aligned to XPRIZE endpoints**: muscle (our muscle clock + grip), cognition
+     and immunity proxies (CBC/NLR) shown together as a "healthspan" view. Indian buyers will hear
+     "XPRIZE" from GOQii, and we can show those numbers today from the app, not a 2029 trial.
+  3. **Coach-assist, not coach-replace**: GOQii's coaches send generic messages. A grounded Telomy-LLX
+     draft for each coach or doctor message (numbers cited from the user's data) is the fix, and a
+     B2B module we could sell to coaching-heavy operators.
+- *Operational parity via partnership:* a bundled check-up + teleconsult wallet (Health Protect style)
+  through a lab partner (Thyrocare/Agilus) and a tele-GP pool; insurer partnership for rewards-linked
+  premiums rather than reselling cover.
+- *Our opening:* GOQii owns the India "coach + band + insurance" story and now the "longevity" label,
+  but has no shipped bio-age, no trained risk model, no grounded AI and a shrinking topline. A
+  validated, numbers-first longevity app with real wearables beats it on substance. GOQii is also a
+  plausible **partner or acquirer channel** (coach network + insurer relationships) more than a
+  threat.
+
+Sources:
+- [GOQii store](https://store.goqii.com/), [Smart Vital](https://store.goqii.com/smartvital), [Smart Vital Max](https://store.goqii.com/smartvitalmax), [Smart Vital Plus mini-app](https://miniapp.goqii.com/miniapp-smartvitalplus), [Health Protect FAQ](https://store.goqii.com/healthprotect/faq) (returned HTTP 500 on fetch; content via search snippets)
+- [Amazon.in: Health Protect + Smart Vital Lite](https://www.amazon.in/GOQii-Insurance-Insurance-Consults-Benefits/dp/B0DPB11QLF), [Amazon.in: Health Protect + Smart Vital Max](https://www.amazon.in/GOQii-Insurance-Insurance-Consults-Benefits/dp/B0DP9X44BS), [1mg: Smart Vital Max 12-month](https://www.1mg.com/otc/goqii-health-protect-with-smart-vital-max-12-months-health-coaching-otc1106524), [1mg: Smart Vital 2.0](https://www.1mg.com/otc/goqii-smart-vital-2.0-covers-5-lakhs-health-insurance-1-lakh-life-insurance-with-3-months-health-personal-coaching-hd-display-smart-watch-otc794254), [Analytics Insight 2026 roundup](https://www.analyticsinsight.net/smartwatch/top-10-goqii-watches-in-india-2026)
+- [App Store: GOQii](https://apps.apple.com/us/app/goqii/id904934770?see-all=reviews&platform=iphone), [Google Play: GOQii](https://play.google.com/store/apps/details?id=com.betaout.GOQii&hl=en_US), [consumercomplaints.in](https://www.consumercomplaints.in/bycompany/goqii-a445598.html), [Flipkart reviews](https://www.flipkart.com/goqii/product-reviews/itmd695518a7b970?pid=SBNEBNMMNEBYEYH3)
+- [Longevity.Technology: XPRIZE Healthspan 20 finalists (11 Aug 2026)](https://longevity.technology/news/xprize-healthspan-names-20-finalists/), [BioVoiceNews: Sanjeevini semifinal (May 2025)](https://biovoicenews.com/goqii-team-sanjeevini-reaches-semifinals-in-prestigious-101-million-xprize-healthspan-competition/), [GOQii Sanjeevini](https://goqii.com/sanjeevini), [GOQii blog: Top 40](https://goqii.com/blog/?p=21170), [India Fit Report 2026](https://goqii.com/blog/?p=21448)
+- [Inc42: GOQii financials](https://inc42.com/company/goqii/), [Tracxn legal entity](https://tracxn.com/d/legal-entities/india/goqii-technologies-private-limited/__bQtFC1-FhQj7vejLZaPPChLiBBAJQEnmkuLlXAdmrbE), [PitchBook](https://pitchbook.com/profiles/company/65652-22), [GOQii Series C blog](https://goqii.com/blog/goqii-raises-50-million-in-series-c-funding/), [LeadIQ (Kotak/Fit India mention)](https://leadiq.com/c/goqii/5a1d98842300005c0087356e)
+- [Economic Times on X: GOQii moves SC over customs duty (Jun 2026)](https://x.com/EconomicTimes/status/2062882445037355413), [Nasscom on X: Gondal at People Summit 2026](https://x.com/nasscom/status/2077350166923747591)

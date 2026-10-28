@@ -1958,6 +1958,13 @@ def nutrition_trends(days: int = 7):
     return {"days": out, "goals": goals}
 
 
+@app.get("/retest")
+def retest_plan():
+    """Closed-loop retest: what's due to re-measure, what improved/worsened since last draw, and the schedule."""
+    from . import retest
+    return retest.plan()
+
+
 @app.get("/score")
 def telomy_score():
     """The composite Telomy Score + domain sub-scores + biological-age readout from the member's labs."""
