@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telomy Loader</title>
+<style>
+  :root{ --teal:#2F8F6B; --bg:#0b1411; }
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg); display:grid; place-items:center; font-family:-apple-system,Segoe UI,Roboto,sans-serif;}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:18px;}
+  .cap{color:#7f8d87;font-size:13px;letter-spacing:.3px;}
+  /* The loader itself is just an <svg>; size it however you like via width/height or CSS. */
+  .telomy-loader{display:block;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Drop this <svg> anywhere. Size via width/height (or CSS). data-* attributes are optional overrides. -->
+    <svg class="telomy-loader" width="210" height="90" viewBox="0 0 210 90"
+         data-color="#2F8F6B" data-count="11" data-speed="1.0" data-twist="0.55" aria-label="Loading"></svg>
+    <div class="cap">Telomy</div>
+  </div>
+
+<script>
+/*
+ * Telomy loader — the brand's motion signature: a side-on DNA double helix / infinity wave.
+ * Two bead-strands 180° apart oscillate past each other on ONE shared clock, with a slow twist
+ * running across the columns. Faithful port of the app's Reanimated+SVG loader (ui/loader.tsx).
+ *
+ * USAGE on any page:
+ *   <svg class="telomy-loader" width="210" height="90" viewBox="0 0 210 90"></svg>
+ *   <script src="telomy-loader.js"></script>   // or inline this IIFE
+ * Options via data-attributes (all optional): data-color, data-count, data-speed, data-twist.
+ * Call window.TelomyLoader.mount(svgEl, opts) to init one manually; auto-mounts all .telomy-loader on load.
+ */
+(function () {
+  function mount(svg, opts) {
+    opts = opts || {};
+    const vb = (svg.getAttribute('viewBox') || '0 0 210 90').split(/\s+/).map(Number);
+    const W = vb[2] || 210, H = vb[3] || 90;
+    const color = opts.color || svg.dataset.color || '#2F8F6B';
+    const n     = +(opts.count || svg.dataset.count || 11);
+    const SPEED = +(opts.speed || svg.dataset.speed || 1.0);   // radians/sec
+    const TWIST = +(opts.twist || svg.dataset.twist || 0.55);  // phase step per column
+    const SVGNS = 'http://www.w3.org/2000/svg';
+
+    const s = W / n, cy = H / 2, Hm = H * 0.42;
+    const R = Math.max(2.4, Math.min(6.5, s * 0.17));
+    svg.innerHTML = '';
+    const cols = [];
+    for (let i = 0; i < n; i++) {
+      const cx = s * (i + 0.5);
+      const line = document.createElementNS(SVGNS, 'line');
+      line.setAttribute('x1', cx); line.setAttribute('x2', cx);
+      line.setAttribute('stroke', color); line.setAttribute('stroke-linecap', 'round');
+      const top = document.createElementNS(SVGNS, 'circle'); top.setAttribute('cx', cx); top.setAttribute('fill', color);
+      const bot = document.createElementNS(SVGNS, 'circle'); bot.setAttribute('cx', cx); bot.setAttribute('fill', color);
+      svg.append(line, top, bot);
+      cols.push({ i, cx, line, top, bot });
+    }
+
+    let raf, t0;
+    function frame(t) {
+      if (t0 === undefined) t0 = t;
+      const clock = (t - t0) / 1000;
+      for (const c of cols) {
+        const v = Math.sin(clock * SPEED - c.i * TWIST), a = Math.abs(v);
+        c.line.setAttribute('y1', cy - Hm * v);
+        c.line.setAttribute('y2', cy + Hm * v);
+        c.line.setAttribute('opacity', 0.18 + 0.5 * a);
+        c.line.setAttribute('stroke-width', 1 + 0.7 * a);
+        const r = R * (1.22 - 0.3 * a);
+        c.top.setAttribute('cy', cy - Hm * v); c.top.setAttribute('r', r);
+        c.bot.setAttribute('cy', cy + Hm * v); c.bot.setAttribute('r', r);
+      }
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf); // call to stop
+  }
+
+  function auto() { document.querySelectorAll('.telomy-loader').forEach((el) => mount(el)); }
+  window.TelomyLoader = { mount };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', auto); else auto();
+})();
+</script>
+</body>
+</html>

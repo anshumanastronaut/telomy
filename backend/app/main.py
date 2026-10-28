@@ -2828,7 +2828,65 @@ def clinic_copilot(body: dict, authorization: str = _Hdr(default="")):
     me = _require_staff(authorization)
     from . import copilot
     b = body or {}
-    return copilot.doctor_copilot(me, b.get("query", ""), b.get("patient_id"), b.get("history"))
+    docs, images = _process_attachments([SincAttachment(**{k: a.get(k) for k in ("kind", "name", "media_type", "data") if a.get(k) is not None})
+                                         for a in (b.get("attachments") or [])])
+    return copilot.doctor_copilot(me, b.get("query", ""), b.get("patient_id"), b.get("history"), docs=docs, images=images)
+
+
+class ShareDoc(BaseModel):
+    title: str = "Shared document"
+    kind: str = "document"          # report | scan | image | document
+    media_type: str | None = None
+    data: str = ""                  # base64
+    note: str = ""
+
+
+@app.post("/mgmt/clinic/patients/{pid}/share-document")
+def mgmt_share_document(pid: int, body: ShareDoc, authorization: str = _Hdr(default="")):
+    """Doctor shares a report/scan/image to a patient — it lands in their Vault as PENDING; the patient confirms."""
+    me = _require_staff(authorization)
+    if not (body.data or "").strip():
+        raise HTTPException(400, "Attach a file to share.")
+    from . import sharedocs
+    with patient_data._patient_db(pid) as live:
+        if not live:
+            raise HTTPException(404, "That patient's record isn't available.")
+        sid = sharedocs.add(me.get("name") or "Your clinician", me.get("org") or "", body.title, body.kind,
+                            body.media_type, body.data, body.note)
+    return {"ok": True, "id": sid, "message": "Sent — your patient will review and confirm before it's added to their records."}
+
+
+@app.get("/me/shared-documents")
+def me_shared_documents():
+    """Documents a clinician has shared with me — pending ones first, awaiting my confirmation."""
+    from . import sharedocs
+    return {"documents": sharedocs.listing()}
+
+
+@app.get("/me/shared-documents/{sid}/file")
+def me_shared_document_file(sid: int):
+    """The shared file's bytes (base64) to preview before confirming."""
+    from . import sharedocs
+    f = sharedocs.file(sid)
+    if not f:
+        raise HTTPException(404, "Not found")
+    return f
+
+
+@app.post("/me/shared-documents/{sid}/accept")
+def me_accept_shared(sid: int):
+    """Confirm a clinician-shared document — keep it in my records."""
+    from . import sharedocs
+    sharedocs.set_status(sid, "accepted")
+    return {"ok": True, "status": "accepted"}
+
+
+@app.post("/me/shared-documents/{sid}/reject")
+def me_reject_shared(sid: int):
+    """Decline a clinician-shared document."""
+    from . import sharedocs
+    sharedocs.set_status(sid, "rejected")
+    return {"ok": True, "status": "rejected"}
 
 
 @app.post("/mgmt/centre/copilot")

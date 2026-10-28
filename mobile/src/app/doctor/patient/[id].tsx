@@ -3,9 +3,12 @@
 // evidence-graded Longevity Rx, prescribe a contraindication-screened therapy (with the patient's own N-of-1
 // response), and sign. Everything is drafted by Sinc from the patient's Vault; nothing is ordered until the
 // doctor signs. Overview from /mgmt/clinic/patients/{id}/overview, actions from /plan.
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, TextInput, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, Pressable, TextInput, View } from 'react-native';
 
 import { api, useApi } from '@/lib/api';
 import { skinLabel } from '@/lib/skin';
@@ -37,6 +40,32 @@ export default function DoctorPatient() {
   const [thAdded, setThAdded] = React.useState<Record<string, boolean>>({});
   const [thBusy, setThBusy] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+
+  async function shareDocument(kind: 'report' | 'image') {
+    try {
+      let data: string, media_type: string | undefined, title = kind === 'image' ? 'Scan / image' : 'Report';
+      if (kind === 'image') {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) { show('Allow photo access in Settings.', 'alert'); return; }
+        const res = await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.7, mediaTypes: ['images'] });
+        if (res.canceled || !res.assets?.[0]?.base64) return;
+        data = res.assets[0].base64!; media_type = res.assets[0].mimeType ?? 'image/jpeg'; title = res.assets[0].fileName ?? title;
+      } else {
+        const res = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*', 'text/plain'], copyToCacheDirectory: true });
+        if (res.canceled || !res.assets?.[0]) return;
+        const f = res.assets[0]; data = await FileSystem.readAsStringAsync(f.uri, { encoding: FileSystem.EncodingType.Base64 }); media_type = f.mimeType; title = f.name ?? title;
+      }
+      await api(`/mgmt/clinic/patients/${id}/share-document`, { body: { title, kind: kind === 'image' ? 'scan' : 'report', media_type, data }, timeoutMs: 120000 });
+      show('Sent — the patient will review and confirm before it’s added.', 'success');
+    } catch (e: any) { show(`Couldn't share. ${e.message ?? ''}`, 'alert'); }
+  }
+
+  function pickShare() {
+    const opts = ['Report / PDF', 'Scan or image', 'Cancel'];
+    const run = (i: number) => { if (i === 0) shareDocument('report'); else if (i === 1) shareDocument('image'); };
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: opts, cancelButtonIndex: 2, title: 'Share with the patient' }, run);
+    else Alert.alert('Share with the patient', undefined, [{ text: opts[0], onPress: () => run(0) }, { text: opts[1], onPress: () => run(1) }, { text: 'Cancel', style: 'cancel' }]);
+  }
 
   const ov = useApi<any>(`/mgmt/clinic/patients/${id}/overview`, [id]);
   const plan = useApi<any>(`/mgmt/clinic/patients/${id}/plan?goal=${goal}`, [id, goal]);
@@ -153,6 +182,8 @@ export default function DoctorPatient() {
         onPress={() => router.push(`/doctor/copilot?pid=${id}&name=${encodeURIComponent(pt.name ?? '')}` as any)} />
       <Button kind="secondary" icon="waveform.badge.mic" title="Scribe a consult"
         onPress={() => router.push(`/doctor/consult?pid=${id}&name=${encodeURIComponent(pt.name ?? '')}` as any)} />
+      <Button kind="secondary" icon="square.and.arrow.up" title="Share a report or scan"
+        onPress={pickShare} />
 
       {ov.data.ai_summary?.text ? (
         <Card tone="teal">

@@ -158,6 +158,13 @@ def interactions() -> list[dict]:
 
 def notifications(today: str) -> list[dict]:
     out = []
+    try:
+        from . import sharedocs
+        for s in sharedocs.pending():
+            out.append({"kind": "shared_doc", "title": f"{s['from_name']} shared a {s['kind']} with you",
+                        "body": f"{s['title']} — review and confirm to add it to your records", "route": "/shared", "ts": s["ts"]})
+    except Exception:
+        pass
     for n in derived.retest_nudges(today):
         out.append({"kind": "retest", "title": f"Retest due: {', '.join(m['name'] for m in n['markers'][:3])}",
                     "body": n["text"], "route": "/(tabs)/vault", "ts": today})

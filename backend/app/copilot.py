@@ -376,7 +376,8 @@ def _doctor_suggestions(pid: int, d: dict, intent: str) -> list[dict]:
 
 # --------------------------------------------------------------------------- doctor entry
 
-def doctor_copilot(me: dict, query: str, patient_id, history: list[dict] | None = None) -> dict:
+def doctor_copilot(me: dict, query: str, patient_id, history: list[dict] | None = None,
+                   docs: list[dict] | None = None, images: list[dict] | None = None) -> dict:
     history = history or []
     has_patient = bool(patient_id)
     intent = classify_doctor(query, has_patient)
@@ -384,6 +385,28 @@ def doctor_copilot(me: dict, query: str, patient_id, history: list[dict] | None 
     if has_patient and d is None:
         return {"answer": "I couldn't find that patient's record.", "confidence": 0, "medical": False,
                 "grounded": False, "engine": "copilot", "intent": intent, "suggestions": []}
+
+    # a file the clinician attached (lab PDF, scan, prescription, photo) → read it, grounded in the patient's record
+    docs = docs or []; images = images or []
+    if docs or images:
+        context = _patient_context_text(d) if d else ""
+        for dd in docs:
+            context += f'\n\nFILE THE CLINICIAN ATTACHED — "{dd["name"]}":\n{dd["text"]}'
+        sys = DOCTOR_SYSTEM + ("\nThe clinician attached a file (document and/or image) with this message — a lab "
+                               "report, scan, prescription or photo. Read it, summarise what matters, and answer their "
+                               "question about it, grounded in the patient's record where relevant. Draft only; they sign.")
+        q = query or "Read the attached file and summarise what matters for this patient."
+        out = telomy_llm.ask(sys, context or "(no patient record loaded)", q, history, _SCHEMA,
+                             max_tokens=1800, images=images, skip_guard=True)
+        if out and "_error" not in out and str(out.get("answer") or "").strip():
+            _log(me, "doctor", "attachment", patient_id, query, out.get("engine", "copilot"), True)
+            return {"answer": out["answer"], "confidence": out.get("confidence", 0.7), "medical": True,
+                    "grounded": True, "engine": out.get("engine", telomy_llm.model_name()), "intent": "attachment",
+                    "disclaimer": DISCLAIMER, "suggestions": _doctor_suggestions(int(patient_id), d, "summary") if d else []}
+        reason = out.get("_error") if out else "no model configured"
+        return {"answer": f"I couldn't read that attachment just now ({reason}). Reading files needs the cloud model — "
+                          "try again when connected, or paste the key values.", "confidence": 0, "medical": False,
+                "grounded": False, "engine": "copilot", "intent": "attachment", "suggestions": []}
 
     if intent == "capabilities":
         ans = ("I'm **Sinc** — grounded in your patients' records. Ask me to **summarise a patient**, read their "
