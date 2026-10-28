@@ -2185,3 +2185,89 @@ Sources:
 - [Healthcare IT News: Apollo expands access to AI decision-support tool](https://www.healthcareitnews.com/news/asia/apollo-hospitals-expands-access-ai-decision-support-tool), [Healthcare IT News: AI heart-risk tool from decade of patient data](https://www.healthcareitnews.com/news/asia/apollo-hospitals-utilised-decade-long-patient-data-develop-ai-heart-disease-risk), [Apollo: AI cardiovascular risk tool](https://www.apollohospitals.com/apollo-in-the-news/apollo-hospitals-has-launched-an-artificial-intelligence-tool-to-predict-the-risk-of-cardiovascular-disease), [Healthcare IT News: ProHealth DeepX mixed reality](https://www.healthcareitnews.com/news/asia/apollo-hospitals-launches-immersive-mixed-reality-programme)
 - [Apollo Clinic ProHealth packages](https://www.apolloclinic.com/health-check-packages/prohealth-package/), [ProHealth Platinum Male, Bannerghatta Rd](https://www.apollohospitals.com/apollo-prohealth-advanced-platinum-health-program-male-apollo-hospitals-bannerghatta-road)
 - [Trustpilot: Apollo Pharmacy](https://www.trustpilot.com/review/www.apollopharmacy.in?page=2), [Trustpilot: Apollo247](https://www.trustpilot.com/review/covid.apollo247.com), [consumercomplaints.in: Apollo 24/7](https://www.consumercomplaints.in/bycompany/apollo-247-a613810.html), [App Store reviews](https://apps.apple.com/in/app/apollo-247-health-medicine/id1496740273?see-all=reviews&platform=iphone)
+
+## 2026-10-28 — Max Healthcare + Fortis Healthcare (Max MyHealth · Max@Home · Max Lab · myFortis · MyFortis Doc · Agilus · Adayu)
+
+*Roster note: "Max/Fortis digital" is the next unprofiled India entry after Apollo 24|7; profiled as one
+cluster because both are North-India hospital chains whose digital arm is a hospital front door.
+Sources are Q1 FY27 (quarter to 30 Jun 2026) earnings-call write-ups, own package pages, app-store
+listings and trade press. Neither company publishes a digital-product page with a feature list, so
+several items are from store listings or old launch press and are flagged. App-store ratings for
+myFortis were not found.*
+
+**Basic features.**
+- **Max MyHealth app:** video or in-person consults across 30+ specialties, add family/attendant to a
+  video call, upload records before a consult, "urgent care" GP in about 10 minutes (store-listing
+  claim), lab booking with home collection, lab reports and Rx in the app. A small review sample
+  (56 reviews, justuseapp) has sign-up crashes and prescriptions that show but won't download.
+- **Max@Home:** hospital-at-home — ICU at home, nursing, physio, attendants, home X-ray/ECG, device
+  rental, doctor visits. Q1 FY27 revenue ~₹78 cr (+32% YoY), 15 cities, 16 service lines.
+- **Max Lab:** ~₹58 cr Q1 FY27 (+20%). Max Care Full-Body (79 tests) ₹2,249; WellWise profiles
+  ₹999 (49 parameters) to ₹7,999 (111), prices vary by channel and city.
+- **Max "digital revenue" ₹941 cr (~32% of revenue)** — but this is online marketing, web
+  appointments and lead management, i.e. digital as a patient-acquisition funnel, not a product.
+- **myFortis app:** bookings, records, teleconsults (older reports also list medicine delivery);
+  v23.0.7 dated Mar/Jul 2026 tagged "AI-enhanced" by an aggregator — no detail found.
+- **Fortis via Agilus Diagnostics:** home collection (Complete Care Vital Pro ₹2,599; Agilus Total 1,
+  93 parameters, ₹4,199 Pune). Agilus Q1 FY27 ₹407 cr (+10.2%, below ~15% industry), 10.46M tests,
+  preventive now 14% of its revenue. Fortis hospital checkups are per-site: e.g. Bangalore
+  Comprehensive ₹7,400 (men) / ₹8,000 (women).
+- **ABHA/ABDM:** no source found confirming app-level ABHA record linking for either chain.
+
+**Advanced features.**
+- **Max MyHealth+ remote monitoring** (with MyHealthcare): Omron BP, Kardia ECG, Accu-Chek glucose
+  feed the record; AI reads ECGs and alerts doctors on out-of-range values; pitched for Tier 2/3
+  follow-up. Launched ~2021 — no 2026 evidence it is still running or how many patients use it.
+- **Agilus genomics:** 1,000+ whole-exome tests on NovaSeq X (Q1 FY27 call). B2B/clinical; no
+  consumer offer or price found.
+- **Fortis Adayu Mindfulness:** AI self-assessment "Stella" + virtual coach (United We Care, ~2024).
+- **Clinician app:** MyFortis Doc (queue, video consults, report review, note upload); Max Doctor.
+- **IHH (Fortis parent) says** it will push AI and precision medicine through Fortis (Jul 2026) —
+  intent, no product yet. Fortis's most visible 2026 "AI" item is an AI-enabled hybrid cath lab.
+- **Not found for either:** biological-age score, consumer risk prediction (no AICVD equivalent),
+  wearable integration beyond the 2021 RPM kit, nutrition/meal logging, CGM, GLP-1 programme,
+  fall/SOS, on-device AI.
+
+**Pricing / scale.** Max network gross revenue ~₹2,982 cr Q1 FY27 (+16%), op. EBITDA ~₹704 cr; Fortis
+consolidated ₹2,545 cr (+17.5%), PAT ₹273 cr (secondary write-ups; bases differ between outlets). No
+membership/subscription found for either app; revenue is per-consult, per-test, per-admission.
+
+**Weaknesses.**
+- **Digital = funnel.** Both apps exist to book beds, consults and tests at their own hospitals; no
+  daily-use reason to open them between visits.
+- **No longevity or continuous layer.** Nothing on bio-age, trajectories, wearables (the 2021 RPM kit
+  looks dormant), food or sleep.
+- **Thin app quality signal:** Max review complaints on sign-up crashes and Rx downloads (small
+  sample); myFortis has almost no public review footprint.
+- **Fortis is publicly sceptical of consumer AI** (#ConsultFirst campaign, 12 Oct 2026, urging people
+  to see a doctor before trusting search/AI) — a stance, not a product.
+- **Agilus is growing slower than the market** (management cites brand stabilisation after the SRL
+  rename and network rationalisation).
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **Post-discharge monitoring template** (new matrix row): a discharge event in the doctor/centre
+     workspace starts a programme — ring/patch vitals, BP, safety agent on, weekly report to the
+     treating doctor. Max proved demand in 2021 with a device kit; we can do it with the wearables we
+     already ingest and a grounded summary instead of raw thresholds.
+  2. **Monitoring layer for hospital-at-home**: Max@Home is a ₹300 cr/yr run-rate service with
+     nurses and physios but no continuous telemetry or fall detection; our safety agent + vitals are
+     exactly the missing piece — pitch as a B2B module, not a consumer app.
+  3. **Doctor-in-the-loop framing for Telomy-LLX** (answer to #ConsultFirst): every LLX answer that
+     implies action shows sources and offers "send to my doctor"; this lets us sell to sceptical
+     hospital chains rather than be painted as the AI they warn against.
+- *Operational parity via partnership:* home collection and checkups through Agilus or Max Lab (both
+  B2B labs with NCR scale); urgent tele-GP and hospital-at-home services via a hospital partner;
+  exome/PGx through Agilus feeding our genomics annotation module.
+- *Our opening:* both chains have trust, beds and labs in NCR — Mitogenez's home turf — but nothing
+  that keeps a patient engaged between visits. Telomy is the between-visits layer they lack, and
+  hospitals are more natural partners/channels than rivals here.
+
+Sources:
+- [Max MyHealth — App Store](https://apps.apple.com/us/app/max-myhealth/id965797580), [Max MyHealth — Google Play](https://play.google.com/store/apps/details?id=com.maxhealthcare&hl=en), [mwm.ai listing](https://mwm.ai/apps/max-myhealth/965797580), [justuseapp reviews](https://justuseapp.com/en/app/965797580/max-myhealth/reviews), [Unstar developer page](https://unstar.app/developer/max-myhealth-ios-965797579?country=in)
+- [Max Q1 FY27 transcript (Alpha Spread)](https://www.alphaspread.com/security/nse/maxhealth/investor-relations/earnings-call/q1-2027), [AlphaStreet](https://alphastreet.com/india/max-healthcare-institute-ltd-maxhealth-q1-2027-earnings-call-transcript/), [Investing.com slides](https://www.investing.com/news/company-news/max-healthcare-q1-fy27-slides-revenue-jumps-16-amid-expansion-93CH-4859836), [investywise](https://www.investywise.com/max-healthcare-q1-fy27-earnings-call-transcript/), [multibagg.ai](https://www.multibagg.ai/market-pulse/articles/max-q1fy27-98095)
+- [Max Lab Max Care Full-Body](https://www.maxlab.co.in/lab-tests/max-care-full-body-health-check), [Max@Home packages](https://www.maxathome.in/package/full-body-health-checkup-packages), [Max preventive health plans](https://www.maxhealthcare.in/preventive-health-plans)
+- [BusinessToday: Max + MyHealthcare RPM (2021)](https://www.businesstoday.in/industry/pharma/story/max-healthcare-myhealthcare-launch-ai-powered-remote-patient-monitoring-network-299222-2021-06-21), [Healthcare Radius: Max MyHealth+](https://www.healthcareradius.in/features/digital-healthcare/29844-max-healthcare-launches-max-myhealth), [DQ India](https://www.dqindia.com/max-healthcare-partners-deeptech-startup-myhealthcare-remote-care-monitoring)
+- [Fortis Q1 FY27 transcript (AlphaStreet)](https://alphastreet.com/india/fortis-healthcare-ltd-fortis-q1-2027-earnings-call-transcript/), [investywise](https://www.investywise.com/fortis-healthcare-q1-fy27-earnings-conference-call-transcript/), [multibagg.ai](https://www.multibagg.ai/market-pulse/articles/fortis-q1fy27-97423), [whalesbook](https://www.whalesbook.com/corporate-news/English/healthcarebiotech/Fortis-Healthcare-Q1FY27-Revenue-Jumps-175percent-to-indian-rupee2545-Cr-PAT-indian-rupee273-Cr/6a795e0310bce1fd20474e1d)
+- [MyFortis Doc — Google Play](https://play.google.com/store/apps/details?id=com.myfortis.doctor&hl=en_US), [myFortis (updatestar)](https://myfortis.updatestar.com/), [Fortis Bangalore packages](https://healthcheck.fortisbangalore.com/all-packages.php), [Agilus Care](https://agilusdiagnostics.com/agiluscare), [Agilus Total 1 Pune](https://agilusdiagnostics.com/package/pune/200025538/agilus-total-1)
+- [Healthcare IT News: Fortis AI mental health](https://www.healthcareitnews.com/news/asia/fortis-healthcare-gets-ai-boost-mental-health-vertical), [#ConsultFirst campaign](https://www.passionateinmarketing.com/fortis-healthcare-and-repindia-turn-everyday-search-habits-into-a-healthcare-message-with-consultfirst/), [Business Standard: IHH tech-led expansion via Fortis](https://www.business-standard.com/companies/news/ihh-bets-on-tech-led-healthcare-expansion-in-india-through-fortis-126070500494_1.html), [Fortis Escorts AI hybrid cath lab](https://www.digitalhealthnews.com/fortis-escorts-unveils-ai-enabled-hybrid-cath-lab-to-support-complex-cardiac-procedures)

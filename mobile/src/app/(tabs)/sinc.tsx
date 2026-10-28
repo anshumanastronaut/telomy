@@ -1,6 +1,9 @@
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { ActionSheetIOS, ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api, useApi } from '@/lib/api';
@@ -10,7 +13,9 @@ import { Button, Chip, ConfBar, Icon, Row, Spacer, StatusChip, T } from '@/ui/co
 import { Logo } from '@/ui/logo';
 import { TelomyLoader } from '@/ui/loader';
 
-type Msg = { role: 'user' | 'assistant'; content: string; meta?: any; id?: number; pending?: boolean };
+/** A file staged in the composer (image, pdf or document) before it's sent to Sinc. `data` is base64. */
+type Att = { kind: 'image' | 'pdf' | 'file'; name: string; media_type?: string; data: string };
+type Msg = { role: 'user' | 'assistant'; content: string; meta?: any; id?: number; pending?: boolean; attachments?: { name: string; kind: string }[] };
 
 const STARTERS = [
   'My lower back hurts, about 5/10',
@@ -27,6 +32,7 @@ export default function Sinc() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
   const [text, setText] = useState('');
+  const [atts, setAtts] = useState<Att[]>([]);
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -38,11 +44,70 @@ export default function Sinc() {
   const slm = useSlm();
   const [slmCard, setSlmCard] = useState(false);
 
+  async function addImage(fromCamera: boolean) {
+    try {
+      const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { setNotice(`Allow ${fromCamera ? 'camera' : 'photo'} access in Settings to attach images.`); return; }
+      const res = fromCamera
+        ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
+        : await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.6, mediaTypes: ['images'] });
+      if (res.canceled || !res.assets?.[0]?.base64) return;
+      const a = res.assets[0];
+      setAtts((xs) => [...xs, { kind: 'image' as const, name: a.fileName ?? 'photo.jpg', media_type: a.mimeType ?? 'image/jpeg', data: a.base64! }].slice(-6));
+    } catch (e: any) { setNotice(`Couldn't add the image. ${e.message ?? ''}`); }
+  }
+
+  async function addDocument() {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/markdown', 'text/csv'],
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      const f = res.assets[0];
+      const data = await FileSystem.readAsStringAsync(f.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const kind: Att['kind'] = (f.mimeType === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'file';
+      setAtts((xs) => [...xs, { kind, name: f.name ?? 'document', media_type: f.mimeType, data }].slice(-6));
+    } catch (e: any) { setNotice(`Couldn't add the document. ${e.message ?? ''}`); }
+  }
+
+  function pickAttachment() {
+    Keyboard.dismiss();
+    const opts = ['Photo Library', 'Take Photo', 'PDF or Document', 'Cancel'];
+    const run = (i: number) => { if (i === 0) addImage(false); else if (i === 1) addImage(true); else if (i === 2) addDocument(); };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions({ options: opts, cancelButtonIndex: 3, title: 'Attach to Sinc' }, run);
+    } else {
+      Alert.alert('Attach to Sinc', undefined, [
+        { text: opts[0], onPress: () => run(0) }, { text: opts[1], onPress: () => run(1) },
+        { text: opts[2], onPress: () => run(2) }, { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  }
+
   async function send(q: string) {
-    if (!q.trim() || busy) return;
+    const outgoing = atts;
+    if ((!q.trim() && outgoing.length === 0) || busy) return;
     setText('');
-    setMsgs((m) => [...m, { role: 'user', content: q }, { role: 'assistant', content: '', pending: true }]);
+    setAtts([]);
+    const chips = outgoing.map((a) => ({ name: a.name, kind: a.kind === 'image' ? 'image' : 'doc' }));
+    setMsgs((m) => [...m, { role: 'user', content: q, attachments: chips.length ? chips : undefined }, { role: 'assistant', content: '', pending: true }]);
     setBusy(true);
+    // files need the cloud Sinc (document parsing + vision), so bypass the on-device model when anything is attached
+    if (outgoing.length) {
+      try {
+        const body = { question: q, chat_id: chatId, mode, attachments: outgoing };
+        const r = await api('/sinc/ask', { body, timeoutMs: 180000 });
+        setChatId(r.chat_id);
+        setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: r.answer, meta: r, id: r.message_id }]);
+      } catch (e: any) {
+        setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: `I couldn't read that just now. ${e.message}`, meta: { error: true } }]);
+      } finally {
+        setBusy(false);
+        setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 100);
+      }
+      return;
+    }
     try {
       // On this iPhone first when chosen (quick answers only — deep research needs the citation library on the server).
       if (slm.on && mode === 'normal') {
@@ -88,7 +153,7 @@ export default function Sinc() {
   async function openChat(id: number) {
     const ms = await api<any[]>(`/sinc/chats/${id}`);
     setChatId(id);
-    setMsgs(ms.map((m) => ({ role: m.role, content: m.content, meta: m.meta, id: m.id })));
+    setMsgs(ms.map((m) => ({ role: m.role, content: m.content, meta: m.meta, id: m.id, attachments: m.meta?.attachments })));
     setHistory(false);
   }
 
@@ -211,8 +276,25 @@ export default function Sinc() {
             <T v="small" color={p.success}>{notice}</T>
           </View>
         ) : null}
+        {/* staged attachments, above the input */}
+        {atts.length ? (
+          <Row style={{ marginHorizontal: space[4], marginBottom: 6, flexWrap: 'wrap' }} gap={6}>
+            {atts.map((a, i) => (
+              <Pressable key={i} onPress={() => setAtts((xs) => xs.filter((_, j) => j !== i))} accessibilityLabel={`Remove ${a.name}`}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.md, backgroundColor: p.surfaceAlt }}>
+                <Icon name={a.kind === 'image' ? 'photo' : 'doc.text'} size={14} color={p.teal} />
+                <T v="small" color={p.text} numberOfLines={1} style={{ maxWidth: 160 }}>{a.name}</T>
+                <Icon name="xmark.circle.fill" size={14} color={p.faint} />
+              </Pressable>
+            ))}
+          </Row>
+        ) : null}
         {/* composer floats above the glass tab bar; drops to the keyboard when typing */}
         <Row style={{ marginHorizontal: space[3], marginBottom: kbd ? 8 : 98, padding: 6, paddingLeft: 4, borderRadius: 28, backgroundColor: p.surface }}>
+          <Pressable onPress={pickAttachment} disabled={busy} accessibilityLabel="Attach a file" testID="sinc-attach"
+            style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="paperclip" size={20} color={p.muted} />
+          </Pressable>
           <TextInput
             value={text}
             onChangeText={setText}
@@ -226,8 +308,8 @@ export default function Sinc() {
           <Pressable onPress={() => router.push('/voice')} accessibilityLabel="Talk to Sinc" testID="sinc-mic" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: p.copper, alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="mic.fill" size={18} color={p.onAccent} />
           </Pressable>
-          <Pressable onPress={() => send(text)} disabled={busy || !text.trim()} accessibilityLabel="Send" testID="sinc-send" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: text.trim() ? p.teal : p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
-            {busy ? <ActivityIndicator color={p.onAccent} /> : <Icon name="arrow.up" size={18} color={text.trim() ? p.onAccent : p.faint} />}
+          <Pressable onPress={() => send(text)} disabled={busy || (!text.trim() && atts.length === 0)} accessibilityLabel="Send" testID="sinc-send" style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: (text.trim() || atts.length) ? p.teal : p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+            {busy ? <ActivityIndicator color={p.onAccent} /> : <Icon name="arrow.up" size={18} color={(text.trim() || atts.length) ? p.onAccent : p.faint} />}
           </Pressable>
         </Row>
       </KeyboardAvoidingView>
@@ -239,8 +321,18 @@ function Bubble({ m, onDraft }: { m: Msg; onDraft: (id: number) => void }) {
   const p = usePalette();
   if (m.role === 'user')
     return (
-      <View style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: p.copper, borderRadius: radius.lg, padding: space[3] }}>
-        <T v="body" color={p.onAccent}>{m.content}</T>
+      <View style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: p.copper, borderRadius: radius.lg, padding: space[3], gap: 6 }}>
+        {m.attachments?.length ? (
+          <Row style={{ flexWrap: 'wrap' }} gap={6}>
+            {m.attachments.map((a, i) => (
+              <Row key={i} gap={5} style={{ alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: radius.sm, paddingVertical: 4, paddingHorizontal: 8 }}>
+                <Icon name={a.kind === 'image' ? 'photo' : 'doc.text'} size={13} color={p.onAccent} />
+                <T v="small" color={p.onAccent} numberOfLines={1} style={{ maxWidth: 170 }}>{a.name}</T>
+              </Row>
+            ))}
+          </Row>
+        ) : null}
+        {m.content ? <T v="body" color={p.onAccent}>{m.content}</T> : null}
       </View>
     );
   if (m.pending) return <SincThinking />;

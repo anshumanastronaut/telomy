@@ -48,6 +48,19 @@ export default function DoctorToday() {
         </Row>
       </Card>
 
+      <Card onPress={() => router.push('/doctor/evidence' as any)} accessibilityLabel="Clinical evidence">
+        <Row style={{ alignItems: 'center' }} gap={space[3]}>
+          <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="books.vertical" size={22} color={p.teal} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <T v="h3">Clinical evidence</T>
+            <T v="small">Ask a clinical question — cited, graded answers retrieved from PubMed. Decision support, you decide.</T>
+          </View>
+          <Icon name="chevron.right" size={13} color={p.faint} />
+        </Row>
+      </Card>
+
       <Section title="Care review queue" action="Work queue" onAction={() => router.push('/doctor/work')}>
         {careN ? (
           d.care_queue.slice(0, 6).map((c: any) => (

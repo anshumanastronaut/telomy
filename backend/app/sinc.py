@@ -271,13 +271,19 @@ def _deep_compose(question: str) -> dict:
             "engine": "telomy-retrieval (deep RAG)"}
 
 
-def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict:
+def ask(question: str, chat_id: int | None = None, mode: str = "normal",
+        docs: list[dict] | None = None, images: list[dict] | None = None) -> dict:
     now = engine.now_iso()
+    docs = docs or []
+    images = images or []
+    has_attach = bool(docs or images)
     if not chat_id:
         chat_id = db.exec_("INSERT INTO chats (ts, title) VALUES (?,?)", (now, question[:60]))
     history = db.rows("SELECT role, content FROM messages WHERE chat_id = ? ORDER BY id", (chat_id,))
+    user_meta = db.j({"attachments": [{"name": d["name"], "kind": "doc"} for d in docs]
+                      + [{"name": im["name"], "kind": "image"} for im in images]}) if has_attach else None
     db.exec_("INSERT INTO messages (chat_id, ts, role, content, meta) VALUES (?,?,?,?,?)",
-             (chat_id, now, "user", question, None))
+             (chat_id, now, "user", question, user_meta))
     from . import trackers
     cap = trackers.capture(question)              # anything said to Sinc can set up tracking, baselines and a plan
     if cap:
@@ -293,9 +299,18 @@ def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict
     if telomy_llm.available():
         # deep mode gets a broader grounding context and a be-thorough nudge; the wrapper picks the best provider
         ctx = retrieval.context(question, k=26 if deep else 18)
+        # a file the user attached becomes part of the grounding context, so its own figures count as grounded
+        for d in docs:
+            ctx += f'\n\nFILE THE USER ATTACHED — "{d["name"]}":\n{d["text"]}'
         sys_prompt = SYSTEM + ("\nThis is a DEEP RESEARCH request: be thorough, connect findings across labs, wearables, "
                                "trackers and genetics, explain mechanisms, and cite the person's own numbers." if deep else "")
-        r = telomy_llm.ask(sys_prompt, ctx, question, history, SCHEMA, max_tokens=6000 if deep else 4000)
+        if has_attach:
+            sys_prompt += ("\nThe user has attached one or more files (documents and/or images) shown with this message. "
+                           "Read them, summarise what matters for this person's health, and answer their question about them. "
+                           "Images may be lab reports, prescriptions, scans or photos — describe what you can see.")
+        # attachments are user-supplied grounding, so skip the numbers-must-be-in-context guard for this call
+        r = telomy_llm.ask(sys_prompt, ctx, question, history, SCHEMA,
+                           max_tokens=6000 if deep else 4000, images=images, skip_guard=has_attach)
         if r and "_error" not in r:
             out = r
         elif r and "_error" in r:
@@ -303,6 +318,8 @@ def ask(question: str, chat_id: int | None = None, mode: str = "normal") -> dict
             out["notice"] = f"Answered from your Vault directly ({r['_error']})."
     if out is None:
         out = _deep_compose(question) if deep else _compose(question)
+        if has_attach:
+            out["notice"] = "I saved your file to this chat, but reading documents and images needs the cloud Sinc (Claude) — ask again when connected to your Telomy server."
     out["medical"] = bool(out.get("medical") or MEDICAL_WORDS.search(question))
     out["mode"] = mode
     if mode == "deep":

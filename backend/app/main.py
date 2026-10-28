@@ -21,7 +21,7 @@ from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancy
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
-from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import activities, band, brief, clinevidence, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -2005,17 +2005,94 @@ def menu_swap(body: SwapIn):
 
 # ------------------------------------------------------------------ Sinc
 
+class SincAttachment(BaseModel):
+    kind: str = "file"                 # 'image' | 'pdf' | 'file'
+    name: str = "attachment"
+    media_type: str | None = None      # for images, e.g. image/jpeg
+    data: str = ""                     # base64-encoded bytes
+
+
 class Ask(BaseModel):
     question: str
     chat_id: int | None = None
     mode: str = "normal"  # normal | deep
+    attachments: list[SincAttachment] = []
+
+
+def _docx_text(raw: bytes) -> str:
+    """Extract text from a .docx (a zip of XML) without a third-party dependency: pull word/document.xml and strip tags."""
+    import io as _io, re as _re, zipfile as _zip
+    try:
+        with _zip.ZipFile(_io.BytesIO(raw)) as z:
+            xml = z.read("word/document.xml").decode("utf-8", "ignore")
+    except Exception:
+        return ""
+    xml = _re.sub(r"</w:p>", "\n", xml)          # paragraphs → newlines
+    return _re.sub(r"<[^>]+>", "", xml)          # drop every tag
+
+
+def _process_attachments(atts: list[SincAttachment]) -> tuple[list[dict], list[dict]]:
+    """Split uploads into document TEXT (for grounding context) and IMAGES (for the model's vision)."""
+    import base64 as _b64
+    docs: list[dict] = []
+    images: list[dict] = []
+    for a in (atts or [])[:6]:
+        try:
+            raw = _b64.b64decode(a.data)
+        except Exception:
+            continue
+        if not raw:
+            continue
+        name = (a.name or "attachment")[:120]
+        if a.kind == "image" and a.media_type and len(raw) <= 7_000_000:
+            images.append({"media_type": a.media_type, "data": a.data, "name": name})
+        elif a.kind == "pdf" or raw[:5] == b"%PDF-":
+            from .labparse import _text
+            txt = (_text(raw) or "").strip()[:12000]
+            if txt:
+                docs.append({"name": name, "text": txt})
+        elif name.lower().endswith(".docx") or a.media_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            txt = _docx_text(raw).strip()[:12000]
+            if txt:
+                docs.append({"name": name, "text": txt})
+        else:  # plain text / markdown / csv
+            txt = raw.decode("utf-8", "ignore").strip()[:12000]
+            if txt:
+                docs.append({"name": name, "text": txt})
+    return docs, images
+
+
+class ClinAsk(BaseModel):
+    question: str
+    k: int = 6
+
+
+@app.post("/clinical/ask")
+def clinical_ask(body: ClinAsk):
+    """Doctor-facing evidence Q&A: retrieve PubMed → grade sources → cited answer (the Vera-style engine)."""
+    q = (body.question or "").strip()
+    if not q:
+        raise HTTPException(400, "Ask a clinical question.")
+    return clinevidence.ask(q, k=max(3, min(10, body.k)))
+
+
+@app.get("/clinical/search")
+def clinical_search(q: str, k: int = 6):
+    """Just the graded source list for a query (no synthesis) — for a quick evidence lookup."""
+    if not q.strip():
+        raise HTTPException(400, "Provide a query.")
+    return {"citations": clinevidence.search(q.strip(), max(3, min(10, k)))}
 
 
 @app.post("/sinc/ask")
 def ask(body: Ask):
-    if not body.question.strip():
-        raise HTTPException(400, "Ask me something about your health data.")
-    return sinc.ask(body.question.strip(), body.chat_id, body.mode if body.mode in ("normal", "deep") else "normal")
+    docs, images = _process_attachments(body.attachments)
+    q = body.question.strip()
+    if not q and not docs and not images:
+        raise HTTPException(400, "Ask me something about your health data, or attach a file.")
+    if not q:
+        q = "Please read the attached file and tell me what it says about my health."
+    return sinc.ask(q, body.chat_id, body.mode if body.mode in ("normal", "deep") else "normal", docs=docs, images=images)
 
 
 @app.get("/sinc/context")
