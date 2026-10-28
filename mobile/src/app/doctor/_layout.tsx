@@ -18,6 +18,7 @@ export default function DoctorLayout() {
       <Tabs.Screen name="patient/[id]" options={{ href: null }} />
       <Tabs.Screen name="templates" options={{ href: null }} />
       <Tabs.Screen name="consult" options={{ href: null }} />
+      <Tabs.Screen name="evidence" options={{ href: null }} />
     </RoleTabs>
   );
 }

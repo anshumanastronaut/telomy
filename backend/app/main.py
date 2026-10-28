@@ -21,7 +21,7 @@ from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancy
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
-from . import activities, band, brief, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import activities, band, brief, clinevidence, db, derived, devices, diagnostics, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -2060,6 +2060,28 @@ def _process_attachments(atts: list[SincAttachment]) -> tuple[list[dict], list[d
             if txt:
                 docs.append({"name": name, "text": txt})
     return docs, images
+
+
+class ClinAsk(BaseModel):
+    question: str
+    k: int = 6
+
+
+@app.post("/clinical/ask")
+def clinical_ask(body: ClinAsk):
+    """Doctor-facing evidence Q&A: retrieve PubMed → grade sources → cited answer (the Vera-style engine)."""
+    q = (body.question or "").strip()
+    if not q:
+        raise HTTPException(400, "Ask a clinical question.")
+    return clinevidence.ask(q, k=max(3, min(10, body.k)))
+
+
+@app.get("/clinical/search")
+def clinical_search(q: str, k: int = 6):
+    """Just the graded source list for a query (no synthesis) — for a quick evidence lookup."""
+    if not q.strip():
+        raise HTTPException(400, "Provide a query.")
+    return {"citations": clinevidence.search(q.strip(), max(3, min(10, k)))}
 
 
 @app.post("/sinc/ask")
