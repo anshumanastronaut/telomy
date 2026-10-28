@@ -1958,6 +1958,13 @@ def nutrition_trends(days: int = 7):
     return {"days": out, "goals": goals}
 
 
+@app.get("/score")
+def telomy_score():
+    """The composite Telomy Score + domain sub-scores + biological-age readout from the member's labs."""
+    from . import score as score_mod
+    return score_mod.compute()
+
+
 @app.get("/biomarkers/ratios")
 def biomarker_ratios():
     """Derived biomarker ratios & indices from the member's own labs (atherogenic + insulin-resistance signals)."""

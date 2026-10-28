@@ -43,6 +43,20 @@ export default function AgeScreen() {
   return (
     <Screen edges={[]}>
       <Stack.Screen options={{ title: 'Biological age' }} />
+
+      <Card tone="teal" onPress={() => router.push('/score' as any)} accessibilityLabel="Telomy Score">
+        <Row style={{ alignItems: 'center' }} gap={space[3]}>
+          <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: p.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="gauge.with.dots.needle.67percent" size={22} color={p.teal} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <T v="h3">Your Telomy Score</T>
+            <T v="small">One number from your labs — domain sub-scores + biological age. See what to work on.</T>
+          </View>
+          <Icon name="chevron.right" size={13} color={p.faint} />
+        </Row>
+      </Card>
+
       <T v="small">Estimated from your connected devices — fitness, heart-rate variability and resting heart rate — against population norms for your age and sex. These are physiological estimates, not a diagnosis, and sit alongside the blood-based PhenoAge on the Longevity screen.</T>
 
       <ValidatedAges data={bio.data} deltaColor={deltaColor} deltaText={deltaText} />
