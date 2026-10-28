@@ -21,7 +21,8 @@ from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancy
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
-from . import activities, band, brief, calculators, clinevidence, db, derived, devices, diagnostics, drugref, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import activities, band, brief, clinevidence, db, derived, devices, diagnostics, drugref, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import calculators as clincalc  # aliased: an existing /calculators endpoint function shadows the name
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
 from .labparse import parse_pdf
@@ -2087,7 +2088,7 @@ def clinical_search(q: str, k: int = 6):
 @app.get("/clinical/calcs")
 def clinical_calcs():
     """The point-of-care calculator registry (names, inputs) for the doctor platform."""
-    return {"calculators": calculators.list_all()}
+    return {"calculators": clincalc.list_all()}
 
 
 class CalcBody(BaseModel):
@@ -2098,7 +2099,7 @@ class CalcBody(BaseModel):
 @app.post("/clinical/calc")
 def clinical_calc(body: CalcBody):
     """Compute one clinical score from its inputs (deterministic — no LLM)."""
-    return calculators.compute(body.id, body.values)
+    return clincalc.compute(body.id, body.values)
 
 
 @app.get("/clinical/drug")
