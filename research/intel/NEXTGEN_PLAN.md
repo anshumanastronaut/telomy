@@ -67,7 +67,26 @@ Research backing: `research/intel/VERA_HEALTH.md`, `MEDICAL_KNOWLEDGE_SOURCES.md
 labs import + biomarker dashboards · Sinc (on-device + cloud) + file uploads · doctor/centre platform + `copilot.py`
 + `copilot_log` · therapy tracking · `tenancy.py` (isolation) · IFCT/FAERS/DDInter/DSLD data already in-repo.
 
-## First milestone (this branch, starting now)
-**M1 = Track-A1 corpus foundation, end-to-end vertical slice:** a SQLite-FTS5 `knowledge.db` schema, an ingester that
-seeds it from PubMed/PMC, a `kb.py` FTS5 retriever returning graded+cited chunks, and `clinevidence` preferring the
-local KB with a live-PubMed fallback — proving the corpus architecture at small scale before the bulk ingest.
+## Progress log
+- **A1 ✅ (M1)** — SQLite-FTS5 `knowledge.db` + `ingest/build_kb.py` + `backend/app/kb.py` (BM25 re-ranked by grade) +
+  `clinevidence` prefers KB with live-PubMed fallback + `/clinical/kb/stats`. Vertical slice verified.
+- **B1 ✅** — `backend/app/biomarkers.py` derived ratios (TC:HDL, LDL:HDL, TG:HDL, non-HDL, remnant, AIP, TyG, METS-IR,
+  HOMA-IR, HbA1c→eAG) + `/biomarkers/ratios` + `mobile/src/app/ratios.tsx` ("Lab insights", Vault entry).
+- **A2 (in progress)** — multi-source ingest: `ingest/build_kb.py` now also loads **FDA drug labels** (openFDA/DailyMed,
+  graded A) and a **guideline JSONL loader** (USPSTF/CDC/ICMR/MoHFW prepared entries). Flags: `--seed`, `--queries`,
+  `--seed-drugs`/`--drugs`, `--jsonl`, `--text`, `--stats`.
+
+### A2 — remaining (needs the ingest box)
+The bulk corpus (PMC-OA commercial subset ~millions of chunks, full DailyMed, India guideline PDFs) is too large to
+build or host on the 512 MB prod box. Provision a **separate ingest/index VM** (≥4 vCPU / 16 GB / 100 GB disk):
+1. Pull bulk: PMC-OA `oa_comm` packages, MEDLINE baseline, DailyMed full, ClinicalTrials.gov v2, USPSTF/CDC, NIH ODS.
+2. India: parse MoHFW/ICMR/CDSCO PDFs → JSONL (the `--jsonl` path), incl. the CDSCO banned-FDC list.
+3. Section-aware chunk, dedup (DOI→PMID→PMCID→title-hash), grade+license+region tag → write `knowledge.db` (FTS5).
+4. Ship the `.db` artifact to the query box (or expose a `/search` HTTP endpoint from the ingest box).
+5. A3: add dense vectors (sqlite-vec/LanceDB) + RRF; stand up MedQA/MedMCQA/MIRAGE eval before shipping.
+How to ship/host the KB to prod: set `TELOMY_KB_PATH` to the shipped `.db`; `kb.available()` picks it up; else live fallback.
+
+## Deployment note
+`telomy/nextgen` is a development branch — NOT deployed to the fragile Oracle prod box (which runs `main`). nextgen
+features are validated by local tests; when a milestone is ready to ship we merge it to `main`, deploy, and rebuild the
+app. The KB code is safe on prod regardless (`kb.available()` is False there → live PubMed fallback).

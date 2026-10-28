@@ -93,6 +93,72 @@ def ingest_pubmed(c: sqlite3.Connection, queries: list[str], per: int = 8) -> in
     return added
 
 
+# A starter set of common drugs to ingest FDA labels for (expand freely; A2-bulk pulls the full DailyMed set).
+SEED_DRUGS = [
+    "atorvastatin", "rosuvastatin", "metformin", "empagliflozin", "dapagliflozin", "semaglutide", "tirzepatide",
+    "lisinopril", "amlodipine", "losartan", "telmisartan", "apixaban", "rivaroxaban", "warfarin", "clopidogrel",
+    "aspirin", "metoprolol", "bisoprolol", "furosemide", "spironolactone", "levothyroxine", "insulin glargine",
+    "amoxicillin", "azithromycin", "ceftriaxone", "doxycycline", "pantoprazole", "omeprazole", "sertraline",
+    "escitalopram", "gabapentin", "pregabalin", "allopurinol", "prednisone", "salbutamol", "montelukast",
+]
+
+
+def ingest_drug_labels(c: sqlite3.Connection, drugs: list[str]) -> int:
+    """Ingest FDA drug labels (openFDA/DailyMed) as graded chunks — authoritative drug facts for the KB."""
+    from app import drugref
+    added = 0
+    for name in drugs:
+        lab = drugref._label(name)
+        if not lab:
+            print(f"  · {name:28s} (no label)")
+            continue
+        chunks = []
+        for sec in ("indications", "dosing", "contraindications", "boxed_warning", "warnings", "interactions", "pregnancy"):
+            body = lab.get(sec)
+            if body:
+                chunks.append({"section": sec, "body": f"{lab.get('generic') or name} — {sec.replace('_', ' ')}: {body}"})
+        if not chunks:
+            continue
+        doc = {"doc_id": f"dailymed:{name.lower().replace(' ', '_')}", "source": "dailymed",
+               "title": f"{lab.get('generic') or name} — FDA label", "url": "https://dailymed.nlm.nih.gov/dailymed/",
+               "year": "", "pub_type": "fda-label", "grade": "A", "grade_label": "FDA label",
+               "license": "public-domain", "region": "global"}
+        if add_doc(c, doc, chunks):
+            added += 1
+            print(f"  · {name:28s} (+{len(chunks)} sections)")
+        time.sleep(0.3)
+    return added
+
+
+def ingest_jsonl(c: sqlite3.Connection, path: str) -> int:
+    """Ingest structured guideline/reference entries from a JSONL file — one JSON object per line:
+    {source, title, text, grade?, url?, year?, region?, license?, doc_id?}. Use this for USPSTF/CDC/ICMR/MoHFW
+    content you've prepared (text you authored or that is freely redistributable — never NICE/UpToDate verbatim)."""
+    import json as _json
+    added = 0
+    glabel = {"A": "Strong", "B": "Moderate", "C": "Limited", "D": "Weak"}
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            e = _json.loads(line)
+            text = (e.get("text") or "").strip()
+            if not text:
+                continue
+            src = e.get("source", "guideline")
+            doc = {"doc_id": e.get("doc_id") or f"{src}:{abs(hash(e.get('title', text[:40]))) % 10**10}",
+                   "source": src, "title": e.get("title", "")[:300], "url": e.get("url", ""),
+                   "year": str(e.get("year", "")), "pub_type": e.get("pub_type", "guideline"),
+                   "grade": e.get("grade", "A"), "grade_label": glabel.get(e.get("grade", "A"), ""),
+                   "license": e.get("license", "redistributable"), "region": e.get("region", "global")}
+            paras = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 80] or [text]
+            if add_doc(c, doc, [{"section": f"p{i+1}", "body": p} for i, p in enumerate(paras)]):
+                added += 1
+    print(f"  · jsonl {os.path.basename(path)} (+{added} docs)")
+    return added
+
+
 def ingest_text(c: sqlite3.Connection, path: str, title: str, grade: str, source: str,
                 url: str = "", region: str = "global", license: str = "public-domain") -> int:
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
@@ -123,6 +189,9 @@ def main():
     ap.add_argument("--queries", nargs="*", help="PubMed topics to ingest")
     ap.add_argument("--per", type=int, default=8, help="articles per query")
     ap.add_argument("--text", help="a local guideline/text file to ingest")
+    ap.add_argument("--jsonl", help="a JSONL file of structured guideline/reference entries")
+    ap.add_argument("--drugs", nargs="*", help="FDA drug labels to ingest (openFDA/DailyMed)")
+    ap.add_argument("--seed-drugs", action="store_true", help="ingest the built-in common-drug label set")
     ap.add_argument("--title", default="")
     ap.add_argument("--grade", default="A")
     ap.add_argument("--source", default="guideline")
@@ -136,8 +205,13 @@ def main():
         print(c.execute("SELECT (SELECT COUNT(*) FROM docs), (SELECT COUNT(*) FROM chunks)").fetchone())
         return
     if args.text:
-        n = ingest_text(c, args.text, args.title or os.path.basename(args.text), args.grade, args.source, args.url, args.region)
-        print(f"ingested text: +{n} doc")
+        print(f"ingested text: +{ingest_text(c, args.text, args.title or os.path.basename(args.text), args.grade, args.source, args.url, args.region)} doc")
+    if args.jsonl:
+        ingest_jsonl(c, args.jsonl)
+    drugs = (SEED_DRUGS if args.seed_drugs else []) + (args.drugs or [])
+    if drugs:
+        print(f"ingesting {len(drugs)} FDA drug labels…")
+        ingest_drug_labels(c, drugs)
     topics = (SEED_TOPICS if args.seed else []) + (args.queries or [])
     if topics:
         print(f"ingesting {len(topics)} PubMed topics…")
