@@ -54,7 +54,13 @@ def _band(s: float) -> str:
 
 def compute(as_of: str | None = None) -> dict:
     L = engine.latest_values(as_of)
-    val = lambda k: (float(L[k]["value"]) if k in L and L[k].get("value") is not None else None)  # noqa: E731
+    def val(k):
+        r = L.get(k)
+        v = r.get("value_num") if r else None
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
 
     domains = []
     for key, (name, ids) in DOMAINS.items():

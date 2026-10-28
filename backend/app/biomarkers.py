@@ -15,7 +15,7 @@ from . import engine
 def _val(L: dict, key: str) -> float | None:
     r = L.get(key)
     try:
-        return float(r["value"]) if r and r.get("value") is not None else None
+        return float(r["value_num"]) if r and r.get("value_num") is not None else None
     except (TypeError, ValueError, KeyError):
         return None
 

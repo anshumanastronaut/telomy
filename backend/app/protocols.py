@@ -26,9 +26,9 @@ def _biomarkers() -> dict:
     out: dict = {}
     for mid, key in _MAP.items():
         r = L.get(mid)
-        if r and r.get("value") is not None:
+        if r and r.get("value_num") is not None:
             try:
-                out[key] = float(r["value"])
+                out[key] = float(r["value_num"])
             except (TypeError, ValueError):
                 pass
     # BMI from profile, if available
