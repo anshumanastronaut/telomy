@@ -72,9 +72,16 @@ labs import + biomarker dashboards · Sinc (on-device + cloud) + file uploads ·
   `clinevidence` prefers KB with live-PubMed fallback + `/clinical/kb/stats`. Vertical slice verified.
 - **B1 ✅** — `backend/app/biomarkers.py` derived ratios (TC:HDL, LDL:HDL, TG:HDL, non-HDL, remnant, AIP, TyG, METS-IR,
   HOMA-IR, HbA1c→eAG) + `/biomarkers/ratios` + `mobile/src/app/ratios.tsx` ("Lab insights", Vault entry).
-- **A2 (in progress)** — multi-source ingest: `ingest/build_kb.py` now also loads **FDA drug labels** (openFDA/DailyMed,
+- **A2 (foundation ✅)** — multi-source ingest: `ingest/build_kb.py` now also loads **FDA drug labels** (openFDA/DailyMed,
   graded A) and a **guideline JSONL loader** (USPSTF/CDC/ICMR/MoHFW prepared entries). Flags: `--seed`, `--queries`,
-  `--seed-drugs`/`--drugs`, `--jsonl`, `--text`, `--stats`.
+  `--seed-drugs`/`--drugs`, `--jsonl`, `--text`, `--stats`. Verified 254 docs / 430 chunks (dailymed + pubmed).
+- **A3 (started)** — `ingest/eval.py` accuracy harness (MedMCQA/PubMedQA via HF datasets-server; retrieval-coverage mode
+  runs with no key, answer-accuracy mode with an LLM, optional `--rag`). Retrieval improvement: abbreviation/synonym
+  expansion in `kb._fts_query` ("afib"→"atrial fibrillation"). **Remaining A3:** dense/hybrid vectors (sqlite-vec/
+  LanceDB on the ingest box, pluggable embedding hook) + run the answer-accuracy eval with a key as the quality gate.
+- **B2 ✅** — `backend/app/score.py`: composite **Telomy Score** (7 longevity-weighted domains, each marker scored vs
+  its catalog optimal band) + biological age from the best available clock. `/score` + `mobile/src/app/score.tsx`
+  (headline ring + bio-age Δ + domain bars, weakest-first) + entry card on `/age`.
 
 ### A2 — remaining (needs the ingest box)
 The bulk corpus (PMC-OA commercial subset ~millions of chunks, full DailyMed, India guideline PDFs) is too large to

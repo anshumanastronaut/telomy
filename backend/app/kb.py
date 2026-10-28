@@ -44,11 +44,32 @@ def _conn() -> sqlite3.Connection | None:
     return c
 
 
+# Common clinical abbreviations → the full terms to also search for (recall boost, no embeddings needed).
+_SYN = {
+    "afib": "atrial fibrillation", "af": "atrial fibrillation", "mi": "myocardial infarction",
+    "htn": "hypertension", "dm": "diabetes", "t2dm": "diabetes", "t1dm": "diabetes", "ckd": "chronic kidney disease",
+    "hf": "heart failure", "hfpef": "heart failure preserved ejection fraction", "hfref": "heart failure reduced ejection fraction",
+    "copd": "chronic obstructive pulmonary disease", "cap": "community acquired pneumonia", "uti": "urinary tract infection",
+    "dvt": "deep vein thrombosis", "pe": "pulmonary embolism", "vte": "venous thromboembolism", "acs": "acute coronary syndrome",
+    "cad": "coronary artery disease", "ckd": "chronic kidney disease", "aki": "acute kidney injury", "dka": "diabetic ketoacidosis",
+    "gerd": "gastroesophageal reflux", "ibs": "irritable bowel", "ibd": "inflammatory bowel disease", "ra": "rheumatoid arthritis",
+    "osa": "obstructive sleep apnea", "nafld": "nonalcoholic fatty liver", "ldl": "ldl cholesterol", "apob": "apolipoprotein b",
+    "sglt2": "sglt2 inhibitor", "glp1": "glp-1 receptor agonist", "ppi": "proton pump inhibitor", "nsaid": "nsaid",
+    "bp": "blood pressure", "egfr": "glomerular filtration", "a1c": "hba1c", "hba1c": "glycated hemoglobin",
+}
+
+
 def _fts_query(q: str) -> str:
-    """Turn a natural-language clinical question into a safe FTS5 MATCH expression (OR of quoted content words)."""
+    """Turn a natural-language clinical question into a safe FTS5 MATCH expression (OR of quoted content words),
+    expanding common abbreviations to their full terms so 'afib' also matches 'atrial fibrillation'."""
     words = [w for w in re.findall(r"[A-Za-z0-9][A-Za-z0-9\-]+", q.lower()) if len(w) > 2 and w not in _STOP]
-    words = list(dict.fromkeys(words))[:12]
-    return " OR ".join(f'"{w}"' for w in words)
+    terms: list[str] = []
+    for w in words:
+        terms.append(w)
+        if w in _SYN:
+            terms.extend(t for t in _SYN[w].split() if len(t) > 2)
+    terms = list(dict.fromkeys(terms))[:18]
+    return " OR ".join(f'"{t}"' for t in terms)
 
 
 def stats() -> dict:
