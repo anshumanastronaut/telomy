@@ -153,6 +153,7 @@ export default function RootLayout() {
         <Stack.Screen name="score" options={{ title: 'Telomy Score' }} />
         <Stack.Screen name="retest" options={{ title: 'Retest plan' }} />
         <Stack.Screen name="protocols" options={{ title: 'Protocols to discuss' }} />
+        <Stack.Screen name="shared" options={{ title: 'Shared with you' }} />
       </Stack>
       {locked && !intro ? <LockScreen /> : null}
     </ThemeProvider>

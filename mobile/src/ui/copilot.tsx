@@ -2,10 +2,13 @@
 // panel / the centre's operations); Sinc answers from the record and drafts next steps that route to the existing
 // approve flows (it never prescribes, signs or orders itself). Thinking state uses the Telomy motion loader.
 import { AudioQuality, IOSOutputFormat, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, type RecordingOptions } from 'expo-audio';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActionSheetIOS, ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api } from '@/lib/api';
 import { transcribeOnDevice, useSpeech } from '@/lib/speech';
@@ -22,12 +25,15 @@ const WAV16: RecordingOptions = {
 };
 
 type Suggestion = { kind: string; label: string; route?: string };
-type Msg = { role: 'user' | 'assistant'; content: string; suggestions?: Suggestion[]; confidence?: number; engine?: string; grounded?: boolean; pending?: boolean };
+type Att = { kind: 'image' | 'pdf' | 'file'; name: string; media_type?: string; data: string };
+type Msg = { role: 'user' | 'assistant'; content: string; suggestions?: Suggestion[]; confidence?: number; engine?: string; grounded?: boolean; pending?: boolean; attachments?: { name: string; kind: string }[] };
 
 export function Copilot({ role, patientId, patientName }: { role: 'doctor' | 'centre'; patientId?: string; patientName?: string }) {
   const p = usePalette();
+  const insets = useSafeAreaInsets();
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [text, setText] = useState('');
+  const [atts, setAtts] = useState<Att[]>([]);
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
@@ -86,14 +92,48 @@ export function Copilot({ role, patientId, patientName }: { role: 'doctor' | 'ce
         : ['Who needs me most today?', 'Summarise my care queue', 'Any patients trending the wrong way?'])
     : ['How is the centre doing today?', 'What needs attention on the floor?', 'How much is outstanding, and from whom?', 'How busy are we this week?'];
 
+  async function addImage(fromCamera: boolean) {
+    try {
+      const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { show(`Allow ${fromCamera ? 'camera' : 'photo'} access in Settings.`, 'alert'); return; }
+      const res = fromCamera ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
+        : await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.6, mediaTypes: ['images'] });
+      if (res.canceled || !res.assets?.[0]?.base64) return;
+      const a = res.assets[0];
+      setAtts((xs) => [...xs, { kind: 'image' as const, name: a.fileName ?? 'photo.jpg', media_type: a.mimeType ?? 'image/jpeg', data: a.base64! }].slice(-6));
+    } catch (e: any) { show(`Couldn't add the image. ${e.message ?? ''}`, 'alert'); }
+  }
+
+  async function addDocument() {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/csv'], copyToCacheDirectory: true });
+      if (res.canceled || !res.assets?.[0]) return;
+      const f = res.assets[0];
+      const data = await FileSystem.readAsStringAsync(f.uri, { encoding: FileSystem.EncodingType.Base64 });
+      const kind: Att['kind'] = (f.mimeType === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf')) ? 'pdf' : 'file';
+      setAtts((xs) => [...xs, { kind, name: f.name ?? 'document', media_type: f.mimeType, data }].slice(-6));
+    } catch (e: any) { show(`Couldn't add the document. ${e.message ?? ''}`, 'alert'); }
+  }
+
+  function pickAttachment() {
+    Keyboard.dismiss();
+    const opts = ['Photo Library', 'Take Photo', 'PDF or Document', 'Cancel'];
+    const run = (i: number) => { if (i === 0) addImage(false); else if (i === 1) addImage(true); else if (i === 2) addDocument(); };
+    if (Platform.OS === 'ios') ActionSheetIOS.showActionSheetWithOptions({ options: opts, cancelButtonIndex: 3, title: 'Attach to Sinc' }, run);
+    else Alert.alert('Attach to Sinc', undefined, [{ text: opts[0], onPress: () => run(0) }, { text: opts[1], onPress: () => run(1) }, { text: opts[2], onPress: () => run(2) }, { text: 'Cancel', style: 'cancel' }]);
+  }
+
   async function send(q: string) {
-    if (!q.trim() || busy) return;
+    const outgoing = atts;
+    if ((!q.trim() && outgoing.length === 0) || busy) return;
     setText('');
+    setAtts([]);
+    const chips = outgoing.map((a) => ({ name: a.name, kind: a.kind === 'image' ? 'image' : 'doc' }));
     const history = msgs.filter((m) => !m.pending).map((m) => ({ role: m.role, content: m.content }));
-    setMsgs((m) => [...m, { role: 'user', content: q }, { role: 'assistant', content: '', pending: true }]);
+    setMsgs((m) => [...m, { role: 'user', content: q || '(attached a file)', attachments: chips.length ? chips : undefined }, { role: 'assistant', content: '', pending: true }]);
     setBusy(true);
     try {
-      const r = await api<any>(endpoint, { body: { query: q, patient_id: patientId ? Number(patientId) : undefined, history } });
+      const r = await api<any>(endpoint, { body: { query: q, patient_id: patientId ? Number(patientId) : undefined, history, attachments: outgoing }, timeoutMs: outgoing.length ? 180000 : undefined });
       setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: r.answer, suggestions: r.suggestions, confidence: r.confidence, engine: r.engine, grounded: r.grounded }]);
     } catch (e: any) {
       setMsgs((m) => [...m.slice(0, -1), { role: 'assistant', content: `I couldn't answer just now. ${e.message}` }]);
@@ -154,11 +194,28 @@ export function Copilot({ role, patientId, patientName }: { role: 'doctor' | 'ce
           )}
         </ScrollView>
 
-        <Row style={{ marginHorizontal: space[3], marginBottom: kbd ? 8 : 100, padding: 6, paddingLeft: 4, borderRadius: 28, backgroundColor: p.surface }}>
+        {atts.length ? (
+          <Row style={{ marginHorizontal: space[4], marginBottom: 6, flexWrap: 'wrap' }} gap={6}>
+            {atts.map((a, i) => (
+              <Pressable key={i} onPress={() => setAtts((xs) => xs.filter((_, j) => j !== i))} accessibilityLabel={`Remove ${a.name}`}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.md, backgroundColor: p.surfaceAlt }}>
+                <Icon name={a.kind === 'image' ? 'photo' : 'doc.text'} size={14} color={p.teal} />
+                <T v="small" color={p.text} numberOfLines={1} style={{ maxWidth: 160 }}>{a.name}</T>
+                <Icon name="xmark.circle.fill" size={14} color={p.faint} />
+              </Pressable>
+            ))}
+          </Row>
+        ) : null}
+        {/* composer clears the floating tab bar (tab-bar top ≈ insets.bottom + 68) with a comfortable gap */}
+        <Row style={{ marginHorizontal: space[3], marginBottom: kbd ? 8 : insets.bottom + 80, padding: 6, paddingLeft: 4, borderRadius: 28, backgroundColor: p.surface }}>
+          <Pressable onPress={pickAttachment} disabled={busy || recording} accessibilityLabel="Attach a file" testID="copilot-attach"
+            style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}>
+            <Icon name="paperclip" size={20} color={p.muted} />
+          </Pressable>
           <TextInput value={text} onChangeText={setText} placeholder={recording ? 'Listening — tap to send' : patientName ? `Ask about ${patientName}` : 'Ask Sinc'} placeholderTextColor={p.faint} multiline
             editable={!recording && !transcribing} onSubmitEditing={() => send(text)} returnKeyType="send" testID="copilot-input"
             style={{ flex: 1, minHeight: 40, maxHeight: 120, color: p.text, fontSize: 15, paddingHorizontal: 12, paddingVertical: 10, fontFamily: 'Geist_400Regular' }} />
-          {text.trim() ? (
+          {(text.trim() || atts.length) ? (
             <Pressable onPress={() => send(text)} disabled={busy} accessibilityLabel="Send" testID="copilot-send"
               style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: p.teal, alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="arrow.up" size={18} color={p.onAccent} />
@@ -179,8 +236,18 @@ function Bubble({ m }: { m: Msg }) {
   const p = usePalette();
   if (m.role === 'user')
     return (
-      <View style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: p.teal, borderRadius: radius.lg, padding: space[3] }}>
-        <T v="body" color={p.onAccent}>{m.content}</T>
+      <View style={{ alignSelf: 'flex-end', maxWidth: '85%', backgroundColor: p.teal, borderRadius: radius.lg, padding: space[3], gap: 6 }}>
+        {m.attachments?.length ? (
+          <Row style={{ flexWrap: 'wrap' }} gap={6}>
+            {m.attachments.map((a, i) => (
+              <Row key={i} gap={5} style={{ alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: radius.sm, paddingVertical: 4, paddingHorizontal: 8 }}>
+                <Icon name={a.kind === 'image' ? 'photo' : 'doc.text'} size={13} color={p.onAccent} />
+                <T v="small" color={p.onAccent} numberOfLines={1} style={{ maxWidth: 170 }}>{a.name}</T>
+              </Row>
+            ))}
+          </Row>
+        ) : null}
+        {m.content ? <T v="body" color={p.onAccent}>{m.content}</T> : null}
       </View>
     );
   if (m.pending)

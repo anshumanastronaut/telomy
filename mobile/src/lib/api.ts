@@ -164,7 +164,7 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
       method,
       headers: opts.form ? undefined : { 'Content-Type': 'application/json' },
       body: opts.form ?? (opts.body ? JSON.stringify(opts.body) : undefined),
-    }, opts.timeoutMs ?? (opts.form ? 60000 : 12000));      // uploads (lab PDFs, incl. base64-JSON) pass a long timeoutMs
+    }, opts.timeoutMs ?? (opts.form ? 60000 : 20000));      // GETs: 20s — the server can be slow to warm up on first login
   } catch {
     if (opts.queue && opts.body && !opts.form) {           // keep it on the phone; it goes up when the server is back
       await enqueue({ path, method, body: opts.body, t: Date.now() });
@@ -194,14 +194,23 @@ export function useApi<T = any>(path: string | null, deps: any[] = []) {
     if (!path) return;
     setLoading(true);
     setError(null);
-    try {
-      const d = await api<T>(path);
-      if (alive.current) setData(d);
-    } catch (e: any) {
-      if (alive.current) setError(e.message);
-    } finally {
-      if (alive.current) setLoading(false);
+    // The server can be slow to warm up on first login (many parallel calls), so retry transient failures
+    // (network/timeout = status 0, or 5xx) a couple of times with backoff before surfacing an error — no more
+    // "Try again" + manual refresh. 4xx (401/404/…) fail fast; they won't fix themselves on retry.
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < 3 && alive.current; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 700 * attempt));
+      try {
+        const d = await api<T>(path);
+        if (alive.current) { setData(d); setError(null); setLoading(false); }
+        return;
+      } catch (e: any) {
+        lastErr = e;
+        const status = e?.status ?? 0;
+        if (status >= 400 && status < 500) break;   // client error — don't retry
+      }
     }
+    if (alive.current) { setError(lastErr?.message ?? 'Failed to load'); setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, ...deps]);
   useEffect(() => {
