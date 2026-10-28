@@ -70,6 +70,15 @@ def user_db_path(user_id: int) -> str:
     return os.path.join(users_dir(), f"{user_id}.db")
 
 
+def user_ids() -> list[int]:
+    """All account user ids (for batch jobs like the notification cron). Empty in single-user mode."""
+    try:
+        with _acc() as c:
+            return [r["id"] for r in c.execute("SELECT id FROM users ORDER BY id").fetchall()]
+    except sqlite3.OperationalError:
+        return []
+
+
 def _hash(pw: str, salt: str) -> str:
     return hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), _ITER).hex()
 
@@ -79,8 +88,10 @@ def _ensure_user_db(user_id: int):
     path = user_db_path(user_id)
     db.set_db(path)
     try:
-        if not os.path.exists(path):
-            db.init()
+        # Run the core schema every time (not only on first create): SCHEMA is all CREATE TABLE IF NOT EXISTS, so
+        # this is cheap and idempotent, and it's how new tables (e.g. notifications/notif_outbox) reach existing
+        # accounts — on their next login — without a bespoke migration step.
+        db.init()
         from . import roles, plans, therapy, rx, summaries, voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitals, goals
         for mod in (roles, plans, therapy, rx, summaries, voice, routine, activities, exposome, devices, band, whoop, cgm, trackers, science, vitals, goals):
             try:

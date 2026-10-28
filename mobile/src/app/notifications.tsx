@@ -6,7 +6,8 @@ import { api, fmtDate, useApi } from '@/lib/api';
 import { usePalette } from '@/lib/theme';
 import { Card, Divider, Empty, Icon, Loading, Row, Screen, T } from '@/ui/core';
 
-const ICON: Record<string, any> = { retest: 'testtube.2', review: 'stethoscope', insight: 'sparkle', appointment: 'calendar', medication: 'pills' };
+const ICON: Record<string, any> = { retest: 'testtube.2', review: 'stethoscope', insight: 'sparkle', appointment: 'calendar', medication: 'pills', shared_doc: 'doc.text', result: 'checkmark.seal', abnormal: 'exclamationmark.triangle', critical: 'exclamationmark.octagon' };
+const ALERT = '#D3523F';
 
 export default function Notifications() {
   const p = usePalette();
@@ -20,9 +21,9 @@ export default function Notifications() {
           <View key={n.key + i}>
             {i ? <Divider /> : null}
             <Pressable onPress={async () => { await api('/notifications/read', { body: [n.key] }); router.push(n.route); }} style={{ flexDirection: 'row', gap: 12, paddingVertical: 12, alignItems: 'flex-start' }}>
-              <Icon name={ICON[n.kind] ?? 'bell'} color={n.read ? p.faint : p.teal} />
+              <Icon name={ICON[n.kind] ?? 'bell'} color={n.priority === 'critical' ? ALERT : (n.read ? p.faint : p.teal)} />
               <View style={{ flex: 1, gap: 2 }}>
-                <T v="body" style={{ fontWeight: n.read ? '400' : '600' }}>{n.title}</T>
+                <T v="body" style={{ fontWeight: n.read ? '400' : '600', color: n.priority === 'critical' ? ALERT : undefined }}>{n.title}</T>
                 <T v="small" numberOfLines={2}>{n.body}</T>
               </View>
               <T v="small">{n.ts ? fmtDate(n.ts) : ''}</T>

@@ -18,8 +18,14 @@ import { fonts, usePalette, useScheme } from '@/lib/theme';
 import { Intro } from '@/ui/intro';
 import { LockScreen } from '@/ui/lock';
 import { onLockChange } from '@/lib/api';
+import { usePushRegistration } from '@/lib/push';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function PushRegistrar() {
+  usePushRegistration();
+  return null;
+}
 
 export default function RootLayout() {
   const scheme = useScheme();
@@ -70,6 +76,7 @@ export default function RootLayout() {
   if (!loaded) return <View style={{ flex: 1, backgroundColor: '#000' }} />;
   return (
     <RoleProvider>
+    <PushRegistrar />
     <ThemeProvider value={theme}>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       {intro ? <Intro onDone={() => setIntro(false)} /> : null}
