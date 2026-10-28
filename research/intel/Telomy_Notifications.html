@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Telomy — Notification & Alerting Specification</title>
+<style>
+  :root{
+    --ink:#10201A; --body:#1d2b25; --muted:#5b6b64; --faint:#8a978f;
+    --teal:#2F8F6B; --teal2:#4FD08F; --copper:#A9643A; --line:#e3e8e5; --bg:#ffffff; --soft:#f4f7f5;
+    --red:#D3523F; --amber:#C98A1B;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  body{font-family:"Helvetica Neue",Arial,sans-serif; color:var(--body); margin:0; font-size:10.5px; line-height:1.5;}
+  @page{size:A4; margin:15mm 13mm;}
+  h1,h2,h3,h4{color:var(--ink); line-height:1.2; margin:0 0 .4em;}
+  h1{font-size:30px; letter-spacing:-.5px;}
+  h2{font-size:18px; margin-top:0; padding-bottom:6px; border-bottom:2px solid var(--teal); display:inline-block;}
+  h3{font-size:12.5px; color:var(--teal); text-transform:uppercase; letter-spacing:.8px; margin-top:16px;}
+  h4{font-size:11.5px; margin:10px 0 2px;}
+  p{margin:.3em 0 .7em;} a{color:var(--teal); text-decoration:none;}
+  .section{margin-bottom:20px;}
+  .page-break{page-break-before:always;}
+  .lead{font-size:12.5px; color:var(--body);}
+  .muted{color:var(--muted);} .faint{color:var(--faint); font-size:9.5px;}
+  ul,ol{margin:.3em 0 .8em; padding-left:16px;} li{margin:.2em 0;}
+  .pill{display:inline-block; background:var(--soft); border:1px solid var(--line); border-radius:20px; padding:2px 10px; font-size:9.5px; color:var(--muted); margin:2px 4px 2px 0;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:11px 13px; page-break-inside:avoid;}
+  .card h4{color:var(--ink); margin-top:0;}
+  .tag{display:inline-block; font-size:8.5px; font-weight:700; border-radius:5px; padding:1px 6px; color:#fff; vertical-align:middle;}
+  .tCrit{background:var(--red);} .tHigh{background:var(--copper);} .tNorm{background:var(--teal);} .tLow{background:var(--faint);}
+  table{width:100%; border-collapse:collapse; font-size:8.8px; margin:.4em 0; page-break-inside:auto;}
+  tr{page-break-inside:avoid;}
+  th,td{text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{color:var(--ink); font-size:8.5px; text-transform:uppercase; letter-spacing:.4px; background:var(--soft);}
+  code{font-family:"SF Mono",Menlo,monospace; font-size:8.5px; color:var(--copper); background:#faf6f2; padding:0 3px; border-radius:3px;}
+  .cover{height:255mm; display:flex; flex-direction:column; justify-content:center;}
+  .logo{display:flex; align-items:center; gap:12px; margin-bottom:28px;}
+  .mark{width:44px;height:44px;}
+  .brand{font-size:26px; letter-spacing:6px; color:var(--ink); font-weight:600;}
+  .cover h1{font-size:40px; margin-bottom:12px;}
+  .cover .one{font-size:15px; color:var(--body); max-width:150mm; line-height:1.5;}
+  .rule{height:3px;width:60px;background:var(--teal);margin:18px 0;}
+  .kpis{display:flex; gap:10px; margin-top:28px; flex-wrap:wrap;}
+  .kpi{background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:10px 14px;}
+  .kpi b{display:block; font-size:17px; color:var(--teal);}
+  .kpi span{font-size:9px; color:var(--muted);}
+  .note{background:#fff8f0; border:1px solid #f0dcc2; border-radius:8px; padding:8px 12px; font-size:9.5px; color:#6b4a28;}
+  .warn{background:#fdf2f0; border:1px solid #f1d2cc; border-radius:8px; padding:8px 12px; font-size:9.5px; color:#7a3328;}
+  .tick{color:var(--teal); font-weight:700;}
+  .statusT{font-size:9px;}
+  .statusT td{padding:3px 6px;}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="logo">
+    <svg class="mark" viewBox="0 0 100 100" fill="none" stroke="#2F8F6B" stroke-width="3">
+      <path d="M12 50 C 28 20, 44 20, 50 50 C 56 80, 72 80, 88 50 C 72 20, 56 20, 50 50 C 44 80, 28 80, 12 50 Z"/>
+    </svg>
+    <div class="brand">TELOMY</div>
+  </div>
+  <h1>Notifications &<br>alerting, end to end.</h1>
+  <div class="rule"></div>
+  <div class="one">Every notification each role — <b>member, doctor, diagnostic centre</b> — should receive, across in-app, push, email, SMS and WhatsApp; the inbound report flows (email, EML, CSV, HL7/FHIR) that trigger them; and a patient-safety critical-value path — designed India-first, DPDP-governed, and shaped to the single-worker Oracle box we actually run.</div>
+  <div class="kpis">
+    <div class="kpi"><b>3 roles</b><span>user · doctor · centre</span></div>
+    <div class="kpi"><b>5 channels</b><span>in-app · push · email · SMS · WhatsApp</span></div>
+    <div class="kpi"><b>Critical-value</b><span>closed-loop safety path</span></div>
+    <div class="kpi"><b>DPDP-native</b><span>consent + quiet hours</span></div>
+  </div>
+  <p class="faint" style="margin-top:40px;">Deep-research specification — audit, benchmarks, full matrix, inbound flows, architecture & roadmap. Prepared 28 Oct 2026. India regulatory and competitor claims are from secondary sources — verify against primary before build or public use.</p>
+</div>
+
+<!-- A: AUDIT -->
+<div class="section page-break">
+  <h2>Part A — What exists today</h2>
+  <p class="lead">Telomy has <b>one</b> notification surface: a pull-model, in-app-only list. No stored record, no delivery, no channel beyond the app screen.</p>
+  <div class="grid2">
+    <div class="card"><h4>The list that exists</h4><code>features.py:159 notifications()</code> recomputes on every request — 6 patient kinds: <b>shared_doc, retest, review, insight, appointment, medication</b>. Served at <code>/notifications</code>; read-state is a dedup set only (<code>notif_read</code>, key <code>kind:title</code>) — no row, timestamp, channel or audit.</div>
+    <div class="card"><h4>Channels: in-app only</h4>Exhaustive grep for any email/SMS/WhatsApp/push sender returns <b>zero</b>. No <code>expo-notifications</code>, no push tokens. OTP is <b>stubbed</b> (<code>000000</code>). Appointment booking says "confirms by SMS" but <b>sends nothing</b>.</div>
+    <div class="card"><h4>Infra exists but inert</h4><code>interop.py</code> has outbound webhooks (HMAC-signed <code>fire()</code>) + FHIR R4 export — but <code>fire()</code> has <b>no callers</b>. The "notify an external EHR on a result" plumbing is built and never triggered.</div>
+    <div class="card"><h4>Consent yes, prefs no</h4>8 DPDP purposes modeled (incl. a separate <b>marketing</b> opt-in). But <b>no per-category / per-channel / quiet-hours</b> preference model. Staff side has coarse booleans with no delivery behind them.</div>
+    <div class="card"><h4>Inbound = PDF only</h4>Lab reports parse from PDF (<code>labparse.py</code>). <b>No EML / email / CSV / inbound-HL7</b> path. Device inbound (WHOOP, CGM, patch) is telemetry, not reports.</div>
+    <div class="card"><h4>No safety tier</h4>Marker status is whatever the client sends or "unknown". <b>No critical/panic tier, no auto-flag on ingest, no safety alert.</b></div>
+  </div>
+  <h3>Built vs missing</h3>
+  <table class="statusT">
+    <tr><th>Capability</th><th>Status</th><th>Capability</th><th>Status</th></tr>
+    <tr><td>In-app list (6 kinds)</td><td><b style="color:var(--teal)">Built</b></td><td>Push (APNs/FCM/Expo)</td><td><b style="color:var(--red)">Missing</b></td></tr>
+    <tr><td>Read-state</td><td><b style="color:var(--amber)">Partial</b> (dedup set)</td><td>Email transactional</td><td><b style="color:var(--red)">Missing</b></td></tr>
+    <tr><td>Stored timestamped records</td><td><b style="color:var(--red)">Missing</b></td><td>SMS (DLT)</td><td><b style="color:var(--red)">Missing</b> (copy only)</td></tr>
+    <tr><td>DPDP consent model</td><td><b style="color:var(--teal)">Built</b></td><td>WhatsApp (BSP)</td><td><b style="color:var(--red)">Missing</b></td></tr>
+    <tr><td>Per-channel prefs + quiet hours</td><td><b style="color:var(--red)">Missing</b></td><td>Critical-value tier</td><td><b style="color:var(--red)">Missing</b></td></tr>
+    <tr><td>Outbound webhooks / FHIR export</td><td><b style="color:var(--amber)">Built, inert</b></td><td>EML/CSV/HL7 inbound</td><td><b style="color:var(--red)">Missing</b></td></tr>
+    <tr><td>Doctor/centre push alerts</td><td><b style="color:var(--red)">Missing</b> (polled)</td><td>Client offline outbox</td><td><b style="color:var(--teal)">Built</b> (uploads)</td></tr>
+  </table>
+  <p class="faint"><b>Infra constraint shaping everything:</b> single <code>uvicorn --workers 1</code> on an Oracle micro (≤1GB), no queue/worker, WAL SQLite per-user. Generation & digests must be <b>cron-driven batch</b>; sends must be cheap, rate-limited, provider-outsourced — never a resident worker pool.</p>
+</div>
+
+<!-- B: BENCHMARKS -->
+<div class="section page-break">
+  <h2>Part B — Benchmarks & India rules</h2>
+  <p class="faint">Secondary sources (vendor docs, law-firm/BSP summaries). Verify DLT/WhatsApp specifics on the live Meta & operator portals, and DPDP against the notified Rules, before build.</p>
+  <div class="grid2">
+    <div class="card"><h4>Consumer labs (Function / Superpower)</h4>Every value flagged in/out of range; <b>clinician review framed as "talk to a clinician," never a diagnosis</b>. Results come with context + a next step, never a bare "you're abnormal" push — the pattern our <code>clinician_notes</code> + review queue already mirrors.</div>
+    <div class="card"><h4>Wearables (Oura / Whoop)</h4>One <b>morning</b> Readiness/Recovery push; anomaly nudges (elevated resting HR, temp); missing-night & sync reminders; streaks. Batched to a daily summary, not per-metric spam. We already compute the equivalents — just don't deliver them.</div>
+    <div class="card"><h4>India channel strategy</h4>WhatsApp is a <b>primary</b> report/appointment channel (Apollo 24|7, Tata 1mg, Practo, Eka Care) alongside SMS + push, because open rates dwarf email. Stack: <b>SMS (DLT) for OTP/must-deliver, WhatsApp utility for reports/appointments, push for engagement, email for records/PDFs.</b></div>
+    <div class="card"><h4>Critical-value alerting (safety)</h4>Accreditor norm (CAP / Joint Commission, secondary): <b>≥90% of critical values reported within ~30 min</b>; closed-loop <b>read-back</b> documented; recipient a <b>licensed caregiver</b>; an <b>escalation policy</b> for non-ack.</div>
+  </div>
+  <h3>India regulatory — must honor</h3>
+  <table>
+    <tr><th>Regime</th><th>What it requires</th></tr>
+    <tr><td><b>DPDP Act 2023 + Rules</b> (notified Nov 2025)</td><td>Consent free/specific/informed/unambiguous, <b>notice precedes consent</b>, withdrawal as easy as giving. Health data likely <b>Significant Data Fiduciary</b> (DPO, DPIA, audits). <b>Medical-emergency / threat-to-life needs no consent</b> — the basis to let a true critical alert override an opt-out. Rule-4 phases in toward <b>13 Nov 2026</b>.</td></tr>
+    <tr><td><b>TRAI TCCCPR / DLT</b> (SMS)</td><td>Register <b>entity + header + content template</b>; carriers block anything unmatched. <b>Transactional & Service-Implicit reach DND 24×7; Promotional needs explicit opt-in, 09:00–21:00 IST only.</b></td></tr>
+    <tr><td><b>WhatsApp Business Platform</b></td><td>Templates categorized <b>Utility / Authentication / Marketing</b>; promo content in a utility template gets reclassified (higher billing). <b>Opt-in required</b>; a user-initiated <b>24h service window</b> allows free-form replies. Auth templates = OTP only, no links.</td></tr>
+    <tr><td><b>Email deliverability</b></td><td>Publish <b>SPF, DKIM, DMARC</b>; separate transactional vs marketing streams/subdomains.</td></tr>
+  </table>
+</div>
+
+<!-- C: MATRIX -->
+<div class="section page-break">
+  <h2>Part C — The notification matrix</h2>
+  <p class="muted"><b>Priority tiers & defaults:</b>
+    <span class="tag tCrit">CRITICAL</span> push+SMS+WhatsApp, bypass quiet hours, closed-loop ack, vital-interest basis — never the clinical value on a lock screen.
+    <span class="tag tHigh">HIGH</span> push primary, WhatsApp fallback if unread, quiet hours except time-sensitive.
+    <span class="tag tNorm">NORMAL</span> in-app+push, batched, quiet hours honored.
+    <span class="tag tLow">LOW</span> opt-in engagement, digest, quiet 21:00–09:00 IST, unsubscribe.
+    Every category has a per-channel toggle except safety and OTP/security (always on).</p>
+
+  <h3>C.1 — Member / patient</h3>
+  <table>
+    <tr><th>#</th><th>Notification</th><th>Trigger</th><th>Channels</th><th>Priority</th></tr>
+    <tr><td>U1</td><td>Lab result ready</td><td>Report ingested, markers persisted</td><td>Push + in-app; WA fallback; email+PDF</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>U2</td><td>New non-lab document (imaging, discharge, Rx)</td><td><code>/documents/parse</code> or share lands</td><td>In-app + push</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>U3</td><td>Abnormal value flagged</td><td>Ingest marks marker out-of-range</td><td>Push + in-app; WA — "review with Sinc/clinician"</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U4</td><td><b>Critical / panic value</b></td><td>Ingest hits critical threshold (K⁺&gt;6, glucose&gt;400, Hb&lt;7…)</td><td><b>Push+SMS+WA, closed-loop ack; alerts panel doctor</b></td><td><span class="tag tCrit">CRITICAL</span></td></tr>
+    <tr><td>U5</td><td>Telomy Score / bio-age changed</td><td>Recompute crosses materiality delta</td><td>In-app + push (into morning digest)</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>U6</td><td>Retest due</td><td><code>retest.plan</code> crosses due date</td><td>In-app + push; WA if long-overdue</td><td><span class="tag tNorm">NORMAL</span>→<span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U7</td><td>"What changed since last time"</td><td>Retest ingested, marker improved/worsened</td><td>In-app + push</td><td><span class="tag tNorm">NORMAL</span>/<span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U8</td><td>Doctor shared a doc — confirm to add</td><td><code>sharedocs.add()</code> → pending</td><td>In-app + push; WA</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U9</td><td>Doctor message / consult recap ready</td><td>Scribe recap or secure message</td><td>In-app + push; WA (link, not detail)</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U10</td><td>Finding signed / care-plan updated</td><td>Doctor signs off, plan approved</td><td>In-app + push</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>U11</td><td>Sinc finding awaiting attention</td><td>Insight ≥0.75 or sent for review</td><td>In-app + push</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>U12</td><td>Appointment reminders</td><td>Upcoming appointment</td><td>In-app+push; <b>SMS+WA at 24h & 2h</b></td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U13</td><td>Appointment booked/cancelled/rescheduled</td><td>Status change</td><td>In-app + push; WA</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U14</td><td>Medication / supplement dose reminder</td><td>Dose due today & untaken</td><td>In-app + push (local scheduled)</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>U15</td><td>Adherence slipping</td><td>30-day adherence below threshold</td><td>In-app + push (weekly digest)</td><td><span class="tag tLow">LOW</span></td></tr>
+    <tr><td>U16</td><td>Therapy session / protocol step due</td><td>Therapy/protocol schedule</td><td>In-app + push</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>U17</td><td>Drug-interaction / caution flag</td><td>Interaction match on active meds+events</td><td>In-app + push — "check with clinician"</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U18–21</td><td>Device not syncing / low battery / night missing / capture incomplete</td><td>Signal gaps, BLE battery</td><td>In-app (+push opt-in), debounced, morning</td><td><span class="tag tLow">LOW</span></td></tr>
+    <tr><td>U22</td><td>Daily morning summary</td><td>Cron each morning (absorbs U5/U6/U20/U23)</td><td>Push + in-app</td><td><span class="tag tLow">LOW</span></td></tr>
+    <tr><td>U23–25</td><td>Streak milestone / weekly-monthly report / education</td><td>Stats, report gen, content</td><td>In-app + push + email</td><td><span class="tag tLow">LOW</span></td></tr>
+    <tr><td>U26</td><td>OTP / login code</td><td><code>/auth/otp/send</code></td><td><b>SMS (DLT) + WA auth template</b></td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U27–28</td><td>New-device login / password change</td><td>Auth events</td><td>Push + email; SMS if high-risk</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U29</td><td>Consent request / change confirmation</td><td>New purpose or consent toggled</td><td>In-app + email (notice-before-consent)</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>U30–31</td><td>Data export ready / deletion done / vault access</td><td>Export, erasure, shares</td><td>In-app + email (secure link)</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>U32</td><td>Billing (ok, failed, renewal, expiry)</td><td>Billing events</td><td>In-app + email; SMS/WA on failure</td><td><span class="tag tHigh">HIGH</span>/<span class="tag tNorm">NORMAL</span></td></tr>
+  </table>
+
+  <h3>C.2 — Doctor</h3>
+  <table>
+    <tr><th>#</th><th>Notification</th><th>Trigger</th><th>Channels</th><th>Priority</th></tr>
+    <tr><td>D1</td><td><b>Critical value on a panel patient</b></td><td>Ingest flags critical for a linked patient</td><td><b>Push+SMS+WA, closed-loop ack, escalate to centre if unacked</b></td><td><span class="tag tCrit">CRITICAL</span></td></tr>
+    <tr><td>D2</td><td>New patient assigned / linked</td><td>Link or centre assignment</td><td>In-app + push</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>D3</td><td>Patient confirmed / declined a shared doc</td><td><code>sharedocs.set_status</code></td><td>In-app + push</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>D4</td><td>Finding awaiting sign-off</td><td>Insight → <code>awaiting</code></td><td>In-app + push (gated by notify_findings)</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>D5</td><td>Lab result back for an ordered test</td><td>Result ingested for a panel patient</td><td>In-app + push; email digest</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>D6</td><td>New consult / message from patient</td><td>Message or consult request</td><td>In-app + push; WA opt-in</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>D7</td><td>Appointment booked / cancelled / rescheduled</td><td>Status for this doctor</td><td>In-app + push; SMS same-day</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>D8</td><td>Care-queue backlog threshold</td><td>Awaiting reviews exceed threshold/age</td><td>In-app + push; email daily</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>D9</td><td>Co-sign / approval request</td><td>Treatment/therapy/Rx needs sign-off</td><td>In-app + push</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>D10–12</td><td>Patient acknowledgement / schedule reminder / monthly report awaiting</td><td>Patient acts, upcoming consult, report state</td><td>In-app + push; SMS 30-min pre-consult</td><td><span class="tag tNorm">NORMAL</span>/<span class="tag tLow">LOW</span></td></tr>
+    <tr><td>D13</td><td>Account / security</td><td>Staff auth events</td><td>Push + email (always on)</td><td><span class="tag tHigh">HIGH</span></td></tr>
+  </table>
+
+  <h3>C.3 — Centre / clinic admin</h3>
+  <table>
+    <tr><th>#</th><th>Notification</th><th>Trigger</th><th>Channels</th><th>Priority</th></tr>
+    <tr><td>C1</td><td><b>Critical-result escalation</b></td><td>Patient's critical value unacked by doctor within SLA</td><td><b>Push+SMS+WA to on-call admin</b></td><td><span class="tag tCrit">CRITICAL</span></td></tr>
+    <tr><td>C2–3</td><td>New doctor onboarded / new patient</td><td>Staff or member added</td><td>In-app + email</td><td><span class="tag tNorm">NORMAL</span>/<span class="tag tLow">LOW</span></td></tr>
+    <tr><td>C4</td><td>Ops: test backlog / sample pending</td><td>Tests not collected/resulted past threshold</td><td>In-app + push; email digest</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>C5</td><td><b>TAT breach</b> (turnaround-time)</td><td>Result not delivered within target TAT</td><td>In-app + push; email</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>C6</td><td>Booking activity & no-shows</td><td>Bookings / cancellations</td><td>In-app + push</td><td><span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>C7</td><td>Billing / revenue / credits low</td><td>Billing + credits near total</td><td>In-app + email; SMS for large outstanding</td><td><span class="tag tHigh">HIGH</span>/<span class="tag tNorm">NORMAL</span></td></tr>
+    <tr><td>C8–9</td><td>Outcomes report / staff productivity</td><td>Period report, sign-off volume</td><td>In-app + email (weekly)</td><td><span class="tag tNorm">NORMAL</span>/<span class="tag tLow">LOW</span></td></tr>
+    <tr><td>C10</td><td>Integration / device health</td><td>Source silent, webhook failures, ingest errors</td><td>In-app + push; email</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>C11</td><td><b>Compliance / consent / audit</b></td><td>Consent revoked, DPDP erasure, unusual access_log</td><td>In-app + email</td><td><span class="tag tHigh">HIGH</span></td></tr>
+    <tr><td>C12</td><td>Account / security (admin login, role, API key)</td><td>Auth + api_keys events</td><td>Push + email (always on)</td><td><span class="tag tHigh">HIGH</span></td></tr>
+  </table>
+</div>
+
+<!-- D: INBOUND -->
+<div class="section page-break">
+  <h2>Part D — Inbound report flows</h2>
+  <p class="lead">Principle: <b>ingest → normalize → persist → auto-flag → notify</b>, with the notify tier decided by the auto-flag. Today only the PDF path exists and it stops at persist.</p>
+  <div class="grid2">
+    <div class="card"><h4>1 · PDF upload <span class="tick">(built)</span></h4><code>/labs/parse_b64</code> → confirm markers → <code>/labs/save</code>. <b>Add</b> the auto-flag step on save, then emit U1/U3/U4 (+ D5/D1 for panel patients).</div>
+    <div class="card"><h4>2 · Email ingestion (build)</h4>Per-user address <code>reports+&lt;token&gt;@in.telomy.health</code> + shared clinic inbox. Provider inbound route → <code>POST /ingest/email</code>. Verify SPF/DKIM + allow-list; else a review queue. MIME walk → PDF/CSV/EML/FHIR dispatch → auto-flag → U1.</div>
+    <div class="card"><h4>3 · EML / forwarded email (build)</h4>Same MIME walker, uploaded as a file via an extended <code>/documents/parse</code>. For "patient forwards the lab's email" — parse the nested <code>message/rfc822</code> and recurse.</div>
+    <div class="card"><h4>4 · CSV (build)</h4>Columns → markers map (test, value, unit, ref range, date). Bulk/historical import & lab portals. Same auto-flag + U1.</div>
+    <div class="card"><h4>5 · HL7 v2 / FHIR R4 inbound (build)</h4>We already <b>export</b> FHIR; add inbound <code>POST /interop/fhir</code> + an HL7 ORU^R01 adapter, authed by existing scoped <b>API keys</b>. The clean B2B lab-integration path.</div>
+    <div class="card"><h4>6 · Device APIs <span class="tick">(built, keep distinct)</span></h4>WHOOP, cal, Nightscout CGM, vitals, Apple Health are <b>telemetry, not reports</b> — they feed U18–21 & the score, <b>not</b> U1/U4. Keep the critical tier scoped to lab markers.</div>
+  </div>
+  <h3>D.2 · Critical-value auto-flagging (new, patient-safety)</h3>
+  <p>A deterministic step on <b>every</b> ingest path before notifying: compare each marker to its reference range <b>and</b> a new <b>critical/panic threshold table</b> (K⁺, Na⁺, glucose, Hb, platelets, WBC, creatinine, troponin, calcium, INR). Add a <code>critical</code> status. Tier → <code>critical</code>: U4+D1(+C1); <code>out_of_range</code>: U3; else U1. Record provenance for audit + the ack log. Reuse the inert <code>interop.fire('lab.result')</code> to notify subscribed EHRs.</p>
+  <div class="warn"><b>Safety copy rule.</b> The patient notification <b>never</b> states the dangerous number on push/SMS — "an important result needs attention, open Telomy." The doctor alert carries the clinical value, because a licensed caregiver is in the loop.</div>
+</div>
+
+<!-- E: ARCH -->
+<div class="section page-break">
+  <h2>Part E — Architecture & roadmap</h2>
+  <p class="lead">No queue/worker, fragile box → <b>do not add Celery/Redis.</b> Store, generate by cron, deliver by thin provider calls, keep the critical path synchronous.</p>
+  <div class="grid2">
+    <div class="card"><h4>① Notification store</h4>Real table <code>notifications(…, created_at, read_at, dedup_key, channels_json, delivered_json, ack_at)</code>. Builders <b>write rows</b> (idempotent on dedup_key) instead of recomputing; <code>notif_read</code> → <code>read_at</code>.</div>
+    <div class="card"><h4>② Generation = cron</h4>A lightweight cron (how backups already run) scans triggers every few minutes, inserts rows + enqueues sends into a SQLite <code>notif_outbox</code>. Mirrors the mobile outbox; survives restarts.</div>
+    <div class="card"><h4>③ Delivery = thin calls</h4>A second cron drains the outbox, calling provider HTTP APIs with short timeouts (like <code>interop.fire</code>'s 5s urllib), marking delivery per channel, retrying with backoff. No persistent connections.</div>
+    <div class="card"><h4>④ Critical path synchronous</h4>U4/D1/C1 fire <b>inline</b> on ingest, open a closed-loop ack record; a cron sweep escalates unacked critical alerts (doctor → centre) per SLA.</div>
+  </div>
+  <h3>Channel adapters</h3>
+  <p><b>Push</b> — <code>expo-notifications</code> + token registration, send via the <b>Expo Push API</b> (single HTTPS endpoint, no SDK on the box — cheapest for the micro); local scheduled for dose reminders. <b>Email</b> — SES/Postmark + SPF/DKIM/DMARC on <code>telomy.health</code>; inbound route for <code>/ingest/email</code>. <b>SMS</b> — DLT-registered Indian BSP (MSG91/Gupshup/Kaleyra), templates for OTP, reminders, critical "open app," billing failure. <b>WhatsApp</b> — Business via BSP with approved utility/auth templates + opt-in capture; 24h window for free-form consult replies.</p>
+
+  <h3>Prioritized build roadmap</h3>
+  <table>
+    <tr><th>Phase</th><th>Ships</th></tr>
+    <tr><td><b>0 · Storage & safety</b></td><td>Notification store + outbox; migrate builders to write/read. <b>Critical-value threshold table + auto-flag on ingest.</b> Device push (Expo). <i>Patient-safety must precede delivery so U4/D1 are correct.</i></td></tr>
+    <tr><td><b>1 · Must-deliver TXN</b></td><td>SMS via DLT (replace the <code>000000</code> OTP stub, reminders, critical "open app," billing failure). Real appointment confirm/reminder (closes the fake "by SMS"). Email transactional. <b>Critical → doctor → centre escalation</b> with ack log.</td></tr>
+    <tr><td><b>2 · India + inbound</b></td><td>WhatsApp Business (utility/auth templates + opt-in). Inbound email/EML/CSV ingest → auto-flag. Preferences + quiet-hours; morning-digest batching (U22).</td></tr>
+    <tr><td><b>3 · Integrations & ops</b></td><td>Inbound FHIR/HL7 + activate <code>interop.fire()</code>. Centre ops: TAT field + breach, backlog, compliance/audit. Engagement/marketing behind consent.</td></tr>
+  </table>
+
+  <h3>Open risks to settle before build</h3>
+  <ul>
+    <li><b>Patient-safety posture.</b> Telomy is positioned as wellness ("not a diagnosis"). Decide whether we <b>assert</b> criticality (clinical liability, needs licensed-clinician loop) or <b>route to a clinician</b> without asserting. <b>Recommendation:</b> route for patient-facing copy; assert only on the doctor/centre safety path.</li>
+    <li><b>Threshold ownership.</b> The critical/panic table needs clinical sign-off (age/sex-specific, India reference ranges) — not an engineering decision.</li>
+    <li><b>Box capacity.</b> If synchronous critical sends + digests strain the 512MB box (the known wedge), move the delivery cron to a tiny separate process / managed function; keep FastAPI doing only inline critical sends.</li>
+    <li><b>Regulatory, verify primary:</b> CAP/Joint-Commission timeframe & read-back wording; DPDP Rule-4 date (~13 Nov 2026) & SDF status at our scale; TRAI header-suffix scheme; WhatsApp 24h-window mechanics & template SLAs.</li>
+  </ul>
+  <p class="faint" style="margin-top:14px;">© 2026 Telomy. Internal/confidential. Competitor and India regulatory figures are secondary-source and must be re-verified before external publication. Critical-value alerting is a clinical-safety feature requiring clinical sign-off; nothing here replaces professional medical judgment.</p>
+</div>
+
+</body>
+</html>

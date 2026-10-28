@@ -80,6 +80,11 @@ sudo tee /etc/cron.d/telomy-backup >/dev/null <<'EOF2'
 15 3 * * * opc mkdir -p /opt/telomy/backups && sqlite3 /opt/telomy/telomy.db ".backup /opt/telomy/backups/telomy-$(date +\%F).db" && find /opt/telomy/backups -name 'telomy-*.db' -mtime +14 -delete
 EOF2
 
+echo "== notification delivery cron (every 2 min: drains the outbox + critical escalation)"
+sudo tee /etc/cron.d/telomy-notifs >/dev/null <<'EOF3'
+*/2 * * * * opc cd /opt/telomy && /opt/telomy/.venv/bin/python -m app.notif_cron >> /opt/telomy/notif_cron.log 2>&1
+EOF3
+
 sudo systemctl daemon-reload
 sudo systemctl enable -q --now telomy caddy
 sudo systemctl restart telomy caddy

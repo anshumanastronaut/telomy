@@ -158,6 +158,15 @@ def interactions() -> list[dict]:
 
 def notifications(today: str) -> list[dict]:
     out = []
+    # Stored, durable rows (results/abnormal/critical from the ingest auto-flag, and anything the Phase-0 store
+    # holds). They carry their own key/read/priority, so they're kept separate from the computed list below and
+    # merged in front, critical-first. See notifs.py / research/intel/NOTIFICATIONS.md.
+    stored: list[dict] = []
+    try:
+        from . import notifs
+        stored = notifs.listing(limit=50)
+    except Exception:
+        pass
     try:
         from . import sharedocs
         for s in sharedocs.pending():
@@ -187,7 +196,10 @@ def notifications(today: str) -> list[dict]:
     for n in out:
         n["key"] = f"{n['kind']}:{n['title']}"
         n["read"] = n["key"] in read
-    return out
+    # Merge stored rows in front, highest-priority first (stable → keeps listing()'s ts-desc order within a tier).
+    prio = {"critical": 0, "high": 1, "normal": 2, "low": 3}
+    stored.sort(key=lambda n: prio.get(n.get("priority", "normal"), 2))
+    return stored + out
 
 # ------------------------------------------------------------------ clinician notes (Top 3 + TL;DR)
 

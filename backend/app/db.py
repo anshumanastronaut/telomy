@@ -68,6 +68,23 @@ CREATE TABLE IF NOT EXISTS medications (
   prescriber TEXT, start_day TEXT, active INTEGER DEFAULT 1, source TEXT);
 CREATE TABLE IF NOT EXISTS med_doses (id INTEGER PRIMARY KEY AUTOINCREMENT, med_id INTEGER, ts TEXT);
 CREATE TABLE IF NOT EXISTS notif_read (key TEXT PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, role TEXT DEFAULT 'user', kind TEXT, category TEXT,
+  priority TEXT DEFAULT 'normal', title TEXT, body TEXT, route TEXT, data TEXT,
+  dedup_key TEXT UNIQUE, channels TEXT, delivered TEXT, read_at TEXT, ack_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS ix_notifications_ts ON notifications(ts);
+CREATE TABLE IF NOT EXISTS notif_outbox (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, notif_id INTEGER REFERENCES notifications(id) ON DELETE CASCADE,
+  channel TEXT, status TEXT DEFAULT 'pending', attempts INTEGER DEFAULT 0, last_error TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP, sent_at TEXT);
+CREATE INDEX IF NOT EXISTS ix_notif_outbox_status ON notif_outbox(status);
+CREATE TABLE IF NOT EXISTS push_tokens (token TEXT PRIMARY KEY, platform TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS notification_prefs (category TEXT, channel TEXT, enabled INTEGER DEFAULT 1,
+  PRIMARY KEY (category, channel));
+CREATE TABLE IF NOT EXISTS notif_settings (id INTEGER PRIMARY KEY CHECK (id = 1),
+  quiet_start TEXT DEFAULT '21:00', quiet_end TEXT DEFAULT '09:00', tz TEXT DEFAULT 'Asia/Kolkata');
+CREATE TABLE IF NOT EXISTS otp_codes (phone TEXT PRIMARY KEY, code_hash TEXT, expires REAL);
 CREATE TABLE IF NOT EXISTS documents (
   id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT, title TEXT, day TEXT, filename TEXT, summary TEXT, data TEXT, created_at TEXT);
 """

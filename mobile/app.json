@@ -80,6 +80,7 @@
           "isAndroidBackgroundLocationEnabled": false
         }
       ],
+      "expo-notifications",
       "@bacons/apple-targets"
     ],
     "experiments": {

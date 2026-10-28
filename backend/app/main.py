@@ -21,7 +21,7 @@ from . import fulfillment, goals, interop, staff as staffmod, tenancy as tenancy
 from . import science  # noqa: E402
 from . import telomy_llm  # noqa: E402
 from . import trackers  # noqa: E402
-from . import activities, band, brief, clinevidence, db, derived, devices, diagnostics, drugref, engine, exposome, features, food, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
+from . import activities, band, brief, clinevidence, db, derived, devices, diagnostics, drugref, engine, exposome, features, food, notifs, plans, predict, roles, routine, rx, seed, sinc, summaries, therapy, twin, voice
 from . import calculators as clincalc  # aliased: an existing /calculators endpoint function shadows the name
 from .catalog_ext import RETEST_PREP
 from .catalog import MARKERS, PANELS, RISK_GENOTYPES
@@ -252,11 +252,31 @@ class OtpIn(BaseModel):
 
 @app.post("/auth/otp/send")
 def otp_send(body: OtpIn):
+    """Send a real 6-digit code over SMS when a DLT SMS provider is configured; otherwise keep the dev stub
+    (000000). The code is stored hashed with a 10-minute expiry and verified in /auth/otp/verify."""
+    from . import senders
+    if "sms" in senders.configured_channels():
+        import secrets
+        code = f"{secrets.randbelow(900000) + 100000}"
+        ch = _hl.sha256(f"{body.phone}:{code}".encode()).hexdigest()
+        db.exec_("INSERT OR REPLACE INTO otp_codes (phone, code_hash, expires) VALUES (?,?,?)",
+                 (body.phone, ch, _t.time() + 600))
+        senders.send("sms", {"to": body.phone, "title": "Telomy code", "priority": "high", "kind": "otp",
+                             "route": None, "id": None,
+                             "body": f"{code} is your Telomy verification code. Valid 10 minutes."})
+        return {"sent": True}
     return {"sent": True, "dev_hint": "Development build: use code 000000"}
 
 
 @app.post("/auth/otp/verify")
 def otp_verify(body: OtpIn):
+    row = db.one("SELECT code_hash, expires FROM otp_codes WHERE phone = ?", (body.phone,))
+    if row and row["expires"] >= _t.time():
+        if body.code and _hm.compare_digest(_hl.sha256(f"{body.phone}:{body.code}".encode()).hexdigest(), row["code_hash"]):
+            db.exec_("DELETE FROM otp_codes WHERE phone = ?", (body.phone,))
+            return {"token": "dev-token", "profile": engine.profile()}
+        raise HTTPException(400, "That code didn't match. Check the SMS and try again.")
+    # No real code on file (SMS not configured, or expired) → development fallback.
     if body.code != "000000":
         raise HTTPException(400, "That code didn't match. Check the SMS and try again.")
     return {"token": "dev-token", "profile": engine.profile()}
@@ -1580,6 +1600,62 @@ def notifications():
 def notif_read(body: list[str]):
     for k in body:
         db.exec_("INSERT OR IGNORE INTO notif_read (key) VALUES (?)", (k,))
+    notifs.mark_read(body)   # stored rows track read via notifications.read_at (keyed by dedup_key)
+    return {"ok": True}
+
+
+@app.post("/notifications/{notif_id}/ack")
+def notif_ack(notif_id: int):
+    """Closed-loop acknowledgement for a stored notification (used by the critical-value safety path)."""
+    notifs.ack(notif_id)
+    return {"ok": True}
+
+
+class PushToken(BaseModel):
+    token: str
+    platform: str = "ios"
+
+
+@app.post("/devices/push-token")
+def register_push_token(body: PushToken):
+    """Store the device's Expo push token (per-user) so the outbox can deliver push via the Expo Push API."""
+    db.exec_("INSERT OR REPLACE INTO push_tokens (token, platform, updated_at) VALUES (?,?,?)",
+             (body.token, body.platform, datetime.now().isoformat(timespec="seconds")))
+    return {"ok": True}
+
+
+@app.get("/notifications/prefs")
+def notif_prefs():
+    from . import senders
+    s = db.one("SELECT quiet_start, quiet_end, tz FROM notif_settings WHERE id = 1") or \
+        {"quiet_start": "21:00", "quiet_end": "09:00", "tz": "Asia/Kolkata"}
+    return {"prefs": db.rows("SELECT category, channel, enabled FROM notification_prefs"),
+            "quiet": s, "configured_channels": senders.configured_channels()}
+
+
+class PrefIn(BaseModel):
+    category: str
+    channel: str
+    enabled: bool
+
+
+@app.put("/notifications/prefs")
+def set_notif_pref(body: PrefIn):
+    db.exec_("INSERT OR REPLACE INTO notification_prefs (category, channel, enabled) VALUES (?,?,?)",
+             (body.category, body.channel, 1 if body.enabled else 0))
+    return {"ok": True}
+
+
+class QuietIn(BaseModel):
+    quiet_start: str = "21:00"
+    quiet_end: str = "09:00"
+    tz: str = "Asia/Kolkata"
+
+
+@app.put("/notifications/quiet-hours")
+def set_quiet_hours(body: QuietIn):
+    db.exec_("INSERT OR REPLACE INTO notif_settings (id, quiet_start, quiet_end, tz) VALUES (1,?,?,?)",
+             (body.quiet_start, body.quiet_end, body.tz))
     return {"ok": True}
 
 
@@ -1795,7 +1871,9 @@ def labs_save(body: SaveReport):
         db.exec_("DELETE FROM reports WHERE id = ?", (body.replace_id,))
     rid = seed.save_report(body.model_dump(), "Uploaded by you", body.filename or "")
     engine.regenerate_insights()
-    return {"id": rid, "markers": len(body.markers), "panel": body.panel}
+    flagged = notifs.auto_flag_report(rid)   # ingest→flag→notify: U1 ready / U3 abnormal / U4 critical (route-to-clinician)
+    return {"id": rid, "markers": len(body.markers), "panel": body.panel,
+            "critical": len(flagged["critical"]), "out_of_range": len(flagged["out_of_range"])}
 
 
 @app.get("/reports")
@@ -4089,12 +4167,20 @@ class ApptIn(BaseModel):
 def book(body: ApptIn):
     aid = db.exec_("INSERT INTO appointments (clinician_id, ts, kind, status, reason) VALUES (?,?,?,?,?)",
                    (body.clinician_id, body.ts, body.kind, "requested", body.reason))
-    return {"id": aid, "status": "requested", "message": "Requested. The clinic confirms by SMS."}
+    cl = db.one("SELECT data FROM clinicians WHERE id = ?", (body.clinician_id,))
+    name = (db.unj(cl["data"]).get("name") if cl else None) or "your clinician"
+    when = body.ts[:16].replace("T", " ")
+    notifs.add("appointment", f"Appointment requested with {name}",
+               f"{when} — we'll confirm shortly.", "/care", priority="high", category="appointment",
+               dedup_key=f"appt-req:{aid}", data={"appointment_id": aid})
+    return {"id": aid, "status": "requested", "message": "Requested — you'll get a confirmation."}
 
 
 @app.post("/appointments/{aid}/cancel")
 def cancel(aid: int):
     db.exec_("UPDATE appointments SET status = 'cancelled' WHERE id = ?", (aid,))
+    notifs.add("appointment", "Appointment cancelled", "Your appointment was cancelled.", "/care",
+               priority="normal", category="appointment", dedup_key=f"appt-cancel:{aid}", data={"appointment_id": aid})
     return {"ok": True}
 
 
