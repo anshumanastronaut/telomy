@@ -49,13 +49,42 @@ _GRADE_RULES: list[tuple[str, str, str]] = [
 _GRADE_LABEL = {"A": "Strong", "B": "Moderate", "C": "Limited", "D": "Weak"}
 
 
-def _grade(pub_types: list[str]) -> tuple[str, str]:
-    """Best (strongest) grade among an article's publication types; defaults to D for anything unrecognised."""
+_RANK = {"A": 3, "B": 2, "C": 1, "D": 0}
+
+# PubMed often tags major trials/reviews only as "Journal Article", so fall back to title/abstract signals.
+_TEXT_RULES: list[tuple[str, str, str]] = [
+    ("systematic review", "A", "Systematic review"),
+    ("meta-analysis", "A", "Meta-analysis"),
+    ("meta analysis", "A", "Meta-analysis"),
+    ("randomized controlled trial", "B", "Randomized controlled trial"),
+    ("randomised controlled trial", "B", "Randomized controlled trial"),
+    ("double-blind", "B", "Randomized trial"),
+    ("placebo-controlled", "B", "Randomized trial"),
+    ("randomly assigned", "B", "Randomized trial"),
+    ("randomized", "B", "Randomized trial"),
+    ("randomised", "B", "Randomized trial"),
+    ("prospective cohort", "C", "Cohort study"),
+    ("retrospective", "C", "Observational study"),
+    ("cohort", "C", "Cohort study"),
+    ("case-control", "C", "Case-control study"),
+]
+
+
+def _grade(pub_types: list[str], title: str = "", abstract: str = "") -> tuple[str, str]:
+    """Strongest grade from the publication types, with a title/abstract fallback for papers PubMed tags only as
+    'Journal Article'. Returns the stronger of the two signals; defaults to D."""
+    letter, label = "D", "Other"
     low = [p.lower() for p in pub_types]
-    for needle, letter, label in _GRADE_RULES:
+    for needle, lt, lb in _GRADE_RULES:
         if any(needle in p for p in low):
-            return letter, label
-    return "D", "Other"
+            letter, label = lt, lb
+            break
+    text = f"{title} {abstract[:600]}".lower()
+    for needle, lt, lb in _TEXT_RULES:
+        if needle in text and _RANK[lt] > _RANK[letter]:
+            letter, label = lt, lb
+            break
+    return letter, label
 
 
 def _get(path: str, params: dict) -> bytes:
@@ -96,7 +125,7 @@ def _efetch(pmids: list[str]) -> list[dict]:
             parts.append(f"{label}: {txt}" if label else txt)
         abstract = " ".join(p for p in parts if p)
         pub_types = [_text(pt) for pt in art.findall(".//PublicationTypeList/PublicationType")]
-        grade, grade_label = _grade(pub_types)
+        grade, grade_label = _grade(pub_types, title, abstract)
         out.append({
             "pmid": pmid, "title": title, "journal": journal, "year": year,
             "abstract": abstract, "pub_types": pub_types, "grade": grade, "grade_label": grade_label,
