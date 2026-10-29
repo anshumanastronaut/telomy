@@ -2224,6 +2224,31 @@ def clinical_drug(name: str):
     return drugref.lookup(name.strip())
 
 
+@app.get("/clinical/peptides")
+def clinical_peptides(q: str = "", pclass: str | None = None):
+    """Clinician reference: the evidence-graded, region-aware (FDA + CDSCO) peptide library. Reference, not a
+    recommender — Telomy never sells, prescribes or facilitates access to any peptide."""
+    from . import peptides
+    return peptides.library(q, pclass)
+
+
+@app.get("/clinical/peptides/{pid}")
+def clinical_peptide(pid: str):
+    from . import peptides
+    p = peptides.get(pid)
+    if not p:
+        raise HTTPException(404, "Unknown peptide.")
+    return p
+
+
+@app.get("/me/peptides")
+def me_peptides(q: str = ""):
+    """Member-safe view: name + class + grade + the regulatory reality + a route-to-clinician gate. No mechanism-as-
+    how-to, no dosing, no sourcing, never a recommendation (clinician-gated, like protocols.py)."""
+    from . import peptides
+    return peptides.member_view(q)
+
+
 @app.post("/sinc/ask")
 def ask(body: Ask):
     docs, images = _process_attachments(body.attachments)

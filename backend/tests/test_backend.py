@@ -773,3 +773,31 @@ def test_nutrition_targets_from_profile_and_labs(client):
     assert t["carbs_g"] * 4 / t["kcal"] <= 0.56 and "eaten" in r
     lose = client.get("/nutrition/targets", params={"goal": "lose"}).json()["targets"]
     assert lose["kcal"] < t["kcal"] and lose["kcal"] >= round(lose["bmr"] * 1.2) - 1
+
+
+def test_peptide_library_graded_region_aware_and_cited():
+    from app import peptides
+    lib = peptides.library()
+    items = lib["peptides"]
+    assert len(items) >= 20 and lib["classes"]
+    for p in items:
+        assert p["grade"] in {"A", "B", "C", "D"}, p["id"]
+        assert p["fda"] and p["cdsco"], p["id"]          # regulatory status for BOTH regions, always
+        assert p["citations"], p["id"]                   # every entry is cited
+    # honest grading: the hyped research peptides are D and not advised; GLP-1s are A and advised
+    pm = {p["id"]: p for p in items}
+    assert pm["bpc157"]["grade"] == "D" and not pm["bpc157"]["advised"]
+    assert pm["tb500"]["grade"] == "D" and pm["semaglutide"]["grade"] == "A" and pm["semaglutide"]["advised"]
+    assert "A" == items[0]["grade"]                      # sorted best-evidence first
+
+
+def test_peptide_member_view_is_gated_and_never_leaks_dosing():
+    from app import peptides
+    mv = peptides.member_view()
+    allowed = {"id", "name", "pclass", "grade", "regulatory", "claim", "doctor_gate", "flag"}
+    for p in mv["peptides"]:
+        assert set(p) <= allowed, p                      # no mechanism-as-howto, no dose, no sourcing, no citations leaked
+        assert p["doctor_gate"] is True
+        assert "dose" not in p and "mechanism" not in p and "safety" not in p
+    # a research-grade peptide carries the explicit not-advised flag to the member
+    assert any(p["id"] == "bpc157" and p["flag"] for p in mv["peptides"])
