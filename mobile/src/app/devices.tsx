@@ -120,6 +120,16 @@ export default function Devices() {
           </Row>
         </Card>
 
+        <Card style={{ gap: space[2] }}>
+          <Row>
+            <View style={{ flex: 1 }}>
+              <T v="label">Patch motion (IMU) capture</T>
+              <T v="small">Capture the patch's 6-axis accelerometer with labelled activities — the research capture that teaches the steps / activity / sleep models.</T>
+            </View>
+            <Button kind="secondary" title="Open" icon="waveform.path.ecg" onPress={() => router.push('/imu' as any)} />
+          </Row>
+        </Card>
+
         <Card>
           <T v="label">How sources are ranked</T>
           <T v="small">Heart rate & HRV: ECG patch is most accurate, then the ring (optical), then phone health (Apple Health / Health Connect). SpO₂ & skin temperature: the ring. Steps, workouts & VO₂max: phone health. Rhythm screening & sleep stages: the ECG patch. When two devices disagree a lot, Telomy flags the lower-quality one.</T>

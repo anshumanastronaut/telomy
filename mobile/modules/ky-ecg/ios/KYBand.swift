@@ -36,6 +36,11 @@ final class KYBand: NSObject {
         return KYInsight(sampleRate: sampleRate, restingHr: rest > 30 ? rest : 65)
     }
     private var probedAcc = false
+    private var imuFile: FileHandle?
+    private var imuCount = 0
+    private var imuStartedAt = 0.0
+    private var imuLastEmit = 0.0
+    private(set) var capturingImu = false
     private var capture: KYCapture?
     private var restingSavedAt = 0.0
     private var lastVitalAt = 0.0   // throttle for the continuous longitudinal vitals record
@@ -409,6 +414,66 @@ final class KYBand: NSObject {
         send(KYRequest.holterTime())
     }
 
+    // MARK: raw IMU capture — the patch's 6-axis accelerometer.
+    // Vendor Cmd (decompiled SDK): ECG_ACC=0x33 (data), MEAS_ACC=0x2E (spot), MEAS_ACC_CONT=0x2F (stream on/off).
+    // 0x33 frames ride the live ECG session and are otherwise unparsed (→ .other). Here we force the stream on,
+    // decode int16 LE x/y/z triplets, push a live read to JS (onImu) and write every frame verbatim to
+    // Documents/band-raw so the exact byte layout + scaling can be decoded offline (first real-device capture).
+    func startRawImu(tag: String = "imu") {
+        guard state == .connected || state == .streaming else { emit?("onImu", ["phase": "error", "message": "patch not connected"]); return }
+        if state != .streaming { wantsStream = true; beginStream() }   // accel rides the ECG measure session
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("band-raw")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if let old = try? FileManager.default.contentsOfDirectory(atPath: dir.path).sorted(), old.count > 30 {
+            for f in old.prefix(old.count - 30) { try? FileManager.default.removeItem(at: dir.appendingPathComponent(f)) }
+        }
+        let url = dir.appendingPathComponent(tag + "-" + ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-") + ".log")
+        FileManager.default.createFile(atPath: url.path, contents: "# telomy band \(tag) imu capture — '<unix> <cmdHex> <payloadHex>' per line (0x33 ecgAccel, 0x2E/0x2F acc ctrl)\n".data(using: .utf8))
+        imuFile = try? FileHandle(forWritingTo: url); _ = try? imuFile?.seekToEnd()
+        imuCount = 0; imuStartedAt = Date().timeIntervalSince1970; imuLastEmit = 0; capturingImu = true
+        send(KYPacket(command: 0x2E))                      // spot accel read
+        send(KYPacket(command: 0x2F, payload: [1]))        // continuous accel stream on
+        log("imu capture started → \(url.lastPathComponent)")
+        emit?("onImu", ["phase": "started", "path": url.lastPathComponent])
+    }
+
+    func stopRawImu() {
+        guard capturingImu else { return }
+        send(KYPacket(command: 0x2F, payload: [0]))        // continuous accel off
+        try? imuFile?.close(); imuFile = nil
+        capturingImu = false
+        log("imu capture stopped frames=\(imuCount)")
+        emit?("onImu", ["phase": "stopped", "count": imuCount])
+    }
+
+    private func onImuPacket(cmd: UInt8, payload: [UInt8]) {
+        let hex = payload.map { String(format: "%02X", $0) }.joined()
+        imuFile?.write(Data((String(format: "%.3f %02X ", Date().timeIntervalSince1970, cmd) + hex + "\n").utf8))
+        guard cmd == 0x33, payload.count >= 10 else {
+            if cmd == 0x2E || cmd == 0x2F { emit?("onImu", ["phase": "ctrl", "cmd": Int(cmd), "raw": hex]) }
+            return
+        }
+        // Hypothesis (to verify from the raw log): mirror the ECG frame — UInt24 LE frameIndex + 1 pad, then
+        // int16 LE samples interleaved x, y, z. Decode triplets and surface the latest for a live readout.
+        var tris: [[Int]] = []
+        var i = 4
+        while i + 5 < payload.count {
+            let x = Int(Int16(bitPattern: UInt16(payload[i])     | UInt16(payload[i + 1]) << 8))
+            let y = Int(Int16(bitPattern: UInt16(payload[i + 2]) | UInt16(payload[i + 3]) << 8))
+            let z = Int(Int16(bitPattern: UInt16(payload[i + 4]) | UInt16(payload[i + 5]) << 8))
+            tris.append([x, y, z]); i += 6
+        }
+        imuCount += tris.count
+        let now = Date().timeIntervalSince1970
+        if now - imuLastEmit > 0.2, let last = tris.last {
+            imuLastEmit = now
+            let hz = imuStartedAt > 0 ? Double(imuCount) / max(1, now - imuStartedAt) : 0
+            emit?("onImu", ["phase": "data", "count": imuCount, "ax": last[0], "ay": last[1], "az": last[2],
+                            "perFrame": tris.count, "hz": Int(hz.rounded()),
+                            "raw": payload.prefix(28).map { String(format: "%02X", $0) }.joined()])
+        }
+    }
+
     private func handle(_ m: KYMessage) {
         if sync?.handle(m) == true { return }
         switch m {
@@ -442,6 +507,7 @@ final class KYBand: NSObject {
         case .holterTime(let t): holterStart = t; publish()
         case .ecgFrame(let f): handleFrame(f)
         case .other(let cmd, let payload):
+            if capturingImu { onImuPacket(cmd: cmd, payload: payload) }
             log(String(format: "other cmd=0x%02X len=%d %@", cmd, payload.count, payload.prefix(48).map { String(format: "%02X", $0) }.joined(separator: " ")))
         default: break
         }
