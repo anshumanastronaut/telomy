@@ -138,23 +138,11 @@ def me_environment(name: str | None = None, lat: float | None = None, lon: float
 
 @router.get("/organs")
 def me_organs():
-    """Organ-specific aging clocks — per-organ age + age-acceleration (which system is aging fastest) from the
-    signed-in user's latest blood panel."""
-    from .llx import organ_tools as _o
-    if not _o.available():
-        return {"status": "unavailable", "note": "organ clocks not installed"}
-    panel = _panel()
-    if len([k for k in panel if k not in ("age", "sex")]) < 4:
-        return {"status": "need_more_data", "note": "Upload a blood report (CBC + metabolic panel) to see organ ages."}
-    # Chronological age + sex from the profile — _panel()'s own SELECT reads columns that don't exist (profile is
-    # JSON), so without this the age_acceleration the twin displays is always null. engine.age_on() computes age
-    # from the stored dob, exactly as /profile does.
-    from . import engine
-    age = engine.age_on()
-    prof = engine.profile() or {}
-    if prof.get("sex"):
-        panel["sex"] = 1 if str(prof["sex"]).lower().startswith("m") else 2
-    return _o.organ_ages(panel, chronological_age=float(age) if age else None)
+    """Per-organ biological ages for the 3D twin — all eight organ systems (Heart, Metabolic, Liver, Kidney,
+    Immune, Lung, Muscle & Bone, Brain), each surfaced once enough of its own data is on file: trained NHANES
+    blood clocks + clinical lung/muscle/bone + imaging/NfL brain. Relative signal, decision-support."""
+    from . import organs as _organs
+    return _organs.organ_ages_for_member()
 
 
 @router.post("/rhythm")
