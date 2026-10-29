@@ -43,6 +43,24 @@ const METHODS: Record<string, { title: string; how: string; sources: string[] }>
   },
 };
 
+// "Signal, not verdict": the person's own normal range for a score + a one-line read of where today sits, so the
+// headline is never a bare number. Built from the last 30 nights (excluding today), honest about the baseline.
+function heroRange(metric: string, w: Wellness): { band: { lo: number; hi: number } | null; verdict: { text: string; tone?: 'good' | 'watch' | 'muted' } | null } {
+  const nights = w?.nights ?? [];
+  if (nights.length < 3) return { band: null, verdict: nights.length ? { text: `Building your normal range (${nights.length}/14 nights)`, tone: 'muted' } : null };
+  const series = nightSeries(nights);
+  const f = metric === 'recovery' ? (x: any) => x.recovery : (x: any) => x.sleep;
+  const hist = series.slice(0, -1).slice(-30).map(f).filter((v: any): v is number => typeof v === 'number');
+  const b = normalBand(hist);
+  const score = metric === 'recovery' ? w.recovery?.score : w.sleep?.score;
+  if (!b || hist.length < 4) return { band: b ? { lo: b.lo, hi: b.hi } : null, verdict: { text: `Building your normal range (${hist.length}/14 nights)`, tone: 'muted' } };
+  const band = { lo: b.lo, hi: b.hi };
+  if (score == null) return { band, verdict: null };
+  if (score >= b.lo && score <= b.hi) return { band, verdict: { text: 'A typical night for you', tone: 'muted' } };
+  if (score < b.lo) return { band, verdict: { text: "Below your usual — one night isn't a trend", tone: 'watch' } };
+  return { band, verdict: { text: 'Above your usual — a strong night', tone: 'good' } };
+}
+
 export default function WellnessDetail() {
   const { metric = 'recovery' } = useLocalSearchParams<{ metric: string }>();
   const p = usePalette();
@@ -51,13 +69,14 @@ export default function WellnessDetail() {
   const m = METHODS[metric] ?? METHODS.recovery;
   const [hrKind, setHrKind] = React.useState<'hr' | 'hrv'>('hr');
   if (w.loading) return <Screen edges={[]}><Stack.Screen options={{ title: m.title }} /><Loading what="Analysing your night on the phone… (about half a minute)" /></Screen>;
+  const range = (metric === 'sleep' || metric === 'recovery') ? heroRange(metric, w) : null;
 
   return (
     <Screen edges={[]}>
       <Stack.Screen options={{ title: m.title }} />
       {metric === 'recovery' ? (
         <>
-          <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} sub={w.recovery.calibrating ?? (w.recovery.confidence === 'building' ? 'Building your baseline (under 14 nights): treat as provisional' : undefined)} />
+          <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} band={range?.band} verdict={range?.verdict} sub={w.recovery.calibrating ?? (w.recovery.confidence === 'building' ? 'Building your baseline (under 14 nights): treat as provisional' : undefined)} />
           {w.illness?.flagged ? (
             <Card tone="copper" style={{ gap: space[1] }}>
               <T v="label">Your body may be fighting something</T>
@@ -94,10 +113,11 @@ export default function WellnessDetail() {
       ) : null}
 
       {metric === 'sleep' ? (
-        w.last ? (
+        <>
+        <SleepFeeling />
+        {w.last ? (
           <>
-            <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start + (w.last.onsetMin ?? 0) * 60)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
-            <SleepFeeling />
+            <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} band={range?.band} verdict={range?.verdict} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start + (w.last.onsetMin ?? 0) * 60)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
             {w.last.onsetMin != null && w.last.onsetMin >= 15 ? (
               <Card style={{ gap: 2 }}>
                 <Row><T v="small" style={{ flex: 1 }}>In bed</T><T v="num" style={{ fontSize: 16 }}>{fmtClock(w.last.start)}</T></Row>
@@ -135,7 +155,8 @@ export default function WellnessDetail() {
             <Trends w={w} kind="sleep" />
             {w.last.source === 'patch' ? <Button kind="secondary" title="Open the full session" icon="folder" onPress={() => router.push('/captures')} /> : null}
           </>
-        ) : <Empty title="No night yet" body="Wear the patch or ring to bed (Telomy detects sleep on its own), or connect your phone's health app for its sleep." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />
+        ) : <Empty title="No night yet" body="Wear the patch or ring to bed (Telomy detects sleep on its own), or connect your phone's health app for its sleep." actions={[{ title: 'Start Overnight sleep', onPress: () => router.push('/capture') }]} />}
+        </>
       ) : null}
 
       {metric === 'strain' ? (

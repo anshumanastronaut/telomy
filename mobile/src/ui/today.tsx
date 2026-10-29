@@ -171,11 +171,15 @@ export function TodayHero({ w }: { w: Wellness }) {
 }
 
 /** Dark hero for metric detail screens, continuous with Home. */
-export function DetailHero({ value, max = 100, unit, label, sub, color, dial }: {
+export function DetailHero({ value, max = 100, unit, label, sub, color, dial, band, verdict }: {
   value: number | null; max?: number; unit?: string; label: string; sub?: string; color: string; dial?: boolean;
+  // "Signal, not verdict": the person's own normal range for this score, and a one-line read of where today sits.
+  band?: { lo: number; hi: number } | null;
+  verdict?: { text: string; tone?: 'good' | 'watch' | 'muted' } | null;
 }) {
   const tenths = useCountUp(value == null ? null : Math.round(max === 100 ? value : value * 10));
   const shown = tenths == null ? '—' : max === 100 ? `${tenths}` : (tenths / 10).toFixed(1);
+  const vColor = verdict?.tone === 'good' ? '#5CC9A7' : verdict?.tone === 'watch' ? '#E0A458' : onInk.secondary;
   return (
     <LinearGradient colors={[C.ink, C.ink2]} style={{ borderRadius: 28, padding: space[5], alignItems: 'center', gap: space[2], borderWidth: 1, borderColor: onInk.hairline }}>
       {dial ? <RecoveryDial value={value} label={label} /> : (
@@ -185,7 +189,9 @@ export function DetailHero({ value, max = 100, unit, label, sub, color, dial }: 
           <T v="h3" color={color}>{label}</T>
         </>
       )}
-      {sub ? <T v="small" color={onInk.secondary} style={{ textAlign: 'center', marginTop: dial ? -12 : 0 }}>{sub}</T> : null}
+      {band ? <T v="small" color={onInk.secondary} style={{ textAlign: 'center', marginTop: dial ? -12 : 0 }}>Your normal: {Math.round(band.lo)}–{Math.round(band.hi)}</T> : null}
+      {verdict ? <T v="small" color={vColor} style={{ textAlign: 'center', fontWeight: '600' }}>{verdict.text}</T> : null}
+      {sub ? <T v="small" color={onInk.secondary} style={{ textAlign: 'center', marginTop: band || verdict ? 0 : (dial ? -12 : 0) }}>{sub}</T> : null}
     </LinearGradient>
   );
 }
