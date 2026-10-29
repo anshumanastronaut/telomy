@@ -3880,6 +3880,51 @@ def bioage_all():
     return bioage.all_ages()
 
 
+class SleepFeeling(BaseModel):
+    rating: int                      # 1 awful · 2 groggy · 3 ok · 4 refreshed · 5 amazing
+    note: str | None = None
+    day: str | None = None
+
+
+_SLEEP_LABELS = ["Awful", "Poor", "As usual", "Good", "Amazing"]
+
+
+@app.post("/me/sleep-feeling")
+def save_sleep_feeling(body: SleepFeeling):
+    """Subjective morning sleep rating, stored with a snapshot of the night's OBJECTIVE sleep so we can learn the
+    person-specific gap between how sleep felt and what the numbers said. One rating per day (replaces today's)."""
+    day = (body.day or today())[:10]
+    r = max(1, min(5, int(body.rating)))
+    obj = {k: features._val(k, day)[0] for k in ("sleep_score", "sleep_hours", "deep_sleep", "rem_sleep", "resting_hr", "hrv")}
+    db.exec_("DELETE FROM events WHERE kind = 'sleep_feeling' AND substr(ts,1,10) = ?", (day,))
+    db.exec_("INSERT INTO events (ts, kind, label, severity, data, source) VALUES (?,?,?,?,?,?)",
+             (day + "T08:00:00", "sleep_feeling", _SLEEP_LABELS[r - 1], r,
+              db.j({"rating": r, "note": (body.note or "")[:400], "objective": obj}), "self"))
+    db.exec_("INSERT OR IGNORE INTO notif_read (key) VALUES (?)", ("sleep_checkin:How did you sleep?",))
+    return {"ok": True, "rating": r, "label": _SLEEP_LABELS[r - 1]}
+
+
+@app.get("/me/sleep-feeling")
+def sleep_feeling_history(days: int = 90):
+    """History of subjective sleep ratings paired with the night's objective metrics, plus a simple pattern: what
+    nights that felt good (≥4) vs poor (≤2) looked like by the numbers — where feeling and metrics diverge is the signal."""
+    rows = db.rows("SELECT ts, severity, data FROM events WHERE kind = 'sleep_feeling' ORDER BY ts DESC LIMIT ?", (days,))
+    items = [{"day": r["ts"][:10], "rating": r["severity"], **db.unj(r["data"], {})} for r in rows]
+    today_item = next((x for x in items if x["day"] == today()[:10]), None)
+
+    def avg(sel, key):
+        vs = [x.get("objective", {}).get(key) for x in items if x.get("rating") and sel(x["rating"])
+              and x.get("objective", {}).get(key) is not None]
+        return round(sum(vs) / len(vs), 1) if vs else None
+
+    patterns = {k: {"felt_good": avg(lambda r: r >= 4, k), "felt_poor": avg(lambda r: r <= 2, k)}
+                for k in ("sleep_score", "sleep_hours", "deep_sleep", "rem_sleep", "resting_hr", "hrv")}
+    return {"count": len(items), "answered_today": today_item is not None, "today": today_item,
+            "items": items, "patterns": patterns,
+            "note": "Felt-good vs felt-poor nights, by the numbers. Where your feeling and the metrics disagree is "
+                    "where we learn what restorative sleep looks like for you."}
+
+
 @app.get("/cellular/explain")
 def cellular_explain(name: str):
     """What a supplement/medicine/food/stressor does at the cellular level, and which markers it moves."""

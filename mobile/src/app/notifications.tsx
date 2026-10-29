@@ -6,7 +6,7 @@ import { api, fmtDate, useApi } from '@/lib/api';
 import { usePalette } from '@/lib/theme';
 import { Card, Divider, Empty, Icon, Loading, Row, Screen, T } from '@/ui/core';
 
-const ICON: Record<string, any> = { retest: 'testtube.2', review: 'stethoscope', insight: 'sparkle', appointment: 'calendar', medication: 'pills', shared_doc: 'doc.text', result: 'checkmark.seal', abnormal: 'exclamationmark.triangle', critical: 'exclamationmark.octagon' };
+const ICON: Record<string, any> = { retest: 'testtube.2', review: 'stethoscope', insight: 'sparkle', appointment: 'calendar', medication: 'pills', shared_doc: 'doc.text', result: 'checkmark.seal', abnormal: 'exclamationmark.triangle', critical: 'exclamationmark.octagon', sleep_checkin: 'moon.stars' };
 const ALERT = '#D3523F';
 
 export default function Notifications() {

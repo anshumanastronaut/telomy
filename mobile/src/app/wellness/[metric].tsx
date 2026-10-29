@@ -11,6 +11,7 @@ import { C, DetailHero } from '@/ui/today';
 import { TrendChart } from '@/ui/trends';
 import { nightSeries, normalBand, type Wellness } from '@/lib/wellness';
 import { SOURCE_LABEL } from '@/lib/sleepfuse';
+import { SleepFeeling } from '@/ui/sleepfeeling';
 import { StageBreakdown, StrainColumns, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
 import { SleepHrRainbow } from '@/ui/welltory';
 
@@ -96,6 +97,7 @@ export default function WellnessDetail() {
         w.last ? (
           <>
             <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start + (w.last.onsetMin ?? 0) * 60)} – ${fmtClock(w.last.end)}`} color={C.sleep} />
+            <SleepFeeling />
             {w.last.onsetMin != null && w.last.onsetMin >= 15 ? (
               <Card style={{ gap: 2 }}>
                 <Row><T v="small" style={{ flex: 1 }}>In bed</T><T v="num" style={{ fontSize: 16 }}>{fmtClock(w.last.start)}</T></Row>

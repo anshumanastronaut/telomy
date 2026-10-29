@@ -192,6 +192,18 @@ def notifications(today: str) -> list[dict]:
         if m["active"] and m["taken_today"] < len(m["times"]):
             out.append({"kind": "medication", "title": f"{m['name']} — {len(m['times']) - m['taken_today']} dose(s) left today",
                         "body": ", ".join(m["times"]), "route": "/meds", "ts": today})
+    # Morning "How did you sleep?" — ask once a day, only when there's a night to rate and it isn't answered yet.
+    # The subjective rating is paired with the night's objective metrics so we learn the person-specific gap between
+    # how sleep *felt* and what the numbers said (sleep misperception is a real, useful signal).
+    try:
+        answered = db.one("SELECT 1 AS x FROM events WHERE kind = 'sleep_feeling' AND substr(ts,1,10) = ?", (today,))
+        slept = _val("sleep_score", today)[0] or _val("sleep_hours", today)[0]
+        if not answered and slept:
+            out.append({"kind": "sleep_checkin", "title": "How did you sleep?",
+                        "body": "A quick tap on how rested you feel — we learn what good sleep looks like for you.",
+                        "route": "/sleep-feeling", "ts": today})
+    except Exception:
+        pass
     read = {r["key"] for r in db.rows("SELECT key FROM notif_read")}
     for n in out:
         n["key"] = f"{n['kind']}:{n['title']}"

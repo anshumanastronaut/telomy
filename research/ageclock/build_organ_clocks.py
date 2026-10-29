@@ -3,8 +3,9 @@
 
 One age-regressor per organ system, trained only on that system's biomarkers. The predicted value is the
 "organ age"; the residual (predicted − chronological) is the **age acceleration** — the actual signal (is this
-person's liver/kidney/metabolism/immune system older or younger than their birthday). Mirrors the 2026 Cell
-"Digital Aging Twin" approach (organs age unevenly), grounded in routine blood chemistry we already parse.
+person's liver/kidney/metabolism/immune system older or younger than their birthday). Follows the
+organ-specific aging literature (Oh 2023 Nature; Tian 2023 Nat Med; Nie 2022 Cell Reports — organs age
+unevenly), grounded in the routine blood chemistry we already parse.
 """
 import os, json, warnings
 import numpy as np, pandas as pd, joblib
@@ -35,7 +36,7 @@ def model():
 
 results = {"_meta": {"source": "NHANES 2009-2018 (49.7k adults); organ-specific age clocks from routine chemistry",
                      "method": "predict chronological age per organ panel; residual = age acceleration",
-                     "reference": "mirrors Cell 2026 Digital Aging Twin (organ-specific clocks)"}}
+                     "reference": "Oh 2023 Nature; Tian 2023 Nat Med; Nie 2022 Cell Reports (organ-specific clocks)"}}
 print(f"{'organ':<16} {'n':>6} {'feats':>5}  {'MAE':>6}  {'R2':>6}  {'r':>6}  accel σ")
 for organ, markers in ORGANS.items():
     feats = ["sex"] + [m for m in markers if m in df.columns]

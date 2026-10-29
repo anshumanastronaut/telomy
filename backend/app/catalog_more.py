@@ -31,7 +31,13 @@ MORE_MARKERS = {
     "prolactin": ("Prolactin", "hormones", "ng/mL", 4, 15, "mid", ["prolactin"], "2842-3"),
     "progesterone": ("Progesterone", "hormones", "ng/mL", 0.2, 1.4, "mid", ["progesterone"], "2839-9"),
     "amh": ("Anti-Müllerian hormone (AMH)", "hormones", "ng/mL", 1.0, 4.0, "mid", ["anti-müllerian hormone", "anti-mullerian hormone", "amh"], "38476-3"),
-    "psa": ("PSA (total)", "hormones", "ng/mL", 0, 1.5, "low", ["psa (total)", "prostate-specific antigen"], "2857-1"),
+    "psa": ("PSA (total)", "hormones", "ng/mL", 0, 1.5, "low", ["psa (total)", "prostate-specific antigen", "prostate specific antigen", "psa, total", "psa total", "total psa"], "2857-1"),
+    "dht": ("Dihydrotestosterone (DHT)", "hormones", "ng/dL", 30, 85, "mid", ["dihydrotestosterone", "dht"], "13932-9"),
+    "ohp17": ("17-Hydroxyprogesterone", "hormones", "ng/dL", 0, 220, "mid", ["17-hydroxyprogesterone", "17-ohp", "17 ohp", "17-oh progesterone"], "1668-3"),
+    "psa_free": ("Free PSA", "hormones", "ng/mL", None, None, "info", ["psa free", "free psa", "psa, free", "prostate-specific antigen, free", "prostate specific antigen, free"], "10886-0"),
+    "psa_pct_free": ("% Free PSA", "hormones", "%", 25, 100, "high", ["psa % free", "% free psa", "percent free psa", "free psa %", "psa free %", "psa free percent", "free psa ratio", "free/total psa ratio"], "12841-3"),
+    "t3_uptake": ("T3 uptake", "hormones", "%", 24, 39, "mid", ["t3 uptake", "t3 resin uptake", "thyroid uptake"], "3050-2"),
+    "fti": ("Free thyroxine index", "hormones", "", 1.2, 4.9, "mid", ["free thyroxine index", "fti", "ft4 index"], "3027-0"),
     # iron, vitamins, minerals, electrolytes
     "iron": ("Serum iron", "micronutrients", "µg/dL", 60, 170, "mid", ["serum iron"], "2498-4"),
     "tibc": ("Total iron-binding capacity", "micronutrients", "µg/dL", 250, 400, "mid", ["total iron-binding capacity", "tibc"], "2500-7"),
@@ -44,6 +50,11 @@ MORE_MARKERS = {
     "calcium": ("Calcium (total)", "micronutrients", "mg/dL", 8.8, 10.2, "mid", ["calcium (total)", "serum calcium"], "17861-6"),
     "sodium": ("Sodium", "micronutrients", "mmol/L", 136, 144, "mid", ["sodium"], "2951-2"),
     "potassium": ("Potassium", "micronutrients", "mmol/L", 3.8, 5.0, "mid", ["potassium"], "2823-3"),
+    "vitc": ("Vitamin C (ascorbic acid)", "micronutrients", "mg/dL", 0.4, 2.0, "mid", ["vitamin c", "ascorbic acid"], "1897-8"),
+    # LOINC left blank: the spec's 2888-6 is urine protein (already used by u_protein), not vitamin K.
+    "vitk1": ("Vitamin K1 (phylloquinone)", "micronutrients", "ng/mL", 0.1, 2.2, "mid", ["vitamin k", "vitamin k1", "phylloquinone"], ""),
+    "vitb6": ("Vitamin B6 (PLP)", "micronutrients", "µg/L", 5, 50, "high", ["vitamin b6", "pyridoxal-5-phosphate", "plp"], "2064-7"),
+    "rbc_folate": ("RBC folate", "micronutrients", "ng/mL", 280, 900, "high", ["rbc folate", "red cell folate", "erythrocyte folate"], "2285-5"),
     # heart & vascular function
     "qtc": ("QTc (ECG)", "cardio", "ms", 350, 440, "mid", ["qtc (ecg)", "qtc"], "8636-3"),
     "ecg_hr": ("Resting heart rate (ECG)", "cardio", "bpm", 50, 70, "mid", ["resting heart rate (ecg)"], "8867-4"),
@@ -76,6 +87,14 @@ MORE_MARKERS = {
     "ige_mite": ("Specific IgE: house dust mite", "immune", "kUA/L", 0, 0.35, "low", ["specific ige: house dust mite"], ""),
     "ige_pollen": ("Specific IgE: grass pollen", "immune", "kUA/L", 0, 0.35, "low", ["specific ige: grass pollen"], ""),
     "g6pd": ("G6PD activity", "immune", "U/g Hb", 7.0, 20.5, "high", ["g6pd activity", "g6pd"], "32546-4"),
+    "ccp_ab": ("Anti-CCP antibody", "immune", "U/mL", 0, 20, "low", ["cyclic citrullinated peptide", "anti-ccp", "ccp antibody"], "33935-8"),
+    "dsdna_ab": ("Anti-dsDNA antibody", "immune", "IU/mL", 0, 30, "low", ["double-stranded dna antibodies", "anti-dsdna", "dsdna"], "5131-8"),
+    "rf": ("Rheumatoid factor", "immune", "IU/mL", 0, 14, "low", ["rheumatoid factor", "rf"], "11572-5"),
+    "iga_serum": ("Immunoglobulin A (serum)", "immune", "mg/dL", 70, 400, "mid", ["immunoglobulin a", "serum iga"], "2458-8"),
+    "ena_ssa_ro": ("Anti-SS-A (Ro)", "immune", "", None, None, "absent", ["anti-ro (ss-a)", "anti-ro", "anti-ss-a", "ss-a"], ""),
+    "ena_ssb_la": ("Anti-SS-B (La)", "immune", "", None, None, "absent", ["anti-ss-b", "anti-la", "ss-b", "la antibody"], ""),
+    "ena_sm": ("Anti-Smith (Sm)", "immune", "", None, None, "absent", ["smith antibody", "anti-smith", "anti-sm"], ""),
+    "ena_rnp": ("Anti-RNP", "immune", "", None, None, "absent", ["rnp antibody", "anti-rnp"], ""),
     # urine routine
     "u_ph": ("Urine pH", "urine", "", 5.0, 7.0, "mid", ["urine ph"], "2756-5"),
     "u_sg": ("Urine specific gravity", "urine", "", 1.005, 1.025, "mid", ["urine specific gravity"], "2965-2"),
@@ -83,6 +102,16 @@ MORE_MARKERS = {
     "u_glucose": ("Urine glucose", "urine", "", None, None, "absent", ["urine glucose"], "2350-7"),
     "u_blood": ("Urine blood", "urine", "", None, None, "absent", ["urine blood"], "5794-3"),
     "u_pus": ("Urine pus cells", "urine", "/hpf", 0, 5, "low", ["urine pus cells"], "5821-4"),
+    "u_ketones": ("Urine ketones", "urine", "", None, None, "absent", ["urine ketones"], "2514-8"),
+    "u_nitrite": ("Urine nitrite", "urine", "", None, None, "absent", ["urine nitrite"], "5802-4"),
+    "u_leuk_est": ("Urine leukocyte esterase", "urine", "", None, None, "absent", ["urine leukocyte esterase", "leukocyte esterase"], "5799-2"),
+    "u_bilirubin": ("Urine bilirubin", "urine", "", None, None, "absent", ["urine bilirubin"], "5770-3"),
+    "u_urobilinogen": ("Urobilinogen", "urine", "mg/dL", 0, 1.0, "low", ["urobilinogen"], "19161-9"),
+    "u_rbc": ("Urine RBCs", "urine", "/hpf", 0, 2, "low", ["urine rbcs", "urine red blood cells"], "13945-1"),
+    "u_epithelial": ("Urine epithelial cells", "urine", "/hpf", 0, 5, "low", ["urine epithelial cells", "urine squamous epithelial cells"], "20453-7"),
+    "u_casts": ("Urine casts", "urine", "", None, None, "absent", ["urine granular casts", "urine hyaline casts", "urine casts"], ""),
+    "u_bacteria": ("Urine bacteria", "urine", "", None, None, "absent", ["urine bacteria"], "5769-5"),
+    "u_crystals": ("Urine crystals", "urine", "", None, None, "absent", ["urine crystals"], ""),
     # FibroScan (screening panel)
     "lsm": ("Liver stiffness (FibroScan)", "screening", "kPa", 2, 7, "low", ["liver stiffness (fibroscan)", "liver stiffness"], ""),
     "cap": ("Controlled attenuation parameter (FibroScan)", "screening", "dB/m", 0, 248, "low", ["controlled attenuation parameter"], ""),
@@ -94,6 +123,47 @@ MORE_MARKERS = {
     "kynurenate": ("Kynurenic acid", "functional", "mmol/mol creat", 0, 6, "low", ["kynurenic acid"], ""),
     "hiaa": ("5-HIAA (serotonin metabolite)", "functional", "mmol/mol creat", 3.8, 12, "mid", ["5-hiaa"], ""),
 }
+
+# ---- Tier 2 bulk panels (uniform unit/direction; built from compact tables, tuple shape identical to the rows above)
+# Specific-IgE allergens (immune): sensitisation >=0.35 kUA/L. id suffix, display name, extra aliases.
+_ALLERGENS = [
+    ("alternaria", "Alternaria alternata", ["alternaria"]), ("aspergillus", "Aspergillus fumigatus", ["aspergillus"]),
+    ("dfarinae", "D. farinae (house dust mite)", ["d. farinae", "dermatophagoides farinae"]),
+    ("dpter", "D. pteronyssinus (house dust mite)", ["d. pteronyssinus", "dermatophagoides pteronyssinus"]),
+    ("bermuda", "Bermuda grass", ["bermuda grass"]), ("timothy", "Timothy grass", ["timothy grass"]),
+    ("cat", "Cat dander", ["cat dander"]), ("dog", "Dog dander", ["dog dander"]), ("cockroach", "Cockroach", ["cockroach"]),
+    ("pigweed", "Pigweed", ["pigweed"]), ("ragweed", "Ragweed", ["ragweed"]), ("cedar", "Mountain cedar", ["mountain cedar", "cedar tree"]),
+    ("mugwort", "Mugwort", ["mugwort"]), ("penicillium", "Penicillium notatum", ["penicillium"]), ("birch", "Birch", ["birch tree"]),
+    ("sycamore", "Sycamore", ["sycamore"]), ("ash", "Ash tree", ["ash tree", "white ash"]), ("elm", "Elm tree", ["elm tree"]),
+    ("mulberry", "Mulberry", ["mulberry"]), ("oak", "Oak tree", ["oak tree", "white oak"]),
+]
+ALLERGEN_IDS = [f"ige_{k}" for k, _, _ in _ALLERGENS]
+MORE_MARKERS.update({
+    f"ige_{k}": (f"Specific IgE: {n}", "immune", "kUA/L", 0, 0.35, "low", list(dict.fromkeys([f"specific ige: {k_al}" for k_al in [n.lower()] + a] + a)), "")
+    for k, n, a in _ALLERGENS
+})
+
+# Organic acids (OAT, urine, mmol/mol creat) - functional-medicine grade; reported for context, never scored (better="info").
+_OAT = [  # (id suffix, name, aliases, family, evidence)
+    ("citric", "Citric acid", ["citric acid"], "Krebs", "C"), ("aconitic", "cis-Aconitic acid", ["cis-aconitic acid", "aconitic acid"], "Krebs", "C"),
+    ("isocitric", "Isocitric acid", ["isocitric acid"], "Krebs", "C"), ("akg", "α-Ketoglutaric acid", ["alpha-ketoglutaric acid", "α-ketoglutaric acid", "2-oxoglutaric acid"], "Krebs", "C"),
+    ("succinic", "Succinic acid", ["succinic acid"], "Krebs", "C"), ("fumaric", "Fumaric acid", ["fumaric acid"], "Krebs", "C"),
+    ("malic", "Malic acid", ["malic acid"], "Krebs", "C"), ("hmg", "3-Hydroxy-3-methylglutaric acid (HMG)", ["3-hydroxy-3-methylglutaric acid", "hmg"], "Krebs", "C"),
+    ("adipic", "Adipic acid", ["adipic acid"], "Fatty-acid oxidation", "C"), ("suberic", "Suberic acid", ["suberic acid"], "Fatty-acid oxidation", "C"),
+    ("sebacic", "Sebacic acid", ["sebacic acid"], "Fatty-acid oxidation", "C"), ("ethylmalonic", "Ethylmalonic acid", ["ethylmalonic acid"], "Fatty-acid oxidation", "C"),
+    ("hva", "Homovanillic acid (HVA)", ["homovanillic acid", "hva"], "Neurotransmitter", "C"), ("vma", "Vanillylmandelic acid (VMA)", ["vanillylmandelic acid", "vma"], "Neurotransmitter", "C"),
+    ("dopac", "DOPAC", ["dopac", "3,4-dihydroxyphenylacetic acid"], "Neurotransmitter", "D"), ("quinolinic", "Quinolinic acid", ["quinolinic acid"], "Neurotransmitter", "D"),
+    ("hippuric", "Hippuric acid", ["hippuric acid"], "Microbial", "D"), ("cresol4", "4-Cresol", ["4-cresol", "p-cresol"], "Microbial", "D"),
+    ("hphpa", "HPHPA (Clostridia marker)", ["3-(3-hydroxyphenyl)-3-hydroxypropionic acid", "hphpa"], "Microbial", "D"),
+    ("dhppa", "DHPPA (Clostridia marker)", ["3,4-dihydroxyphenylpropionic acid", "dhppa"], "Microbial", "D"),
+    ("arabinose", "Arabinose (yeast marker)", ["arabinose"], "Microbial", "D"), ("tartaric", "Tartaric acid (yeast marker)", ["tartaric acid"], "Microbial", "D"),
+    ("pyridoxic", "Pyridoxic acid (B6)", ["pyridoxic acid", "4-pyridoxic acid"], "B-vitamin", "D"), ("pantothenic", "Pantothenic acid (B5)", ["pantothenic acid"], "B-vitamin", "D"),
+    ("glutaric", "Glutaric acid (B2)", ["glutaric acid"], "B-vitamin", "D"),
+]
+OAT_IDS = [f"oat_{k}" for k, *_ in _OAT]
+MORE_MARKERS.update({
+    f"oat_{k}": (f"{n} (OAT, {fam.lower()})", "functional", "mmol/mol creat", None, None, "info", a, "") for k, n, a, fam, _ in _OAT
+})
 
 MORE_EVIDENCE = {
     **{m: "A" for m in ["ft4", "tpo_ab", "psa", "tsat", "iron", "tibc", "folate", "sodium", "potassium", "calcium", "qtc", "afib_burden",
@@ -161,3 +231,54 @@ MORE_PREP = {
     "car": "Collect at waking, +30 and +45 min before eating, brushing or caffeine.",
     "g6pd": "Not during or within 3 months of a haemolytic episode or transfusion.",
 }
+
+# ---- 2026-10-29 biomarker gap expansion: evidence grades, zones, concerns, prep (Tier 1 + Tier 2)
+MORE_EVIDENCE.update({
+    **{m: "A" for m in ["ohp17", "psa_free", "psa_pct_free", "ccp_ab", "dsdna_ab", "rf", "iga_serum", "u_ketones", "u_nitrite",
+                        "u_leuk_est", "u_bilirubin", "u_urobilinogen", "u_rbc", "u_epithelial", "u_bacteria"]},
+    **{m: "B" for m in ["vitc", "vitb6", "rbc_folate", "dht", "t3_uptake", "fti", "ena_ssa_ro", "ena_ssb_la", "ena_sm", "ena_rnp",
+                        "u_casts", "u_crystals", *ALLERGEN_IDS]},
+    "vitk1": "C",  # assay variability; functional (PIVKA-II) status markers are better but not in the catalogue
+    # functional-medicine grade: Krebs / fatty-acid / neurotransmitter OAT are C, microbial & B-vitamin OAT are D
+    **{f"oat_{k}": ev for k, _, _, _, ev in _OAT},
+})
+
+_IGE_BANDS = [(0.35, "Not sensitised", "optimal"), (3.5, "Sensitised (class 1–2)", "out_of_range"), (None, "Strongly sensitised", "out_of_range")]
+MORE_ZONES.update({
+    **{m: _IGE_BANDS for m in ALLERGEN_IDS},
+    "ccp_ab": [(20, "Negative", "optimal"), (60, "Weak to moderate positive", "out_of_range"), (None, "Strong positive (>3× ULN)", "out_of_range")],
+    "rf": [(14, "Negative", "optimal"), (42, "Low positive", "out_of_range"), (None, "High positive (>3× ULN)", "out_of_range")],
+    "dsdna_ab": [(30, "Negative", "optimal"), (75, "Borderline", "in_range"), (None, "Positive", "out_of_range")],
+    # %free PSA is only informative when total PSA is 4–10 ng/mL (prostate cancer likelihood falls as the free fraction rises).
+    # Stored under "male" (PSA is a male test); zone_for() falls back to it for any other profile sex.
+    "psa_pct_free": {"male": [(10, "Very low — high suspicion if total PSA 4–10", "out_of_range"), (15, "Low — raised suspicion", "out_of_range"),
+                              (25, "Borderline", "in_range"), (None, "Reassuring", "optimal")]},
+})
+
+MORE_CONCERNS_EXTRA = {
+    "Hormones & thyroid": ["dht", "ohp17", "psa_free", "psa_pct_free", "t3_uptake", "fti"],
+    "Nutrients": ["vitc", "vitk1", "vitb6", "rbc_folate"],
+    "Inflammation & immunity": ["ccp_ab", "dsdna_ab", "rf", "iga_serum", "ena_ssa_ro", "ena_ssb_la", "ena_sm", "ena_rnp"],
+    "Kidney": ["u_leuk_est", "u_nitrite", "u_rbc", "u_casts", "u_bacteria", "u_crystals"],
+    "Liver": ["u_bilirubin", "u_urobilinogen"],
+    "Blood sugar & metabolism": ["u_ketones"],
+    "Cancer screening": ["psa_free", "psa_pct_free"],
+    "Lungs & breathing": ALLERGEN_IDS,
+    "Stress & nervous system": ["oat_hva", "oat_vma", "oat_dopac", "oat_quinolinic"],
+    "Gut": ["oat_hippuric", "oat_cresol4", "oat_hphpa", "oat_dhppa", "oat_arabinose", "oat_tartaric"],
+}
+for _k, _v in MORE_CONCERNS_EXTRA.items():
+    MORE_CONCERNS.setdefault(_k, [])
+    MORE_CONCERNS[_k] += [m for m in _v if m not in MORE_CONCERNS[_k]]
+
+MORE_PREP.update({
+    "vitc": "Fasted draw; protect the sample from light and deliver on ice, as vitamin C degrades quickly.",
+    "vitb6": "Fasted; skip B6 or multivitamin supplements for 24 h before the draw.",
+    "dht": "Draw between 7 and 10 am.",
+    "ohp17": "Women: follicular phase (day 2–5); draw in the morning.",
+    "psa_pct_free": "Only informative when total PSA is 4–10 ng/mL; same prep as PSA.",
+    "ccp_ab": "No preparation; interpret together with rheumatoid factor.",
+    "u_nitrite": "First-morning mid-stream urine, processed within 2 hours.",
+    "u_ketones": "First-morning mid-stream urine; note if fasting or on a low-carbohydrate diet.",
+    "oat_citric": "First-morning urine; functional-medicine grade, so interpret with a clinician.",
+})

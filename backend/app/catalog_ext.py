@@ -38,6 +38,20 @@ EXT_MARKERS = {
     "dheas": ("DHEA-S", "advanced", "µg/dL", 200, 450, "mid", ["dhea-s"], "2191-5"),
     "mma": ("Methylmalonic acid", "advanced", "nmol/L", 0, 260, "low", ["methylmalonic acid"], "13964-2"),
     "glyca": ("GlycA", "advanced", "µmol/L", 0, 400, "low", ["glyca"], ""),
+    # cardiometabolic additions (2026-10-29 gap analysis vs Superpower)
+    "vldl": ("VLDL cholesterol", "blood", "mg/dL", 2, 30, "low", ["vldl cholesterol", "vldl", "cholesterol, vldl"], "13458-5"),
+    "nonhdl": ("Non-HDL cholesterol", "blood", "mg/dL", 0, 130, "low", ["non-hdl cholesterol", "non hdl cholesterol", "cholesterol, non-hdl", "non-hdl", "non hdl"], "43396-1"),
+    "ox_ldl": ("Oxidized LDL", "advanced", "U/L", 0, 50, "low", ["oxidized ldl", "oxldl", "ox-ldl"], ""),
+    "cpeptide": ("C-peptide (fasting)", "advanced", "ng/mL", 0.5, 2.0, "mid", ["c-peptide", "c peptide"], "1986-9"),
+    "fructosamine": ("Fructosamine", "advanced", "µmol/L", 200, 250, "low", ["fructosamine"], "14959-1"),
+    "adiponectin": ("Adiponectin", "advanced", "µg/mL", 5, 30, "high", ["adiponectin"], ""),
+    "leptin": ("Leptin", "advanced", "ng/mL", 1, 12, "low", ["leptin"], ""),  # sex/BMI-dependent -> ZONES
+    "adma": ("ADMA", "advanced", "µmol/L", 0.4, 0.75, "low", ["adma", "asymmetric dimethylarginine"], ""),
+    "sdma": ("SDMA", "advanced", "µmol/L", 0.3, 0.6, "low", ["sdma", "symmetric dimethylarginine"], ""),
+    # brain / Alzheimer's (grade C; gated like neuro_bio)
+    "abeta_ratio": ("Amyloid-β 42/40 ratio (plasma)", "advanced", "ratio", 0.08, 1.0, "high", ["abeta 42/40 ratio", "amyloid beta 42/40 ratio", "aβ42/40"], ""),
+    "abeta42": ("Amyloid-β 42 (plasma)", "advanced", "pg/mL", None, None, "info", ["abeta 42", "amyloid beta 42"], ""),
+    "abeta40": ("Amyloid-β 40 (plasma)", "advanced", "pg/mL", None, None, "info", ["abeta 40", "amyloid beta 40"], ""),
     # fitness / CPET / functional
     "vo2max_lab": ("VO2 max (CPET)", "fitness", "mL/kg/min", 45, 65, "high", ["vo2 max (cpet)", "vo2 max", "vo2max"], "94133-0"),
     "vt1_hr": ("VT1 heart rate (Zone 2 top)", "fitness", "bpm", None, None, "info", ["vt1 heart rate", "vt1"], ""),
@@ -103,7 +117,18 @@ EVIDENCE = {  # evidence grade per marker (A guideline / B strong / C emerging)
                         "wmh_fazekas", "phenoage_lab", "dunedinpace", "grimage", "hrr_1min", "sts_30s"]},
     **{m: "C" for m in ["org_heart", "org_brain", "org_liver", "org_kidney", "org_immune", "org_artery", "org_muscle",
                         "org_global", "glyca", "il6", "nfl", "mced", "brain_age_gap", "telomere", "phase_angle",
-                        "shannon", "zonulin", "calprotectin", "mep", "bpa"]},
+                        "shannon", "zonulin", "calprotectin", "mep", "bpa",
+                        "ox_ldl", "adiponectin", "leptin", "adma", "sdma", "abeta_ratio", "abeta42", "abeta40"]},
+    **{m: "A" for m in ["nonhdl"]},
+    # Tier-2 exposure panels: metals are B (clinical toxicology), environmental/consumer-product biomonitoring is C,
+    # mycotoxins and gadolinium-type research assays D. Functional-medicine grade — shown as such in the UI.
+    **{m: "B" for m in ["mercury_blood", "cobalt", "uranium", "thallium", "tin", "antimony", "barium", "beryllium", "bismuth", "cesium",
+                        "gadolinium", "palladium", "platinum", "tellurium", "thorium", "tungsten"]},
+    **{m: "C" for m in ["bps", "methylparaben", "ethylparaben", "propylparaben", "butylparaben", "pba3", "atrazine", "dpp", "oxybenzone",
+                        "mbp", "mibp", "meohp", "hema", "methylhippuric", "phenylglyoxylic"]},
+    **{m: "D" for m in ["chaetoglobosin_a", "citrinin", "enniatin_b", "gliotoxin", "mycophenolic_acid", "roridin_e", "sterigmatocystin",
+                        "verrucarin_a", "ochratoxin", "aflatoxin", "zearalenone"]},
+    **{m: "B" for m in ["vldl", "cpeptide", "fructosamine"]},
 }
 
 # Multi-band zones (Ultrahuman-style, personalised). Each: list of (upper_exclusive, label, status).
@@ -155,24 +180,43 @@ ZONES = {
                 (None, "High likelihood of amyloid pathology", "out_of_range")],
     "omega3_index": [(4, "Low", "out_of_range"), (8, "Intermediate", "in_range"), (None, "Optimal", "optimal")],
     "wmh_fazekas": [(1, "Fazekas 0 — none", "optimal"), (2, "Fazekas 1 — mild", "in_range"), (None, "Fazekas ≥2 — moderate+", "out_of_range")],
+    "nonhdl": [(130, "Optimal", "optimal"), (160, "Borderline high", "in_range"), (190, "High", "out_of_range"), (None, "Very high", "out_of_range")],
+    "fructosamine": [(285, "Normal", "optimal"), (340, "Raised — glycaemia over the past 2–3 weeks", "out_of_range"), (None, "High", "out_of_range")],
+    # Leptin tracks fat mass and sex; bands are typical adult ranges, interpret against BMI.
+    "leptin": {"male": [(0.5, "Very low (energy deficit or lipodystrophy)", "out_of_range"), (10, "Typical", "optimal"),
+                        (15, "Raised", "in_range"), (None, "High (leptin resistance likely)", "out_of_range")],
+               "female": [(1.1, "Very low (energy deficit or lipodystrophy)", "out_of_range"), (20, "Typical", "optimal"),
+                          (35, "Raised", "in_range"), (None, "High (leptin resistance likely)", "out_of_range")]},
+    # Plasma Aβ42/40 cut-offs are assay-specific (mass-spec vs Lumipulse etc.); the same bands are stored for both sexes
+    # so a lab-specific, sex-stratified cut-off can be dropped in without code changes.
+    "abeta_ratio": {"male": [(0.08, "Low — amyloid-positive range", "out_of_range"), (0.10, "Borderline", "in_range"), (None, "Normal", "optimal")],
+                    "female": [(0.08, "Low — amyloid-positive range", "out_of_range"), (0.10, "Borderline", "in_range"), (None, "Normal", "optimal")]},
 }
 
 # Health-concern groups (many-to-many), from Ultrahuman's grouping, extended to imaging & fitness.
 CONCERNS = {
     "Heart & arteries": ["apob", "ldl", "lpa", "hdl", "tg", "hscrp", "homocysteine", "ldl_p", "apoa1", "nt_probnp", "hs_troponin",
-                         "cac", "cad_rads", "plaque_vol", "cimt", "carotid_plaque", "epicardial_fat", "lvef", "org_heart", "org_artery"],
-    "Blood sugar & metabolism": ["hba1c", "glucose", "insulin", "homa_ir", "tg", "uric_acid", "vat_area", "liver_pdff", "liver_hu", "fto", "tcf7l2", "prs_t2d"],
+                         "cac", "cad_rads", "plaque_vol", "cimt", "carotid_plaque", "epicardial_fat", "lvef", "org_heart", "org_artery",
+                         "vldl", "nonhdl", "ox_ldl", "adma", "sdma"],
+    "Blood sugar & metabolism": ["hba1c", "glucose", "insulin", "homa_ir", "tg", "uric_acid", "vat_area", "liver_pdff", "liver_hu", "fto", "tcf7l2", "prs_t2d",
+                                 "cpeptide", "fructosamine", "adiponectin", "leptin"],
     "Liver": ["alt", "ast", "ggt", "albumin", "alp", "liver_pdff", "liver_hu", "org_liver"],
-    "Kidney": ["creatinine", "egfr", "cystatin_c", "uacr", "uric_acid", "org_kidney"],
+    "Kidney": ["creatinine", "egfr", "cystatin_c", "uacr", "uric_acid", "org_kidney", "sdma"],
     "Inflammation & immunity": ["hscrp", "il6", "glyca", "wbc", "lymph_pct", "neutrophil_pct", "calprotectin", "zonulin", "inflam_clock", "immune_age", "org_immune"],
-    "Brain & cognition": ["ptau217", "nfl", "wmh_fazekas", "brain_age_gap", "hippocampal_pct", "apoe", "homocysteine", "b12", "org_brain"],
+    "Brain & cognition": ["ptau217", "nfl", "wmh_fazekas", "brain_age_gap", "hippocampal_pct", "apoe", "homocysteine", "b12", "org_brain",
+                          "abeta_ratio", "abeta42", "abeta40"],
     "Muscle, bone & mobility": ["almi", "smm", "grip", "gait_speed", "sts_30s", "balance", "bmd_spine_t", "bmd_hip_t", "vitd", "testosterone", "igf1", "phase_angle", "org_muscle"],
     "Fitness & cardiorespiratory": ["vo2max_lab", "hrr_1min", "vt1_hr", "vt2_hr", "hr_max", "rer_peak", "hemoglobin", "ferritin"],
     "Hormones & thyroid": ["tsh", "ft3", "testosterone", "free_t", "shbg", "dheas", "cortisol", "igf1"],
     "Sleep": ["ahi", "odi", "min_spo2", "cortisol", "ferritin", "tsh"],
     "Nutrients": ["vitd", "b12", "mma", "ferritin", "omega3_index", "hemoglobin", "mcv"],
     "Gut": ["shannon", "akkermansia", "faecali", "butyrate", "calprotectin", "zonulin", "candida", "fut2"],
-    "Toxins & detox": ["lead", "mercury", "arsenic", "cadmium", "bpa", "mep", "glyphosate", "aflatoxin", "ggt"],
+    "Toxins & detox": ["lead", "mercury", "arsenic", "cadmium", "bpa", "mep", "glyphosate", "aflatoxin", "ggt",
+                       "antimony", "barium", "beryllium", "bismuth", "cesium", "gadolinium", "palladium", "platinum", "tellurium", "thorium",
+                       "tin", "tungsten", "uranium", "cobalt", "mercury_blood",
+                       "bps", "methylparaben", "ethylparaben", "propylparaben", "butylparaben", "pba3", "atrazine", "dpp", "oxybenzone",
+                       "mbp", "mibp", "meohp", "hema", "methylhippuric", "phenylglyoxylic",
+                       "chaetoglobosin_a", "citrinin", "enniatin_b", "gliotoxin", "mycophenolic_acid", "roridin_e", "sterigmatocystin", "verrucarin_a"],
     "Cancer screening": ["mced", "fit", "wbmri_findings"],
     "Ageing pace": ["phenoage_lab", "grimage", "horvath", "dunedinpace", "telomere", "org_global"],
 }

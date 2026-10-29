@@ -161,6 +161,7 @@ export default function RootLayout() {
         <Stack.Screen name="retest" options={{ title: 'Retest plan' }} />
         <Stack.Screen name="protocols" options={{ title: 'Protocols to discuss' }} />
         <Stack.Screen name="shared" options={{ title: 'Shared with you' }} />
+        <Stack.Screen name="sleep-feeling" options={{ presentation: 'formSheet', headerShown: false, sheetGrabberVisible: true, sheetAllowedDetents: [0.5, 0.9], sheetCornerRadius: 28 }} />
       </Stack>
       {locked && !intro ? <LockScreen /> : null}
     </ThemeProvider>

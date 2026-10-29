@@ -89,6 +89,91 @@ def derived() -> list[dict]:
         add("homa_ir_calc", "HOMA-IR (calculated)", ins * glu / 405, "", "insulin × glucose ÷ 405", ["insulin", "glucose"])
     if h and _n(L, "almi") is None:
         pass
+
+    # ---- extended ratios (2026-10-29): each is emitted only when every input is present and non-zero
+    chol = _n(L, "chol_total")
+    ldl = _n(L, "ldl")
+    nonhdl = _n(L, "nonhdl")
+    nonhdl_src = ["nonhdl"] if nonhdl else ["chol_total", "hdl"]
+    if not nonhdl and chol and hdl:
+        nonhdl = chol - hdl
+    if chol and hdl:
+        add("castelli_i", "Castelli risk index I (TC / HDL)", chol / hdl, "", "total cholesterol ÷ HDL", ["chol_total", "hdl"],
+            interp="Under 3.5 is favourable; above 5 signals higher cardiovascular risk.")
+        add("atherogenic_coeff", "Atherogenic coefficient", (chol - hdl) / hdl, "", "(total cholesterol − HDL) ÷ HDL", ["chol_total", "hdl"],
+            interp="Under 3 is favourable; above 4 signals higher atherogenic burden.")
+    if ldl and hdl:
+        add("castelli_ii", "Castelli risk index II (LDL / HDL)", ldl / hdl, "", "LDL ÷ HDL", ["ldl", "hdl"],
+            interp="Under 2.5 is favourable; above 3.5 signals higher cardiovascular risk.")
+    if nonhdl and apob:
+        add("nonhdl_apob", "Non-HDL cholesterol / ApoB", nonhdl / apob, "", "non-HDL ÷ ApoB (mg/dL)", nonhdl_src + ["apob"],
+            interp="Cholesterol carried per atherogenic particle. A low ratio means many cholesterol-poor (small, dense) particles, "
+                   "so LDL-C understates risk; read alongside ApoB rather than alone.")
+    tt, shbg_v, e2 = _n(L, "testosterone"), _n(L, "shbg"), _n(L, "estradiol")
+    if tt and shbg_v:
+        add("fai", "Free androgen index", (tt * 0.0347) / shbg_v * 100, "", "total testosterone (nmol/L) ÷ SHBG (nmol/L) × 100",
+            ["testosterone", "shbg"],
+            interp="Estimates bioavailable androgen. Used mainly in women (raised in PCOS, roughly > 5); less reliable when SHBG is very high or in men.")
+    if tt and e2:
+        add("t_e2", "Testosterone / estradiol ratio", tt / e2, "", "total testosterone (ng/dL) ÷ estradiol (pg/mL)", ["testosterone", "estradiol"],
+            interp="A balance marker; both low-ratio and high-ratio readings need clinical context and the same-time-of-day draw.")
+    ca, alb = _n(L, "calcium"), _n(L, "albumin")
+    if ca and alb:
+        add("ca_corrected", "Albumin-corrected calcium", ca + 0.8 * (4.0 - alb), "mg/dL", "calcium + 0.8 × (4.0 − albumin g/dL)", ["calcium", "albumin"],
+            interp="Corrects total calcium for low or high albumin; about 8.6–10.3 mg/dL is the usual adult range.")
+    t4, t3u = _n(L, "t4_total"), _n(L, "t3_uptake")
+    if t4 and t3u and "fti" not in L:
+        add("fti_calc", "Free thyroxine index (calculated)", t4 * t3u / 100, "", "total T4 (µg/dL) × T3 uptake (%) ÷ 100", ["t4_total", "t3_uptake"],
+            interp="Roughly 1.2–4.9 is typical; corrects total T4 for binding-protein changes (pregnancy, oestrogen).")
+    ua = _n(L, "uric_acid")
+    if ua and hdl:
+        add("uhr", "Uric acid / HDL ratio (UHR)", ua / hdl * 100, "%", "uric acid (mg/dL) ÷ HDL (mg/dL) × 100", ["uric_acid", "hdl"],
+            interp="Lower is better; higher values track metabolic syndrome and insulin resistance.")
+    weight = ((engine.series("weight") or [(None, None)])[-1][1]) or p.get("weight_kg") or p.get("weight")
+    if tg and glu and hdl and h and weight and hdl > 1:
+        bmi = weight / (h * h)
+        add("mets_ir", "METS-IR (metabolic score for insulin resistance)", math.log(2 * glu + tg) * bmi / math.log(hdl), "",
+            "ln(2 × glucose + TG) × BMI ÷ ln(HDL)", ["glucose", "tg", "hdl"],
+            interp=f"Uses BMI {bmi:.1f}. Lower is better; values above about 40–50 suggest insulin resistance.")
+    # blood-count indices from absolute counts in 10³/µL (counts reported in cells/mm³ are divided by 1000)
+    plt_k = _n(L, "platelets")
+    wbc_k = wbc if wbc else ((_n(L, "wbc_total") or 0) / 1000 or None)
+    wbc_src = "wbc" if wbc else "wbc_total"
+
+    def _abs(abs_id, pct_id):
+        a = _n(L, abs_id)
+        if a:
+            return a / 1000, [abs_id]
+        pct = _n(L, pct_id)
+        return (wbc_k * pct / 100, [wbc_src, pct_id]) if wbc_k and pct else (None, [])
+
+    lym_a, lym_in = _abs("alc", "lymph_pct")
+    neu_a, neu_in = _abs("anc", "neutrophil_pct")
+    mon_a, mon_in = _abs("amc", "monocyte_pct")
+    if plt_k and lym_a:
+        add("plr", "Platelet / lymphocyte ratio (PLR)", plt_k / lym_a, "", "platelets ÷ absolute lymphocytes", ["platelets"] + lym_in,
+            interp="Roughly 100–150 is typical; persistently higher values accompany systemic inflammation.")
+    if lym_a and mon_a:
+        add("lmr", "Lymphocyte / monocyte ratio (LMR)", lym_a / mon_a, "", "absolute lymphocytes ÷ absolute monocytes", lym_in + mon_in,
+            interp="Higher is better; a low ratio (< about 3–4) reflects inflammation or immune stress.")
+    if plt_k and neu_a and lym_a:
+        add("sii", "Systemic immune-inflammation index (SII)", plt_k * neu_a / lym_a, "", "platelets × neutrophils ÷ lymphocytes",
+            ["platelets"] + neu_in + lym_in, interp="Lower is better; values above about 600–800 (×10³/µL basis) point to higher inflammatory load.")
+    if neu_a and mon_a and lym_a:
+        add("siri", "Systemic inflammation response index (SIRI)", neu_a * mon_a / lym_a, "", "neutrophils × monocytes ÷ lymphocytes",
+            neu_in + mon_in + lym_in, interp="Lower is better; roughly < 1.0 is typical, and higher values track inflammatory and cardiometabolic risk.")
+    bil = _n(L, "bilirubin_total")
+    if bil and alb:
+        add("bili_alb", "Bilirubin / albumin ratio", bil / alb, "", "total bilirubin (mg/dL) ÷ albumin (g/dL)", ["bilirubin_total", "albumin"],
+            interp="Research-grade liver and haemolysis indicator; interpret with bilirubin and albumin themselves.")
+    fer = _n(L, "ferritin")
+    if fer and alb:
+        add("ferritin_alb", "Ferritin / albumin ratio", fer / alb, "", "ferritin (ng/mL) ÷ albumin (g/dL)", ["ferritin", "albumin"],
+            interp="Research-grade inflammation-adjusted iron-stores marker; higher values accompany inflammation and metabolic disease.")
+    ggt = _n(L, "ggt")
+    if ggt and hdl:
+        add("ggt_hdl", "GGT / HDL ratio", ggt / hdl, "", "GGT (U/L) ÷ HDL (mg/dL)", ["ggt", "hdl"],
+            interp="Research-grade liver-cardiometabolic marker; lower is better.")
     return out
 
 
