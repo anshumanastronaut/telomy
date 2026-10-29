@@ -20,6 +20,9 @@ export type Night = {
   hrvSrc?: 'ecg' | 'ring';
   skinTemp?: number;                          // night temperature, °C — compare only within the same tempSrc
   tempSrc?: 'ring' | 'whoop';                 // ring: coarse body estimate; WHOOP 4.0: skin, deviation-only                    // HRV scales differ by device: baselines only compare like with like
+  alts?: Night[];                             // other devices that also recorded this same sleep period but lost the priority
+                                              // tie-break (lib/sleepfuse.ts). Kept (arrays stripped) so we can show device
+                                              // agreement on the night's score — a "signal, not verdict" check. See lib/agreement.ts.
 };
 export type MinuteRec = { ts: string; hr: number; rmssd?: number; quality?: string; activity?: string; sleep?: string; motion?: number | null; resting?: number };
 export type Contributor = { key: string; label: string; score: number | null; value: string; note: string };
@@ -427,7 +430,11 @@ export function nightSeries(nights: Night[]) {
   return nights.map((n) => {
     const s = sleepScore(n, nights);
     const r = recoveryScore(n, nights, s, []);
-    return { n, sleep: s.score, recovery: r.score };
+    // Per-night energy "charge" = the restorative baseline energyScore() starts from (0.6·recovery + 0.4·sleep),
+    // before the daytime load/stress penalties — the only part of Energy that history can honestly reconstruct.
+    // Gives Energy its own personal normal range (lib → wellness/[metric].tsx heroRange).
+    const energy = r.score != null ? Math.round(0.6 * r.score + 0.4 * (s.score ?? r.score)) : null;
+    return { n, sleep: s.score, recovery: r.score, energy };
   });
 }
 

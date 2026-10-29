@@ -384,9 +384,14 @@ export function fuseNights(patch: Night[], health: Night[], ring: RingHistorySam
     ...patch.map((n) => ({ ...n, source: 'patch' as const, sourceName: 'Telomy patch', hrvSrc: n.hrvSrc ?? ('ecg' as const) })),
     ...whoop, ...health.filter((n) => n.source === 'watch'), ...ringOwn, ...ringOnly, ...health.filter((n) => n.source !== 'watch'),
   ];
+  // keep a light copy of a losing device's night (arrays dropped) so the UI can show device agreement on the score.
+  const slim = (x: Night): Night => ({ ...x, hr5: [], hrv5: [], hypnogram: [], events: [], stages: undefined, alts: undefined });
   const chosen: Night[] = [];
   for (const n of order) {
-    if (!chosen.some((c) => overlap(c, n) > 0.3)) { chosen.push(n); continue; }
+    const covering = chosen.find((c) => overlap(c, n) > 0.3);
+    if (!covering) { chosen.push(n); continue; }
+    // another device recorded the same sleep period but lost the priority tie-break: remember it as an alternate.
+    covering.alts = [...(covering.alts ?? []), slim(n)];
     // a lower-priority device that covered MORE of the night: keep the part the better device missed
     // (2026-10-18: the patch stopped early while WHOOP/ring showed ~4 more hours of sleep → that tail is kept and merged)
     for (const piece of uncovered(n, chosen)) chosen.push(piece);
@@ -427,6 +432,7 @@ export function mergeFragments(nights: Night[]): Night[] {
       sleepHr: w(p.sleepHr, n.sleepHr), sleepRmssd: p.hrvSrc === n.hrvSrc ? w(p.sleepRmssd, n.sleepRmssd) : p.sleepRmssd ?? n.sleepRmssd,
       lowestHr: lo?.lowestHr, lowestHrAt: lo?.lowestHrAt,
       ...(p.skinTemp != null ? { skinTemp: p.skinTemp, tempSrc: p.tempSrc } : n.skinTemp != null ? { skinTemp: n.skinTemp, tempSrc: n.tempSrc } : {}), hr5: [...p.hr5, ...n.hr5], hrv5: [...p.hrv5, ...n.hrv5], events: [...p.events, ...n.events],
+      alts: [...(p.alts ?? []), ...(n.alts ?? [])],
     };
   }
   return out.sort((a, b) => a.end - b.end);
