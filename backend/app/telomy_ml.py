@@ -146,7 +146,15 @@ def me_organs():
     panel = _panel()
     if len([k for k in panel if k not in ("age", "sex")]) < 4:
         return {"status": "need_more_data", "note": "Upload a blood report (CBC + metabolic panel) to see organ ages."}
-    return _o.organ_ages(panel)
+    # Chronological age + sex from the profile — _panel()'s own SELECT reads columns that don't exist (profile is
+    # JSON), so without this the age_acceleration the twin displays is always null. engine.age_on() computes age
+    # from the stored dob, exactly as /profile does.
+    from . import engine
+    age = engine.age_on()
+    prof = engine.profile() or {}
+    if prof.get("sex"):
+        panel["sex"] = 1 if str(prof["sex"]).lower().startswith("m") else 2
+    return _o.organ_ages(panel, chronological_age=float(age) if age else None)
 
 
 @router.post("/rhythm")
