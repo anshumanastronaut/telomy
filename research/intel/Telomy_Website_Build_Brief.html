@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Telomy — Premium Website Build Brief</title>
+<style>
+  :root{
+    --ink:#10201A; --body:#1d2b25; --muted:#5b6b64; --faint:#8a978f;
+    --teal:#2F8F6B; --teal2:#4FD08F; --copper:#A9643A; --line:#e3e8e5; --bg:#ffffff; --soft:#f4f7f5;
+    --red:#D3523F; --amber:#C98A1B; --ink2:#09130f;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  body{font-family:"Helvetica Neue",Arial,sans-serif; color:var(--body); margin:0; font-size:11px; line-height:1.5;}
+  @page{size:A4; margin:16mm 14mm;}
+  h1,h2,h3,h4{color:var(--ink); line-height:1.2; margin:0 0 .4em;}
+  h1{font-size:30px; letter-spacing:-.5px;}
+  h2{font-size:18px; margin-top:0; padding-bottom:6px; border-bottom:2px solid var(--teal); display:inline-block;}
+  h3{font-size:13px; color:var(--teal); text-transform:uppercase; letter-spacing:.8px; margin-top:16px;}
+  h4{font-size:12px; margin:10px 0 2px;}
+  p{margin:.3em 0 .7em;} a{color:var(--teal); text-decoration:none;}
+  .section{page-break-inside:avoid; margin-bottom:22px;}
+  .page-break{page-break-before:always;}
+  .lead{font-size:13px; color:var(--body);}
+  .muted{color:var(--muted);} .faint{color:var(--faint); font-size:10px;}
+  ul{margin:.3em 0 .8em; padding-left:16px;} li{margin:.2em 0;}
+  ol{margin:.3em 0 .8em; padding-left:18px;}
+  .pill{display:inline-block; background:var(--soft); border:1px solid var(--line); border-radius:20px; padding:2px 10px; font-size:10px; color:var(--muted); margin:2px 4px 2px 0;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
+  .card{background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:12px 14px; page-break-inside:avoid;}
+  .card h4{color:var(--ink); margin-top:0;}
+  .num{color:var(--teal); font-weight:700;}
+  table{width:100%; border-collapse:collapse; font-size:10px; margin:.4em 0;}
+  th,td{text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{color:var(--ink); font-size:9.5px; text-transform:uppercase; letter-spacing:.5px; background:var(--soft);}
+  .cover{height:255mm; display:flex; flex-direction:column; justify-content:center;}
+  .logo{display:flex; align-items:center; gap:12px; margin-bottom:28px;}
+  .mark{width:44px;height:44px;}
+  .brand{font-size:26px; letter-spacing:6px; color:var(--ink); font-weight:600;}
+  .cover h1{font-size:40px; margin-bottom:12px;}
+  .cover .one{font-size:16px; color:var(--body); max-width:150mm; line-height:1.5;}
+  .rule{height:3px;width:60px;background:var(--teal);margin:18px 0;}
+  .kpis{display:flex; gap:10px; margin-top:28px; flex-wrap:wrap;}
+  .kpi{background:var(--soft); border:1px solid var(--line); border-radius:10px; padding:10px 14px;}
+  .kpi b{display:block; font-size:18px; color:var(--teal);}
+  .kpi span{font-size:9.5px; color:var(--muted);}
+  .note{background:#fff8f0; border:1px solid #f0dcc2; border-radius:8px; padding:8px 12px; font-size:10px; color:#6b4a28;}
+  .tick{color:var(--teal); font-weight:700;}
+  .sw{display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:middle; margin-right:5px; border:1px solid rgba(0,0,0,.08);}
+  .swatches{display:flex; flex-wrap:wrap; gap:14px; margin:.4em 0;}
+  .swatch{display:flex; align-items:center; gap:7px; font-size:10px; color:var(--muted);}
+  .big{background:var(--ink2); color:#dfeee7; border-radius:12px; padding:16px 18px;}
+  .big h4{color:#eafff6;} .big .faint{color:#7fa394;}
+  .step{display:flex; gap:10px; align-items:flex-start; margin:.4em 0;}
+  .dot{flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:var(--teal); color:#fff; font-weight:700; font-size:11px; display:flex; align-items:center; justify-content:center; margin-top:1px;}
+  .tag{display:inline-block; font-size:9px; font-weight:700; border-radius:5px; padding:1px 6px; color:#fff; vertical-align:middle; background:var(--copper);}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="logo">
+    <svg class="mark" viewBox="0 0 100 100" fill="none" stroke="#2F8F6B" stroke-width="3">
+      <path d="M12 50 C 28 20, 44 20, 50 50 C 56 80, 72 80, 88 50 C 72 20, 56 20, 50 50 C 44 80, 28 80, 12 50 Z"/>
+    </svg>
+    <div class="brand">TELOMY</div>
+  </div>
+  <h1>Premium website.<br>Built to make them feel the loop.</h1>
+  <div class="rule"></div>
+  <div class="one">A build brief for a standout marketing site — the art direction, the page-by-page structure, the signature interactions and the stack — so the website reads as the category-defining product Telomy already is, not a template. It carries the positioning straight from the Feature · USP · Moat dossier.</div>
+  <div class="kpis">
+    <div class="kpi"><b>One narrative</b><span>device → doctor → proof, scrolled</span></div>
+    <div class="kpi"><b>3 audiences</b><span>member · clinician · investor</span></div>
+    <div class="kpi"><b>Signature motion</b><span>the organ-twin & the loop, alive</span></div>
+    <div class="kpi"><b>Fast + accessible</b><span>sub-2s, AA, AEO-ready</span></div>
+  </div>
+  <p class="faint" style="margin-top:40px;">Website Build Brief — art direction, IA, section copy, interaction spec & stack. Prepared 29 Oct 2026. Companion to the Telomy Feature · USP · Moat Dossier.</p>
+</div>
+
+<!-- GOAL -->
+<div class="section page-break">
+  <h2>What this site has to do</h2>
+  <p class="lead">Make a first-time visitor understand, in one scroll, that Telomy is the only platform that closes the whole health loop — and feel that it is premium, clinical-grade and alive. The site is the top of every funnel: consumer waitlist/app install, clinician & diagnostic-centre demo requests, and the investor read. It must out-class the comparison set (Superpower, Function, Oura, Whoop, OpenEvidence) on craft, not just claims.</p>
+  <div class="grid3">
+    <div class="card"><h4>Primary goals</h4>① Member app install / waitlist. ② Clinician & centre "book a demo". ③ Investor credibility. One site, three clear doors.</div>
+    <div class="card"><h4>Who it talks to</h4>The health-curious consumer, the practising doctor / centre owner, and the investor — each needs a different lead, reachable within one click of the hero.</div>
+    <div class="card"><h4>The feeling</h4>Calm, exact, confident, unmistakably medical-grade. Editorial, not SaaS-generic. "A doctor you'd trust, that happens to be beautiful."</div>
+  </div>
+  <p class="muted"><b>Success = </b> the visitor can say what Telomy is in one sentence, has seen one thing no competitor can show (the organ-age twin or the signals-not-verdicts demo), and knows exactly which button is theirs.</p>
+</div>
+
+<!-- ART DIRECTION -->
+<div class="section">
+  <h2>Art direction — what makes it standout</h2>
+  <p class="lead">A dark, editorial, instrument-grade aesthetic: deep ink canvas, one living accent, serif-and-grotesk typography, and motion that is the product, not decoration. Every page should look like a readout, not a brochure.</p>
+  <div class="grid2">
+    <div class="card"><h4>Palette</h4>
+      <div class="swatches">
+        <span class="swatch"><span class="sw" style="background:#09130f;"></span>Ink #09130F</span>
+        <span class="swatch"><span class="sw" style="background:#10201A;"></span>Ink-2 #10201A</span>
+        <span class="swatch"><span class="sw" style="background:#2F8F6B;"></span>Teal #2F8F6B</span>
+        <span class="swatch"><span class="sw" style="background:#4FD08F;"></span>Glow #4FD08F</span>
+        <span class="swatch"><span class="sw" style="background:#A9643A;"></span>Copper #A9643A</span>
+        <span class="swatch"><span class="sw" style="background:#f4f7f5; border-color:#ccc;"></span>Soft #F4F7F5</span>
+      </div>
+      Dark ink canvas as the default; teal is the single system accent (the only colour that moves/glows); copper is the warm human counter-accent (used sparingly, for the "felt" side and warnings). Light editorial sections for reading-heavy pages.</div>
+    <div class="card"><h4>Typography</h4><b>TelomySans</b> (brand face) for hero lines only; a refined serif (Fraunces-class) for headlines and big numbers; a grotesk (<b>Geist</b>/Inter) for reading and UI. Tight negative tracking on large serif; tabular numerals everywhere a value appears. One quiet micro-label style (uppercase, tracked).</div>
+    <div class="card"><h4>Motion language</h4>The <b>DNA double-helix loader</b> is the brand's motion signature — reuse its rhythm everywhere (section reveals, the loop, the twin rotation). Motion is slow, exact, confident; nothing bounces. Scroll-driven, respects <i>prefers-reduced-motion</i>, always ≥60fps. If an animation doesn't explain something, cut it.</div>
+    <div class="card"><h4>Imagery & texture</h4>No stock "happy people" photos. Use real product UI (the twin, the dials, the dashboards), real device shots (patch, ring), and abstract data-driven texture (ECG traces, HRV waveforms, the DNA motif) as section dividers. Grain and depth over flat gradients.</div>
+  </div>
+  <p class="muted"><b>House rule:</b> every screen should feel like a precise instrument reading in low light — the opposite of a pastel wellness app. Benchmarks for craft: Oura's product pages, Superpower's typography, Linear's motion discipline, Stripe's structure.</p>
+</div>
+
+<!-- SITEMAP -->
+<div class="section page-break">
+  <h2>Information architecture</h2>
+  <table>
+    <tr><th>Page</th><th>Job</th><th>Primary CTA</th></tr>
+    <tr><td><b>Home</b></td><td>The whole story in one scroll; route each audience to its door</td><td>Get the app / Book a demo</td></tr>
+    <tr><td><b>The platform</b> (consumer)</td><td>The longevity super-app: score, organ twin, labs, devices, Sinc, closed loop</td><td>Get early access</td></tr>
+    <tr><td><b>For clinicians &amp; centres</b></td><td>Evidence engine, patient-grounded answers, care graph, workflows</td><td>Book a demo</td></tr>
+    <tr><td><b>Science &amp; evidence</b></td><td>Models, error bars, the grade badge, guardrails — the credibility page</td><td>Read the method</td></tr>
+    <tr><td><b>Devices &amp; therapy</b></td><td>ECG patch, ring, camera-HRV; Bonphul hardware closing the loop</td><td>Explore devices</td></tr>
+    <tr><td><b>Pricing</b></td><td>Member tiers; test menu &amp; bundles; clinician plans</td><td>Start / Contact sales</td></tr>
+    <tr><td><b>About</b></td><td>Mission, India-first story, team, the honesty posture</td><td>—</td></tr>
+    <tr><td><b>Research / Blog</b></td><td>SEO + AEO surface; longevity, clinical evidence, India NCD</td><td>Subscribe</td></tr>
+    <tr><td><b>Legal</b></td><td>DPDP privacy, medical disclaimer, terms</td><td>—</td></tr>
+  </table>
+  <p class="muted">Global nav: <span class="pill">Platform</span> <span class="pill">Clinicians</span> <span class="pill">Science</span> <span class="pill">Devices</span> <span class="pill">Pricing</span> + a two-button right side: <b>Get the app</b> (primary) and <b>For clinicians</b> (ghost). Sticky, condenses on scroll.</p>
+</div>
+
+<!-- HOMEPAGE -->
+<div class="section">
+  <h2>The homepage — section by section</h2>
+  <div class="big" style="margin-bottom:12px;">
+    <h4>01 · Hero</h4>
+    <p style="margin:.2em 0;">Headline: <b>"Measure your health. Act on it. Prove it worked."</b> Sub: the one-line positioning. Behind it, the <b>3D organ-age twin rotating slowly</b>, each organ faintly lit by its own age. Two buttons: <b>Get the app</b> / <b>For clinicians</b>.</p>
+    <p class="faint">The twin is the single most ownable visual Telomy has — it leads, and it moves.</p>
+  </div>
+  <div class="grid2">
+    <div class="card"><h4>02 · The loop (the core idea)</h4>A scroll-driven animation of <b>Device → Data → AI → Doctor → Therapy → Re-measure</b> as a closing ring. "Every player owns one slice. We own the loop." This is the section that explains the whole company.</div>
+    <div class="card"><h4>03 · Organ-age twin</h4>Interactive: tap an organ, see its mortality-anchored biological age and what moves it. "Not one bio-age — eight, and which one is ageing fastest." The hero feature, shown live.</div>
+    <div class="card"><h4>04 · Signals, not verdicts</h4>A live mini-demo: a sleep score with the person's own normal band, the felt-vs-measured check-in, and two devices disagreeing shown as a range. "Your number is a signal, not a verdict." The trust pillar — and the orthosomnia-era wedge.</div>
+    <div class="card"><h4>05 · One AI, on your own numbers</h4>Sinc answering with cited, grounded answers — on-device + cloud. Show a real grounded answer with citations, and the <b>grade badge</b>. "Evidence you can see the grade of."</div>
+    <div class="card"><h4>06 · For clinicians</h4>A split band: the same evidence engine, answering the <b>doctor's</b> question on the <b>patient's</b> real data. One line, one CTA to the clinician page.</div>
+    <div class="card"><h4>07 · Devices &amp; therapy</h4>Patch, ring, camera-HRV and Bonphul hardware — the loop made physical. Real device photography on ink.</div>
+    <div class="card"><h4>08 · Built for India</h4>The NCD stat (101M diabetic + 136M prediabetic), IFCT foods, DPDP-native, Jan-Aushadhi affordability. "Built for India, ready for the world."</div>
+    <div class="card"><h4>09 · Proof &amp; honesty</h4>Published error bars, the "what we deliberately don't claim" box, validated-against-reference-device numbers. Credibility as a feature.</div>
+  </div>
+  <p class="muted"><b>10 · Closing CTA.</b> Restate the one line, the three doors (member / clinician / investor), and the DNA motif resolving. Footer with legal + DPDP.</p>
+</div>
+
+<!-- SIGNATURE INTERACTIONS -->
+<div class="section page-break">
+  <h2>Signature interactions — the five things people remember</h2>
+  <ol>
+    <li><b>The living organ-age twin.</b> A real-time 3D model (WebGL/Three.js) where each organ glows by its age; hover/tap reveals the number and its drivers. The homepage hero and the platform page both use it. <span class="tag">hero</span></li>
+    <li><b>The closing loop.</b> A scroll-scrubbed SVG/canvas animation where the six stages connect into a ring as you scroll — the company's thesis, felt not read.</li>
+    <li><b>The signals-not-verdicts demo.</b> An interactive score that shows a bare number, then reveals the personal band, the felt-vs-measured line, and a device-disagreement range — teaching the philosophy by letting the visitor toggle it.</li>
+    <li><b>The grade-badge reveal.</b> A cited clinical answer where each citation flips to show its evidence grade — the one thing OpenEvidence/Vera don't show.</li>
+    <li><b>The DNA through-line.</b> The double-helix loader motif recurs as section dividers and the page's scroll progress indicator, tying the whole site into one object.</li>
+  </ol>
+  <p class="muted">Each must degrade gracefully: a static, captioned fallback for reduced-motion and for crawlers. Interactions explain the product — never ornament for its own sake.</p>
+</div>
+
+<!-- DESIGN SYSTEM -->
+<div class="section">
+  <h2>Design system &amp; components</h2>
+  <div class="grid2">
+    <div class="card"><h4>Tokens</h4>Colour, type scale, spacing (4px base), radius (10–28px), elevation (soft, low-contrast), motion (durations 200/400/800ms, one easing). One source of truth, shared with the app's identity so web and product feel like one brand.</div>
+    <div class="card"><h4>Core components</h4>Nav (sticky, condensing), hero, section-reveal wrapper, feature card, stat/KPI tile, comparison table, score-dial, grade badge, device card, pricing table, quote/testimonial, CTA band, footer, cookie/consent (DPDP-first, decline-by-default).</div>
+    <div class="card"><h4>Content components</h4>Evidence-citation block, "what we don't claim" note, biomarker/marker chip, organ-twin embed, loop animation embed, waitlist form, demo-request form (role-aware).</div>
+    <div class="card"><h4>Responsive</h4>Mobile-first; the twin and loop become tap-through stories on phone. 16px side gutter, no horizontal scroll, type that stays legible at 320px. Dark by default; a tasteful light mode for reading pages.</div>
+  </div>
+</div>
+
+<!-- TECH + QUALITY -->
+<div class="section page-break">
+  <h2>Build — stack, performance, discoverability</h2>
+  <div class="grid2">
+    <div class="card"><h4>Stack</h4><b>Next.js (App Router) + TypeScript + Tailwind</b>, React Three Fiber for the twin, GSAP/Framer Motion + Lenis for scroll, hosted on Vercel. A lightweight CMS (Sanity/Contentlayer) for Research/Blog so marketing can ship without a deploy. One shared token package with the app.</div>
+    <div class="card"><h4>Performance budget</h4>LCP &lt; 2.0s on 4G mobile, CLS &lt; 0.1, JS &lt; 200KB on first paint (twin/loop lazy-loaded below the fold, with a poster frame). 60fps on all motion. Images AVIF/WebP, responsive, lazy.</div>
+    <div class="card"><h4>SEO + AEO</h4>Semantic HTML, per-page metadata & Open Graph, JSON-LD (Organization, Product, FAQ, MedicalWebPage). <b>Answer-engine-optimised</b> — clean, quotable, source-cited copy so Telomy is the answer when someone asks an AI "best longevity platform in India". The Research hub is the organic surface.</div>
+    <div class="card"><h4>Accessibility &amp; trust</h4>WCAG 2.2 AA: contrast, focus states, keyboard paths, reduced-motion, captioned media. DPDP-first consent (decline by default, no non-essential cookies pre-consent). Medical disclaimer on every clinical claim. Analytics: privacy-respecting (Plausible-class) + conversion events per door.</div>
+  </div>
+  <p class="note"><b>Guardrails carried from the dossier:</b> clinical features are decision support, not directives; bio-age and scores are wellness/informational with error bars stated; prescription/hormone/peptide options are clinician-gated; market and competitor figures are analyst/company-reported and must be labelled as such. Nothing on the site should read as a medical or lifespan promise.</p>
+</div>
+
+<!-- PHASES -->
+<div class="section">
+  <h2>Build phases</h2>
+  <div class="step"><div class="dot">1</div><div><b>Foundation (week 1–2).</b> Tokens + component library + nav/footer + the two reading templates (Science, About). Deploy the skeleton with real copy from this brief and the dossier.</div></div>
+  <div class="step"><div class="dot">2</div><div><b>Homepage + the two product pages (week 2–4).</b> All sections with final copy; the loop animation and the signals-not-verdicts demo. Clinician page with the demo-request flow.</div></div>
+  <div class="step"><div class="dot">3</div><div><b>The twin &amp; signature motion (week 4–6).</b> The live 3D organ-age twin, the grade-badge reveal, the DNA through-line. The craft layer that makes it standout — time-boxed and always with a static fallback.</div></div>
+  <div class="step"><div class="dot">4</div><div><b>Pricing, Research hub, polish (week 6–7).</b> Pricing with the test menu/bundles, CMS-backed Research for SEO/AEO, full a11y + performance pass, analytics + consent, launch checklist.</div></div>
+  <p class="muted" style="margin-top:8px;"><b>Sequence logic:</b> ship a credible, fast, well-written site first (phases 1–2), then layer the signature motion (phase 3) so the site is never blocked on the hardest animation. Copy is ready today — it comes straight from the dossier.</p>
+</div>
+
+<!-- COPY BANK -->
+<div class="section">
+  <h2>Copy bank — ready to drop in</h2>
+  <div class="grid2">
+    <div class="card"><h4>Hero / positioning</h4>Measure. Act. Prove.<br>The longevity platform with a doctor inside.<br>Your whole health, one loop.<br>Know your biological age — organ by organ. Then change it.<br>Your number is a signal, not a verdict.</div>
+    <div class="card"><h4>One-liner</h4>Telomy is the vertically integrated longevity platform where your devices, your labs and your doctor meet one AI — to measure your health, act on it, and prove it worked.</div>
+  </div>
+  <p class="lead" style="margin-top:10px;"><b>The comparison line (use once, boldly):</b> Superpower without the clinical engine; OpenEvidence without the patient data; Oura without the doctor; Ultrahuman without the evidence. <b>Telomy is all of them, on one graph, India-first.</b></p>
+  <p class="faint" style="margin-top:14px;">© 2026 Telomy. Internal/confidential build brief. Pair with the Feature · USP · Moat Dossier for full feature detail and market figures. Clinical features are decision support and do not replace professional medical judgment.</p>
+</div>
+
+</body>
+</html>
