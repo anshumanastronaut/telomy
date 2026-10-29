@@ -12,6 +12,7 @@ import { TrendChart } from '@/ui/trends';
 import { nightSeries, normalBand, type Wellness } from '@/lib/wellness';
 import { SOURCE_LABEL } from '@/lib/sleepfuse';
 import { SleepFeeling } from '@/ui/sleepfeeling';
+import { ContextTags } from '@/ui/contexttags';
 import { StageBreakdown, StrainColumns, ContributorList, Hypnogram, LastNightCard, MiniMetric, NightHrChart, NightTrend, recoveryColor, StressStrip, ZoneBar } from '@/ui/wellness';
 import { SleepHrRainbow } from '@/ui/welltory';
 
@@ -77,6 +78,7 @@ export default function WellnessDetail() {
       {metric === 'recovery' ? (
         <>
           <DetailHero dial value={w.recovery.score} label={w.recovery.score == null ? 'Wear the band tonight' : w.recovery.label} color={recoveryColor(p, w.recovery.score)} band={range?.band} verdict={range?.verdict} sub={w.recovery.calibrating ?? (w.recovery.confidence === 'building' ? 'Building your baseline (under 14 nights): treat as provisional' : undefined)} />
+          <ContextTags />
           {w.illness?.flagged ? (
             <Card tone="copper" style={{ gap: space[1] }}>
               <T v="label">Your body may be fighting something</T>
@@ -115,6 +117,7 @@ export default function WellnessDetail() {
       {metric === 'sleep' ? (
         <>
         <SleepFeeling />
+        <ContextTags />
         {w.last ? (
           <>
             <DetailHero value={w.sleep?.score ?? null} unit="SLEEP SCORE" label={w.sleep?.label ?? ''} band={range?.band} verdict={range?.verdict} sub={`${fmtDur(w.last.tstMin)} asleep · ${fmtClock(w.last.start + (w.last.onsetMin ?? 0) * 60)} – ${fmtClock(w.last.end)}`} color={C.sleep} />

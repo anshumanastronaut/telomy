@@ -136,6 +136,9 @@ def phenotypic_organ_age(panel: dict, organ: str, age: float):
     M = min(max(1.0 - math.exp(-H), 1e-7), 1 - 1e-7)
     am = spec["age_map"]
     phenoage = (math.log(-math.log(1.0 - M) / am["K"]) - am["a_age"]) / am["b_age"]
+    # Clamp to a plausible adult band — PhenoAge can extrapolate far beyond a credible age for very abnormal
+    # profiles (e.g. high inflammation -> immune >100y), which would overclaim precision if ever displayed.
+    phenoage = max(18.0, min(100.0, float(phenoage)))
     # KDM (Klemera-Doubal)
     k = spec["kdm"]
     q, kk, s, s_ba = np.array(k["q"]), np.array(k["k"]), np.array(k["s"]), k["s_ba"]

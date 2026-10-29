@@ -43,6 +43,7 @@ ROUTINE_MARKERS: dict[str, tuple] = {
 
 # Names on reports that map onto markers the catalog already has (merged into their alias lists).
 EXTRA_ALIASES: dict[str, list[str]] = {
+    "hscrp": ["crp", "c reactive protein", "c-reactive protein (crp)"],  # conventional CRP lands on the same marker (mg/L)
     "chol_total": ["cholesterol, total", "cholesterol total", "serum cholesterol"],
     "ast": ["aspartate aminotransferase", "aspartate transaminase"],
     "alt": ["alanine transaminase", "alanine aminotransferase"],

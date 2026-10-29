@@ -3904,6 +3904,34 @@ def save_sleep_feeling(body: SleepFeeling):
     return {"ok": True, "rating": r, "label": _SLEEP_LABELS[r - 1]}
 
 
+class ContextTag(BaseModel):
+    tags: list[str]
+    note: str | None = None
+    day: str | None = None
+    metric: str | None = None
+
+
+@app.post("/me/context-tags")
+def save_context_tags(body: ContextTag):
+    """Tag what was going on around a reading (caffeine, stress, standing, late meal, poor room…), so an unusual
+    number is explained rather than alarming — the "signal, not verdict" idea. Stored per day in the events log."""
+    day = (body.day or today())[:10]
+    tags = [str(t)[:40] for t in (body.tags or [])][:10]
+    db.exec_("DELETE FROM events WHERE kind = 'context_tag' AND substr(ts,1,10) = ?", (day,))
+    if tags or (body.note or "").strip():
+        db.exec_("INSERT INTO events (ts, kind, label, data, source) VALUES (?,?,?,?,?)",
+                 (day + "T12:00:00", "context_tag", ", ".join(tags), db.j({"tags": tags, "note": (body.note or "")[:300], "metric": body.metric}), "self"))
+    return {"ok": True, "tags": tags}
+
+
+@app.get("/me/context-tags")
+def get_context_tags(days: int = 30):
+    rows = db.rows("SELECT ts, data FROM events WHERE kind = 'context_tag' ORDER BY ts DESC LIMIT ?", (days,))
+    items = [{"day": r["ts"][:10], **db.unj(r["data"], {})} for r in rows]
+    today_item = next((x for x in items if x["day"] == today()[:10]), None)
+    return {"items": items, "today": today_item}
+
+
 @app.get("/me/sleep-feeling")
 def sleep_feeling_history(days: int = 90):
     """History of subjective sleep ratings paired with the night's objective metrics, plus a simple pattern: what

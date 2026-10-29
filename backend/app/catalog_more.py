@@ -80,7 +80,7 @@ MORE_MARKERS = {
     "cgm_peak": ("Mean post-meal peak (CGM)", "cgm", "mg/dL", 0, 140, "low", ["mean post-meal peak"], ""),
     "cgm_tbr": ("Time below 70 (CGM)", "cgm", "%", 0, 1, "low", ["time below 70"], ""),
     # immune / autoimmune / allergy / special
-    "esr": ("ESR", "immune", "mm/h", 0, 15, "low", ["esr (erythrocyte sedimentation rate)", "erythrocyte sedimentation rate"], "4537-7"),
+    "esr": ("ESR", "immune", "mm/h", 0, 15, "low", ["esr (erythrocyte sedimentation rate)", "erythrocyte sedimentation rate", "esr"], "4537-7"),
     "ana": ("Antinuclear antibodies (ANA, IFA)", "immune", "", None, None, "absent", ["antinuclear antibodies"], "8061-4"),
     "ttg_iga": ("tTG-IgA (coeliac screen)", "immune", "U/mL", 0, 4, "low", ["ttg-iga"], "31017-7"),
     "total_ige": ("Total IgE", "immune", "IU/mL", 0, 100, "low", ["total ige"], "19113-0"),
@@ -281,4 +281,142 @@ MORE_PREP.update({
     "u_nitrite": "First-morning mid-stream urine, processed within 2 hours.",
     "u_ketones": "First-morning mid-stream urine; note if fasting or on a low-carbohydrate diet.",
     "oat_citric": "First-morning urine; functional-medicine grade, so interpret with a clinician.",
+})
+
+
+# ---- 2026-10-29 infectious-disease menu (viral / bacterial / parasitic / fungal / STI / cultures / molecular)
+# Mostly QUALITATIVE (serology, antigen, PCR, culture). better="absent": a negative result is the good one, so "Reactive" /
+# "Positive" / "Growth of ..." surface as `detected` (see catalog.status_for). better="info": quantitative loads/titres, and
+# IgG / anti-HBs results where positive means past exposure or immunity and must NOT be flagged. Reference intervals are the
+# performing lab's. Aliases are specific on purpose (match_marker is longest-prefix): no bare "hiv", "tb", "pcr", "culture".
+MORE_PANELS["infectious"] = "Infectious disease (viral, bacterial, parasitic, STI)"
+
+_A, _I = "absent", "info"
+_INF = [  # (id, name, unit, better, aliases, loinc, evidence)
+    # viral hepatitis
+    ("hav_igm", "Hepatitis A IgM", "", _A, ["hepatitis a igm", "hepatitis a virus igm", "hav igm", "anti-hav igm", "hepatitis a - igm"], "22314-9", "A"),
+    ("hav_igg", "Hepatitis A IgG (immunity)", "", _I, ["hepatitis a igg", "hepatitis a total antibody", "hav igg", "anti-hav igg", "anti-hav total", "hepatitis a - igg"], "", "A"),
+    ("hbsag", "Hepatitis B surface antigen (HBsAg)", "", _A, ["hepatitis b surface antigen", "hbsag", "hbs ag", "hepatitis b virus surface antigen", "australia antigen"], "5196-1", "A"),
+    ("anti_hbs", "Anti-HBs (surface antibody)", "mIU/mL", _I, ["anti-hbs", "anti hbs", "hbsab", "hepatitis b surface antibody", "hepatitis b surface antibodies"], "22322-2", "A"),
+    ("hbeag", "HBeAg", "", _A, ["hbeag", "hepatitis b e antigen", "hepatitis be antigen"], "13954-3", "A"),
+    ("anti_hbe", "Anti-HBe", "", _I, ["anti-hbe", "anti hbe", "hepatitis b e antibody"], "", "A"),
+    ("anti_hbc_total", "Anti-HBc (total)", "", _A, ["anti-hbc total", "anti hbc total", "hbc total", "anti-hbc", "anti hbc", "hepatitis b core antibody total", "hepatitis b core antibody"], "13952-7", "A"),
+    ("anti_hbc_igm", "Anti-HBc IgM", "", _A, ["anti-hbc igm", "anti hbc igm", "hbc igm", "hepatitis b core antibody igm", "hepatitis b core igm"], "", "A"),
+    ("hbv_dna", "Hepatitis B viral load (HBV DNA, quantitative PCR)", "IU/mL", _I, ["hbv dna", "hbv viral load", "hepatitis b viral load", "hepatitis b virus dna", "hepatitis b virus hbv dna", "hbv-dna"], "42595-9", "A"),
+    ("hcv_ab", "Anti-HCV (hepatitis C antibody)", "", _A, ["anti-hcv", "anti hcv", "hcv antibody", "hcv ab", "hepatitis c antibody", "hepatitis c virus antibody", "hepatitis c virus hcv antibody", "hepatitis c antibodies"], "16128-1", "A"),
+    ("hcv_rna", "Hepatitis C viral load (HCV RNA, PCR)", "IU/mL", _I, ["hcv rna", "hcv viral load", "hepatitis c viral load", "hepatitis c virus rna", "hepatitis c virus hcv rna", "hcv-rna"], "11011-4", "A"),
+    ("hcv_genotype", "HCV genotype", "", _I, ["hcv genotype", "hcv genotyping", "hepatitis c genotype"], "", "A"),
+    ("hev_igm", "Hepatitis E IgM", "", _A, ["hepatitis e igm", "hev igm", "anti-hev igm", "hepatitis e virus igm"], "", "B"),
+    # viral systemic & respiratory
+    ("hiv_combo", "HIV 1 & 2 (4th-gen antigen/antibody)", "", _A, ["hiv 1 & 2", "hiv 1 and 2", "hiv 1/2", "hiv-1/2", "hiv i & ii", "hiv i and ii", "hiv combo", "hiv duo", "hiv ag/ab", "hiv antibody", "anti-hiv", "hiv screening", "hiv elisa", "hiv 4th generation"], "56888-1", "A"),
+    ("hiv_rna", "HIV viral load (RNA PCR)", "copies/mL", _I, ["hiv viral load", "hiv rna", "hiv-1 rna", "hiv 1 rna", "hiv-1 viral load", "hiv 1 viral load", "hiv-1 rna quantitative"], "20447-9", "A"),
+    ("cd4", "CD4 count", "cells/µL", _I, ["cd4 count", "cd4 absolute", "absolute cd4", "cd4 t cell", "cd4 t-cell", "cd4 cell count"], "24467-3", "A"),
+    ("dengue_ns1", "Dengue NS1 antigen", "", _A, ["dengue ns1", "dengue ns-1", "dengue antigen", "dengue virus ns1"], "", "A"),
+    ("dengue_igm", "Dengue IgM", "", _A, ["dengue igm", "dengue virus igm", "dengue antibody igm", "dengue - igm", "dengue fever igm", "dengue fever antibody igm"], "", "A"),
+    ("dengue_igg", "Dengue IgG", "", _I, ["dengue igg", "dengue virus igg", "dengue antibody igg", "dengue - igg", "dengue fever igg", "dengue fever antibody igg"], "", "A"),
+    ("chik_igm", "Chikungunya IgM", "", _A, ["chikungunya igm", "chikungunya virus igm", "chikungunya antibody igm"], "", "B"),
+    ("chik_igg", "Chikungunya IgG", "", _I, ["chikungunya igg", "chikungunya virus igg", "chikungunya antibody igg"], "", "B"),
+    ("chik_pcr", "Chikungunya RT-PCR", "", _A, ["chikungunya rt-pcr", "chikungunya rt pcr", "chikungunya pcr", "chikungunya rna"], "", "B"),
+    ("zika_pcr", "Zika virus RT-PCR", "", _A, ["zika virus rt-pcr", "zika virus rt pcr", "zika rt-pcr", "zika pcr", "zika virus rna", "zika virus pcr"], "", "B"),
+    ("covid_pcr", "SARS-CoV-2 RT-PCR", "", _A, ["sars-cov-2 rt-pcr", "sars-cov-2 rt pcr", "sars cov 2 rt pcr", "sars-cov-2 rna", "sars-cov-2 pcr", "covid-19 rt-pcr", "covid-19 rt pcr", "covid 19 rt pcr", "covid rt-pcr", "covid-19 pcr", "covid-19 rna"], "", "A"),
+    ("covid_ag", "SARS-CoV-2 rapid antigen", "", _A, ["sars-cov-2 antigen", "sars-cov-2 rapid antigen", "sars cov 2 antigen", "covid-19 antigen", "covid-19 rapid antigen", "covid antigen", "rapid antigen test"], "", "A"),
+    ("covid_igg", "SARS-CoV-2 antibody (IgG / IgM serology)", "", _I, ["sars-cov-2 igg", "sars-cov-2 igm", "sars-cov-2 antibody", "sars-cov-2 antibodies", "covid-19 igg", "covid-19 igm", "covid-19 antibody", "covid igg"], "", "B"),
+    ("influenza_ab", "Influenza A & B (antigen / RT-PCR)", "", _A, ["influenza a & b", "influenza a and b", "influenza a/b", "influenza a h1n1", "influenza antigen", "influenza rt-pcr", "influenza pcr", "h1n1 rt-pcr", "h1n1 pcr", "swine flu"], "", "A"),
+    ("resp_viral_pcr", "Respiratory viral panel (multiplex PCR)", "", _A, ["respiratory viral panel", "respiratory pathogen panel", "respiratory virus panel", "respiratory multiplex pcr", "respiratory pcr panel", "multiplex respiratory"], "", "B"),
+    ("cmv_igm", "CMV IgM", "", _A, ["cmv igm", "cytomegalovirus igm", "cytomegalovirus antibody igm", "cmv - igm"], "", "A"),
+    ("cmv_igg", "CMV IgG", "", _I, ["cmv igg", "cytomegalovirus igg", "cytomegalovirus antibody igg", "cmv - igg"], "", "A"),
+    ("cmv_pcr", "CMV DNA (quantitative PCR)", "copies/mL", _I, ["cmv dna", "cmv pcr", "cmv viral load", "cytomegalovirus dna", "cytomegalovirus pcr", "cytomegalovirus viral load"], "", "A"),
+    ("ebv_vca_igm", "EBV VCA IgM", "", _A, ["ebv vca igm", "ebv igm", "epstein barr virus vca igm", "epstein-barr virus vca igm", "epstein barr virus igm", "epstein-barr virus igm", "vca igm"], "", "B"),
+    ("ebv_vca_igg", "EBV VCA IgG", "", _I, ["ebv vca igg", "ebv igg", "epstein barr virus vca igg", "epstein-barr virus vca igg", "epstein barr virus igg", "epstein-barr virus igg", "vca igg"], "", "B"),
+    ("ebv_ebna", "EBV EBNA IgG", "", _I, ["ebv ebna", "ebna igg", "epstein barr nuclear antigen", "epstein-barr virus ebna", "epstein barr virus ebna"], "", "B"),
+    ("hsv_igm", "HSV-1 & HSV-2 IgM", "", _A, ["hsv igm", "hsv 1 & 2 igm", "hsv-1 igm", "hsv-2 igm", "hsv 1/2 igm", "herpes simplex igm", "herpes simplex virus igm", "herpes simplex virus 1 & 2 igm", "herpes simplex virus 1 and 2 igm"], "", "B"),
+    ("hsv_igg", "HSV-1 & HSV-2 IgG", "", _I, ["hsv igg", "hsv 1 & 2 igg", "hsv-1 igg", "hsv-2 igg", "hsv 1/2 igg", "herpes simplex igg", "herpes simplex virus igg", "herpes simplex virus 1 & 2 igg", "herpes simplex virus 1 and 2 igg"], "", "B"),
+    ("hsv_pcr", "HSV-1 & HSV-2 PCR", "", _A, ["hsv pcr", "hsv dna", "hsv-1 pcr", "hsv 1 & 2 pcr", "hsv 1/2 pcr", "herpes simplex pcr", "herpes simplex virus pcr", "herpes simplex virus dna"], "", "B"),
+    ("vzv_igm", "Varicella-zoster (VZV) IgM", "", _A, ["vzv igm", "varicella zoster igm", "varicella-zoster igm", "varicella zoster virus igm", "varicella igm"], "", "B"),
+    ("vzv_igg", "Varicella-zoster (VZV) IgG", "", _I, ["vzv igg", "varicella zoster igg", "varicella-zoster igg", "varicella zoster virus igg", "varicella igg"], "", "B"),
+    ("mmr_igm", "Measles / Mumps / Rubella IgM", "", _A, ["measles igm", "mumps igm", "rubella igm", "measles virus igm", "mumps virus igm", "rubella virus igm", "rubella antibody igm"], "", "A"),
+    ("mmr_igg", "Measles / Mumps / Rubella IgG (immunity)", "", _I, ["measles igg", "mumps igg", "rubella igg", "measles virus igg", "mumps virus igg", "rubella virus igg", "rubella antibody igg"], "", "A"),
+    ("rota_noro_ag", "Rotavirus & Norovirus antigen (stool)", "", _A, ["rotavirus antigen", "rotavirus ag", "norovirus antigen", "norovirus ag", "rotavirus & norovirus", "rotavirus and norovirus"], "", "B"),
+    # bacterial
+    ("widal", "Widal test (typhoid agglutination)", "", _I, ["widal test", "widal slide agglutination", "widal tube agglutination", "widal", "salmonella typhi o", "salmonella typhi h"], "", "B"),
+    ("typhidot", "Typhoid IgM / IgG (Typhidot)", "", _A, ["typhidot igm", "typhidot igg", "typhidot", "typhoid igm", "typhoid igg", "salmonella typhi igm", "salmonella typhi igg"], "", "B"),
+    ("salmonella_culture", "Salmonella (typhoid) blood culture", "", _A, ["salmonella blood culture", "typhoid blood culture", "blood culture for salmonella", "blood culture for typhoid", "salmonella culture", "salmonella typhi culture", "enteric fever culture"], "", "A"),
+    ("mantoux", "Mantoux / tuberculin skin test", "mm", _I, ["mantoux test", "mantoux", "tuberculin skin test", "tuberculin test"], "", "A"),
+    ("tb_igra", "TB IGRA (QuantiFERON-TB Gold)", "", _A, ["quantiferon-tb gold", "quantiferon tb gold", "quantiferon-tb", "quantiferon tb", "quantiferon", "tb gold", "tb igra", "interferon gamma release assay", "interferon-gamma release assay", "t-spot.tb", "t-spot tb"], "", "A"),
+    ("tb_afb_smear", "TB AFB smear (Ziehl-Neelsen)", "", _A, ["afb smear", "afb stain", "afb (ziehl neelsen)", "afb (ziehl-neelsen)", "ziehl neelsen", "ziehl-neelsen", "acid fast bacilli", "acid-fast bacilli", "sputum for afb", "sputum afb"], "", "A"),
+    ("tb_genexpert", "TB GeneXpert MTB/RIF (PCR + rifampicin resistance)", "", _A, ["genexpert mtb/rif", "genexpert mtb rif", "genexpert", "gene xpert", "cbnaat", "xpert mtb/rif", "mtb/rif", "mycobacterium tuberculosis pcr", "mycobacterium tuberculosis dna", "tb pcr", "tb-pcr", "truenat"], "", "A"),
+    ("tb_culture", "TB MGIT liquid culture & drug susceptibility", "", _A, ["mgit culture", "mgit 960", "tb culture", "tb mgit", "mycobacterial culture", "mycobacterium culture", "tb drug susceptibility", "afb culture", "mycobacterium tuberculosis culture"], "", "A"),
+    ("hpylori_stool_ag", "Helicobacter pylori stool antigen", "", _A, ["h. pylori stool antigen", "h pylori stool antigen", "helicobacter pylori stool antigen", "h.pylori stool antigen", "helicobacter pylori antigen", "h. pylori faecal antigen", "h. pylori fecal antigen", "stool h. pylori antigen"], "", "A"),
+    ("hpylori_ubt", "H. pylori urea breath test", "", _A, ["h. pylori urea breath test", "h pylori urea breath test", "helicobacter pylori urea breath test", "urea breath test", "c13 urea breath test", "13c urea breath test", "h. pylori breath test"], "", "A"),
+    ("hpylori_igg", "H. pylori IgG (serology)", "", _A, ["h. pylori igg", "h pylori igg", "helicobacter pylori igg", "h.pylori igg", "h. pylori antibody", "helicobacter pylori antibody", "h. pylori antibodies", "h. pylori serology"], "", "B"),
+    ("aso", "ASO (anti-streptolysin O)", "IU/mL", "low", ["anti-streptolysin o", "anti streptolysin o", "antistreptolysin o", "aso titre", "aso titer", "aso quantitative", "aslo", "aso"], "", "A"),
+    ("lepto_igm", "Leptospira IgM", "", _A, ["leptospira igm", "leptospira antibody igm", "leptospira antibodies igm", "leptospira elisa", "leptospirosis igm"], "", "B"),
+    ("brucella", "Brucella (agglutination / antibody)", "", _A, ["brucella agglutination", "brucella antibody", "brucella antibodies", "brucella igm", "brucella igg", "brucella serology", "brucella abortus"], "", "B"),
+    ("mycoplasma_igm", "Mycoplasma pneumoniae IgM", "", _A, ["mycoplasma pneumoniae igm", "mycoplasma igm", "m. pneumoniae igm", "mycoplasma pneumoniae antibody igm"], "", "B"),
+    ("mycoplasma_igg", "Mycoplasma pneumoniae IgG", "", _I, ["mycoplasma pneumoniae igg", "mycoplasma igg", "m. pneumoniae igg", "mycoplasma pneumoniae antibody igg"], "", "B"),
+    ("chlamydia_pneumo", "Chlamydia pneumoniae (antibody / PCR)", "", _A, ["chlamydia pneumoniae", "chlamydophila pneumoniae", "c. pneumoniae"], "", "B"),
+    ("legionella_ag", "Legionella urinary antigen", "", _A, ["legionella urinary antigen", "legionella urine antigen", "legionella pneumophila antigen", "legionella antigen"], "", "A"),
+    ("vibrio_culture", "Vibrio cholerae (stool culture)", "", _A, ["vibrio cholerae", "vibrio cholera", "stool culture for vibrio", "stool culture for cholera", "cholera culture"], "", "A"),
+    # parasitic & protozoal
+    ("malaria_smear", "Malaria parasite - peripheral smear", "", _A, ["malaria parasite", "malarial parasite", "mp smear", "peripheral smear for malaria", "peripheral smear for mp", "malaria smear", "malaria thick and thin", "malaria thick & thin", "thick and thin smear", "malaria microscopy", "malaria - peripheral smear"], "", "A"),
+    ("malaria_rdt", "Malaria rapid antigen (Pf/Pv)", "", _A, ["malaria rapid antigen", "malaria antigen", "malaria rapid test", "malaria rapid card", "malaria card", "malaria pf/pv", "malaria pf pv", "malaria pf/pan", "malaria rdt"], "", "A"),
+    ("malaria_pcr", "Malaria PCR", "", _A, ["malaria pcr", "malaria rt-pcr", "malaria dna", "plasmodium pcr", "plasmodium dna"], "", "B"),
+    ("filaria", "Filaria (antigen / night smear)", "", _A, ["filaria antigen", "filarial antigen", "filaria night smear", "microfilaria", "filaria smear", "night blood smear for filaria", "wuchereria bancrofti"], "", "B"),
+    ("kalaazar_rk39", "Leishmania (Kala-azar) rK39 / serology", "", _A, ["rk39", "r-k39", "kala azar", "kala-azar", "leishmania rk39", "leishmania antibody", "leishmania serology", "leishmania donovani", "visceral leishmaniasis"], "", "B"),
+    ("entamoeba", "Entamoeba histolytica (stool antigen / serology)", "", _A, ["entamoeba histolytica", "e. histolytica", "entamoeba antigen", "amoebic serology", "amoebiasis serology"], "", "B"),
+    ("giardia_ag", "Giardia lamblia stool antigen", "", _A, ["giardia lamblia", "giardia antigen", "giardia stool antigen", "giardia ag", "giardia intestinalis", "giardia duodenalis"], "", "A"),
+    ("crypto_stool", "Cryptosporidium (stool)", "", _A, ["cryptosporidium", "cryptosporidium antigen", "cryptosporidium stool", "cryptosporidium parvum"], "", "B"),
+    ("toxo_igm", "Toxoplasma gondii IgM", "", _A, ["toxoplasma igm", "toxoplasma gondii igm", "toxoplasma antibody igm", "toxoplasma antibodies igm", "toxoplasmosis igm"], "", "A"),
+    ("toxo_igg", "Toxoplasma gondii IgG", "", _I, ["toxoplasma igg", "toxoplasma gondii igg", "toxoplasma antibody igg", "toxoplasma antibodies igg", "toxoplasmosis igg"], "", "A"),
+    ("stool_op", "Stool ova & parasite (O&P) microscopy", "", _A, ["stool ova and parasite", "stool ova & parasite", "stool for ova and parasite", "stool for ova & parasite", "ova and parasite", "ova & parasite", "ova, cyst and parasite", "ova cyst parasite", "stool o&p", "stool parasite", "stool for parasites", "stool ova"], "", "A"),
+    # fungal
+    ("candida_culture", "Candida (culture / antigen)", "", _A, ["candida culture", "candida antigen", "candida albicans culture", "candida albicans antigen", "candida mannan", "candida species", "candida spp"], "", "B"),
+    ("aspergillus_gm", "Aspergillus galactomannan", "", _A, ["aspergillus galactomannan", "galactomannan", "aspergillus antigen", "aspergillus ag"], "", "B"),
+    ("crag", "Cryptococcal antigen (CrAg)", "", _A, ["cryptococcal antigen", "crag", "cryptococcus antigen", "cryptococcal ag", "cryptococcus neoformans antigen", "india ink"], "", "A"),
+    ("fungal_culture", "Fungal culture & sensitivity", "", _A, ["fungal culture", "fungus culture", "fungal culture & sensitivity", "fungal culture and sensitivity", "mycology culture", "fungal smear & culture"], "", "B"),
+    ("koh_mount", "KOH mount (skin / nail / hair)", "", _A, ["koh mount", "koh preparation", "koh prep", "koh smear", "koh wet mount", "koh examination", "koh for fungus", "koh test"], "", "A"),
+    # STI
+    ("vdrl", "VDRL / RPR (syphilis screen)", "", _A, ["vdrl", "rpr", "rapid plasma reagin", "venereal disease research laboratory", "syphilis screening", "syphilis screen", "syphilis rpr", "syphilis vdrl"], "20507-0", "A"),
+    ("tpha", "TPHA / FTA-ABS (syphilis confirmatory)", "", _A, ["tpha", "treponema pallidum haemagglutination", "treponema pallidum hemagglutination", "treponema pallidum particle agglutination", "tppa", "fta-abs", "fta abs", "fluorescent treponemal antibody", "treponema pallidum antibody", "treponema pallidum antibodies", "treponema pallidum total antibody", "syphilis total antibody", "syphilis antibody", "syphilis confirmatory", "syphilis igg"], "", "A"),
+    ("hpv_hr", "HPV DNA - high-risk genotyping (16/18 + others)", "", _A, ["hpv dna", "hpv high risk", "hpv high-risk", "hpv genotyping", "hpv 16/18", "hpv 16 & 18", "hpv pcr", "hpv typing", "hpv test", "human papillomavirus dna", "human papilloma virus dna", "human papillomavirus high risk", "human papillomavirus", "human papilloma virus"], "", "A"),
+    ("ct_naat", "Chlamydia trachomatis (NAAT / PCR)", "", _A, ["chlamydia trachomatis", "c. trachomatis", "chlamydia pcr", "chlamydia naat", "chlamydia dna"], "", "A"),
+    ("ng_naat", "Neisseria gonorrhoeae (NAAT / PCR)", "", _A, ["neisseria gonorrhoeae", "n. gonorrhoeae", "gonorrhoea pcr", "gonorrhea pcr", "gonorrhoeae pcr", "gonorrhoea naat", "gonorrhea naat", "gonorrhoeae naat"], "", "A"),
+    ("trichomonas", "Trichomonas vaginalis", "", _A, ["trichomonas vaginalis", "t. vaginalis", "trichomonas pcr", "trichomonas naat", "trichomonas antigen", "trichomonas culture", "trichomonas wet mount"], "", "A"),
+    ("hsv2_pcr", "HSV-2 PCR", "", _A, ["hsv-2 pcr", "hsv 2 pcr", "hsv2 pcr", "herpes simplex virus 2 pcr", "herpes simplex virus-2 pcr", "hsv-2 dna", "hsv 2 dna", "genital herpes pcr"], "", "A"),
+    # cultures & sensitivity
+    ("blood_culture", "Blood culture & sensitivity (aerobic / anaerobic)", "", _A, ["blood culture & sensitivity", "blood culture and sensitivity", "blood culture", "blood c/s", "blood c&s", "blood culture, aerobic", "blood culture aerobic", "blood culture anaerobic", "aerobic blood culture", "anaerobic blood culture", "blood culture & susceptibility"], "", "A"),
+    ("urine_culture", "Urine culture & sensitivity", "", _A, ["urine culture & sensitivity", "urine culture and sensitivity", "urine culture", "urine c/s", "urine c&s", "urine culture, routine", "urine culture & susceptibility", "urine for culture", "mid stream urine culture", "midstream urine culture", "msu culture"], "", "A"),
+    ("stool_culture", "Stool culture & sensitivity", "", _A, ["stool culture & sensitivity", "stool culture and sensitivity", "stool culture", "stool c/s", "stool c&s", "stool culture, routine", "stool for culture", "faeces culture", "feces culture"], "", "A"),
+    ("sputum_culture", "Sputum culture & sensitivity", "", _A, ["sputum culture & sensitivity", "sputum culture and sensitivity", "sputum culture", "sputum c/s", "sputum c&s", "sputum for culture", "sputum gram stain & culture"], "", "A"),
+    ("throat_nasal_culture", "Throat / nasal swab culture", "", _A, ["throat swab culture", "throat culture", "nasal swab culture", "nasal culture", "throat swab for culture", "throat/nasal swab culture", "throat / nasal swab culture", "throat swab c/s", "nasal swab c/s", "nasopharyngeal swab culture"], "", "A"),
+    ("wound_pus_culture", "Wound / pus culture", "", _A, ["wound culture", "pus culture", "wound swab culture", "pus swab culture", "wound/pus culture", "wound / pus culture", "wound c/s", "pus c/s", "wound swab c/s", "pus for culture", "abscess culture"], "", "A"),
+    ("csf_culture", "CSF culture & analysis", "", _A, ["csf culture", "csf culture & sensitivity", "csf analysis", "csf routine", "csf examination", "csf gram stain", "csf c/s", "cerebrospinal fluid culture", "cerebrospinal fluid analysis"], "", "A"),
+    ("hvs_urethral_culture", "High vaginal / urethral swab culture", "", _A, ["high vaginal swab culture", "high vaginal swab", "hvs culture", "hvs c/s", "urethral swab culture", "urethral culture", "urethral swab c/s", "vaginal swab culture", "vaginal swab c/s"], "", "A"),
+    # molecular / multiplex PCR & sepsis
+    ("gi_pcr_panel", "Gastrointestinal pathogen panel (multiplex PCR)", "", _A, ["gastrointestinal pathogen panel", "gastrointestinal panel", "gi pathogen panel", "gi pcr panel", "gi multiplex pcr", "stool pathogen panel", "stool multiplex pcr", "stool pcr panel", "diarrhoea panel", "diarrhea panel", "enteric pathogen panel"], "", "B"),
+    ("meningitis_pcr", "Meningitis / encephalitis panel (PCR)", "", _A, ["meningitis/encephalitis panel", "meningitis / encephalitis panel", "meningitis encephalitis panel", "meningitis panel", "encephalitis panel", "meningitis pcr", "encephalitis pcr", "meningitis/encephalitis pcr", "csf pcr panel", "csf multiplex pcr"], "", "B"),
+    ("sepsis_pcr", "Sepsis / bloodstream pathogen PCR", "", _A, ["sepsis pcr", "sepsis panel", "sepsis pathogen pcr", "sepsis pathogen panel", "sepsis multiplex pcr", "bloodstream pathogen pcr", "bloodstream pathogen panel", "bloodstream infection panel", "blood pathogen panel", "blood pathogen pcr", "septifast"], "", "B"),
+    ("procalcitonin", "Procalcitonin (bacterial sepsis marker)", "ng/mL", "low", ["procalcitonin", "pro-calcitonin", "pro calcitonin"], "33959-8", "A"),
+]
+# Quantitative non-zero optima only where a clean cut-off exists (ASO <200 IU/mL, PCT <0.1 ng/mL); everything else is None.
+_INF_OPT = {"aso": (0, 200), "procalcitonin": (0, 0.1)}
+MORE_MARKERS.update({i: (n, "infectious", u, *_INF_OPT.get(i, (None, None)), b, a, l) for i, n, u, b, a, l, _ in _INF})
+MORE_EVIDENCE.update({i: ev for i, *_, ev in _INF})
+INFECTIOUS_IDS = [i for i, *_ in _INF]
+MORE_CONCERNS["Infections"] = INFECTIOUS_IDS + ["hscrp", "esr"]
+MORE_RETEST["infectious"] = 365
+MORE_PREP.update({
+    "blood_culture": "Collect before the first antibiotic dose, from two separate sites, with strict skin antisepsis.",
+    "urine_culture": "Clean-catch mid-stream sample, ideally first-morning; deliver within 2 hours or refrigerate.",
+    "stool_culture": "Fresh sample in a sterile container; deliver within 2 hours.",
+    "stool_op": "Fresh sample in a clean container; up to three samples on alternate days improve yield.",
+    "sputum_culture": "Early-morning deep-cough sample after rinsing the mouth with water; not saliva.",
+    "tb_genexpert": "Early-morning sputum, deep cough, before starting anti-TB treatment.",
+    "hpylori_stool_ag": "Stop PPIs for 2 weeks and antibiotics/bismuth for 4 weeks before the test.",
+    "hpylori_ubt": "Fast 6 h; stop PPIs for 2 weeks and antibiotics/bismuth for 4 weeks before the test.",
+    "hpv_hr": "Not during your period; no intercourse, douching or vaginal creams for 48 h.",
+    "ct_naat": "Hold urine for 1-2 h before a first-void sample; no antibiotics in the last 2 weeks.",
+    "ng_naat": "Hold urine for 1-2 h before a first-void sample; no antibiotics in the last 2 weeks.",
+    "malaria_smear": "Best drawn during a fever spike; repeat every 12-24 h for 3 samples if negative but symptoms persist.",
+    "dengue_ns1": "Most sensitive in the first 5 days of fever; IgM becomes positive after day 5.",
 })

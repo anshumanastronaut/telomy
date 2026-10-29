@@ -2373,3 +2373,479 @@ Sources:
 - [Longevity.Technology: XPRIZE Healthspan 20 finalists (11 Aug 2026)](https://longevity.technology/news/xprize-healthspan-names-20-finalists/), [BioVoiceNews: Sanjeevini semifinal (May 2025)](https://biovoicenews.com/goqii-team-sanjeevini-reaches-semifinals-in-prestigious-101-million-xprize-healthspan-competition/), [GOQii Sanjeevini](https://goqii.com/sanjeevini), [GOQii blog: Top 40](https://goqii.com/blog/?p=21170), [India Fit Report 2026](https://goqii.com/blog/?p=21448)
 - [Inc42: GOQii financials](https://inc42.com/company/goqii/), [Tracxn legal entity](https://tracxn.com/d/legal-entities/india/goqii-technologies-private-limited/__bQtFC1-FhQj7vejLZaPPChLiBBAJQEnmkuLlXAdmrbE), [PitchBook](https://pitchbook.com/profiles/company/65652-22), [GOQii Series C blog](https://goqii.com/blog/goqii-raises-50-million-in-series-c-funding/), [LeadIQ (Kotak/Fit India mention)](https://leadiq.com/c/goqii/5a1d98842300005c0087356e)
 - [Economic Times on X: GOQii moves SC over customs duty (Jun 2026)](https://x.com/EconomicTimes/status/2062882445037355413), [Nasscom on X: Gondal at People Summit 2026](https://x.com/nasscom/status/2077350166923747591)
+
+---
+
+## 2026-10-28 — Fountain Life (BASE · CORE · APEX · APEX Family · Executive Health · Zori AI · Restorative Therapeutics)
+
+*Roster note: first entry in the Clinic / enterprise block (next: Human Longevity Inc). Sources:
+Fountain Life's own homepage and APEX comparison table, press releases (FITT Insider, Business Wire),
+TechCrunch, Longevity.Technology, Athletech News, and the Agewell Guide's shop-price snapshot (checked
+14 Oct 2026). Fountain Life's site shows no prices, so every price below is secondhand and varies by
+source. Most "reviews" found are affiliate or competitor pages (SiPhox, Protocol, Crown Counseling)
+and are used only for criticisms that several sources repeat.*
+
+**Basic features.**
+- **One-day in-clinic diagnostic visit** at 5 US centres: Dallas (The Colony), Houston, White Plains NY,
+  Orlando, Naples. Miami is "coming soon"; Los Angeles ("The Estate") is announced for fall 2027.
+  Dallas and Houston are waitlisted. The company claims "150 GB of data points" per member.
+- **Blood panel 100+ markers** in every tier. BASE draws are at Quest, so no centre visit is needed for
+  bloods.
+- **"Always-on Care"**: a 24/7 team of longevity physician, nurse, health coach, nutritionist and care
+  coordinator. Reviewers repeatedly say support after the diagnostic day feels thinner than the price
+  implies (several sources, all secondhand).
+- **App + wearables**: since Nov 2025 the app syncs Apple, Garmin, Oura, WHOOP "and hundreds" of other
+  apps, next to Fountain clinical data. There is no own device.
+- **Tiers**: BASE (100+ markers + DEXA + clinician review + 12 months of Zori; FL/TX only), CORE
+  ("essential"; one comparison says it adds full-body MRI, coronary CT and genome), APEX (premium),
+  APEX Family (adult children 18–30), Executive Health (B2B).
+
+**Advanced features (APEX table on fountainlife.com/apex, "once annually").**
+- **Imaging:** full-body and brain MRI with AI; low-dose lung CT with AI; coronary CT angiography with
+  AI; retinal scan with AI read; DEXA. Imaging is sold only inside a membership.
+- **Cardio/function:** ECG, BP, **pulse wave velocity**, grip strength, balance, olfactory test,
+  neurocognitive testing, home sleep test.
+- **Omics:** whole-genome sequencing, **epigenetic biological age**, gut microbiome, oral pathogens,
+  environmental toxicant exposure, skin-cancer test.
+- **À la carte on APEX:** multi-cancer early-detection blood test (50+ types), VO₂ max, 3D
+  motion-capture movement assessment (both new in 2025), CGM, hormone/cortisol rhythm mapping,
+  nutritional-needs assessment, cellular senescence + immune-age test. The page's own "24 of 27
+  covered" count does not match its rows.
+- **Zori "AI medical assistant/expert"**: answers questions over the member's imaging, genomics,
+  metabolomics and wearable data, flags risks and suggests next steps. No published grounding method,
+  validation or safety evaluation found.
+- **Restorative Therapeutics** (à la carte): therapeutic plasma exchange, "Restorative Biologics"
+  (stem-cell products; Naples only, APEX-only, labelled **not FDA approved** on its own page),
+  orthobiologics, aesthetics (Botox, fillers, microneedling).
+- **Outcome claims on the homepage** ("4x higher cancer screening detection", "46% reversal of
+  accelerated brain aging", "52% liver-fat normalization", "12% significant plaque reversal") come
+  with no method, sample or control. The Agewell Guide notes a provider-reported "14% of executive-
+  health members had actionable findings", also uncontrolled.
+
+**Pricing.** Fountain Life publishes none. Agewell's snapshot of the official shop (Oct 2026): **BASE
+$595/yr, CORE $10,500/yr, APEX $23,500/yr** (CORE and APEX marked "sold out" online, i.e. sales go
+through a call). Other sources: APEX $19,500–21,500 (TechCrunch 2025: $21,500), CORE as low as
+$2,995 (one older blog, likely stale). APEX Family: price by call. Funding: $18M Series B led by EOS
+Ventures (Aug 2025); totals of ~$52M (Tracxn) to ~$108M (press) disagree.
+
+**Weaknesses.**
+- **Price and reach:** ~$10–24k/yr, 5 US cities, waitlists. It is not a product for India or for mass
+  markets; BASE is the only cheap door and is FL/TX only.
+- **Screening-cascade risk:** annual whole-body MRI + CT in healthy people produces incidental findings
+  and false positives. No published follow-up, complication or overdiagnosis data. Lung CT and CTA
+  also mean yearly radiation.
+- **Evidence gap:** headline outcome stats have no methodology; the clinic sells unapproved stem-cell
+  therapies next to its diagnostics, which critics flag as a conflict of interest.
+- **"Finds, then what?"**: repeated criticism that the diagnostic day is excellent but ongoing guidance
+  is thin. The AI layer (Zori) is unvalidated and cloud-based.
+- **Governance noise:** an older (c. 2023, date unverified) lawsuit by a New Rochelle doctor alleges he was misled into setting up a
+  Fountain clinic (allegations only, not findings).
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **Cheap extra clocks that Fountain gets from $20k of hardware:** a retinal-photo age model
+     (smartphone fundus adapter — new row), a scored scratch-and-sniff olfactory test and an app-based
+     neurocognitive battery (new rows), plus PWV vascular age from our patch+ring pulse-arrival time.
+     Each feeds the fusion engine as another organ-level clock, at a cost that fits India.
+  2. **Incidental-finding triage workflow** (new row) in the doctor workspace: finding → guideline-based
+     next step → closed, with rates reported. This is the follow-up layer that Fountain's critics say
+     is missing, and it is the B2B pitch to Indian scan centres and executive-health clinics that sell
+     full-body MRI.
+  3. **Grounded, cited Zori-equivalent:** Telomy-LLX already cites the user's own numbers and runs on
+     device. Publish an evaluation (accuracy, refusal rate, hallucination checks) — Fountain has none.
+     Show evidence grade next to every therapy the clinic engine suggests, the opposite of selling
+     unapproved biologics beside the test.
+- *Operational parity via partnership:* imaging, WGS, MCED and microbiome through partner labs/scan
+  centres on a doctor-ordered basis, not bundled; affinity distribution like Fountain's Flexjet and
+  Houstonian deals → in India, premium clubs, family offices and corporate executive-health buyers.
+- *Our opening:* Fountain proves rich buyers pay for a once-a-year deep scan, but leaves the 364 other
+  days to an unvalidated chatbot and a wearable sync. Telomy is the continuous, validated layer between
+  scans — and a white-label "longevity OS" for Indian centres (like Mitogenez) that want to run a
+  Fountain-style programme at a fraction of the cost.
+
+Sources:
+- [Fountain Life homepage](https://www.fountainlife.com/), [APEX membership table](https://www.fountainlife.com/apex)
+- [Agewell Guide: Fountain Life review 2026 (shop-price snapshot)](https://agewell.guide/clinics/fountain-life), [Workup: APEX from $21,500](https://www.workuphq.com/providers/fountain-life/solution/apex-membership), [Vitality Scout (estimates, Jun 2026)](https://vitalityscout.com/providers/fountain-life), [wellfr tier breakdown](https://wellfr.com/understanding-the-price-tag-how-much-does-fountainlife-cost), [Keep.health review](https://keep.health/fountain-life-a-revolution-in-preventative-and-precision-healthcare/)
+- [TechCrunch: $18M Series B (Aug 2025)](https://techcrunch.com/2025/08/13/tony-robbins-and-peter-diamandis-longevity-company-fountain-life-raises-18m/), [Longevity.Technology: $18M](https://longevity.technology/investment/fountain-life-lands-18m-to-accelerate-longevity-clinic-expansion/), [Tracxn](https://tracxn.com/d/companies/fountain-life/__OLHBZZ9-cgBLTxJQNI1l4jZhCjO6Ar190l7wG-s3uis)
+- [Athletech News: app syncs all major wearables (Nov 2025)](https://athletechnews.com/fountain-life-links-ai-powered-health-app-to-all-major-wearables/), [FITT: wearable sync release](https://insider.fitt.co/press-release/fountain-life-app-now-syncs-with-wearables-delivering-real-time-personalized-health-intelligence-for-peak-optimization/), [FITT: new APEX launch](https://insider.fitt.co/press-release/fountain-life-launches-new-apex-membership-redefining-longevity-performance-and-preventive-health/), [Longevity.Technology: APEX adds VO₂ max + motion capture](https://longevity.technology/news/fountain-life-adds-apex-to-premium-longevity-program/), [Stack Archive: BASE $595 (third-party)](https://stack-archive.com/blog/fountain-life-base-membership-longevity-2026/)
+- [Flexjet partnership (Dec 2025)](https://privatejetcardcomparisons.com/2025/12/16/flexjet-signs-strategic-partnership-with-fountain-life/), [Business Wire: Houstonian partnership (Jan 2026)](https://www.businesswire.com/news/home/20260115740955/en/The-Houstonian-Hotel-Club-Spa-Names-Fountain-Life-Its-Exclusive-Longevity-Preventive-Health-Partner), [Houston Chronicle: River Oaks centre](https://www.houstonchronicle.com/business/article/fountain-life-houston-longevity-21026634.php), [Longevity Clinic of the Year 2026](https://kucoin.com/news/flash/fountain-life-named-2026-longevity-clinic-of-the-year-for-second-consecutive-year)
+- Criticism (affiliate/competitor sources, used only for repeated points): [delaeMD audit](https://delaemd.com/blog/the-top-3-longevity-clinics-an-evidence-based-medical-audit), [Protocol: screening vs action](https://www.protocol.us/blog/fountain-life-vs-protocol), [SiPhox vs Fountain Life](https://siphoxhealth.com/comparison/siphox-vs-fountain-life), [Crown Counseling comparison](https://crowncounseling.com/reviews/life-force-vs-function-health-vs-fountain-life), [Westfair: New Rochelle doctor lawsuit](https://westfaironline.com/courts/new-rochelle-doctor-says-he-was-duped-into-setting-up-anti-aging-clinic/), [The Niche: stem-cell review (2022)](https://ipscell.com/2022/05/review-of-peter-diamandis-fountain-life-clinics-more-than-stem-cell-hype/)
+
+---
+
+## 2026-10-29 — Human Longevity Inc (100+ Care · 100+ Concierge · legacy Health Nucleus · HLI app · Genomics for All · HLFM)
+
+*Roster note: second entry in the Clinic / enterprise block (next: Hims & Hers). Sources: HLI's own
+programme pages (100+ Care, 100+ Concierge) and PR Newswire releases; SF Chronicle, Radiology Business,
+Longevity.Technology, IBTimes, CNBC; PNAS 2020 study via HLI's Business Wire release. HLI publishes tier
+prices on its own pages, so these are firmer than Fountain Life's. Funding totals come from Tracxn
+(~$377M) and are not verified. Two outlets give different launch dates for the $599 genome (11 May vs
+3 Aug 2026); the PR Newswire release says 3 Aug. No App Store reviews of the new app were found.*
+
+**Basic features.**
+- **In-clinic annual assessment** at two US centres (San Diego, San Francisco). HLI says it has served
+  10,000+ clients. Expansion to Saudi Arabia / Southeast Asia / GCC has been announced repeatedly but no
+  opening date was found. A China site (humanlongevity.cn) exists; its status is unclear.
+- **Bloods**: "advanced blood biomarker analysis" inside the assessment; the panel size is not published.
+- **Clinician follow-up**: 100+ Care includes quarterly longevity-clinician follow-ups; 100+ Concierge adds
+  weekday concierge primary care.
+- **Member app (Feb 2026, iOS)**: results, reports and imaging/genetics/biomarker trends in one place, plus
+  an "interactive AI chat". This is HLI's first app, and it arrived late for a company founded in 2013.
+- **Wearables/CGM**: CGM and an iRhythm Zio multi-day ECG patch come bundled in 100+ Care. There is no
+  own device, and the brochure says only that wearables are included, without naming integrations.
+
+**Advanced features.**
+- **Imaging (the core product)**: whole-body and brain MRI, cardiac MRI, coronary CT / calcium score,
+  low-dose lung CT; 100+ Concierge adds **AMRA MRI body composition** (muscle volume, visceral and liver fat).
+- **Genomics**: clinical-grade whole-genome sequencing is HLI's heritage (Venter). **"Genomics for All"**
+  sells a **$599 WGS** delivered through the app with no clinic visit, with AI re-analysis as research
+  changes. This is a real down-market move.
+- **Cancer screening**: GRAIL Galleri MCED and Cologuard (Concierge / Care respectively).
+- **Specialist network**: Mass General subspecialty consults in Concierge, the strongest academic tie-in
+  among the longevity clinics profiled so far.
+- **Cognitive testing** is part of the 100+ assessment.
+- **AI ambitions**: in May 2026 HLI spun out **Human Life Foundation Models (HLFM)** with Insilico Medicine to
+  build a "computational model of an individual" from genome + imaging + blood + wearables. It has been
+  announced but there is no product, model card or validation. HLI also has a research tie-up with the
+  LEV Foundation (Mar 2026).
+- **Evidence**: PNAS 2020 cohort (1,190 clients) reporting a yield of clinically significant findings; HLI's
+  pre-publication figure was **1.7% previously unknown cancers**. The website says **14.4% of 10,000+ clients**
+  had new significant findings. Older press quoted ~40% (CNBC 2018) and 8% "needing immediate attention".
+  These figures measure different things and none show a mortality or outcome benefit.
+
+**Pricing.** 100+ Care **$12,000/yr**; 100+ Concierge **$19,000/yr** (official pages; SF Chronicle
+2025 agrees). Legacy Health Nucleus was ~$25,000 for an 8-hour visit, and a 2026 third-party benchmark
+still quotes $25k for "100+". Earlier Health Nucleus X tiers were $4,950 first year / $2,950 renewal, which
+are stale. **Genomics for All: $599.** Insurance does not cover it.
+
+**Weaknesses.**
+- **Price + reach**: $12–19k/yr, two Californian cities, and no India presence. International expansion
+  has been "coming" for years.
+- **Screening-cascade risk**: the same critique as Fountain/Prenuvo. A 2020 review of 6,214 whole-body MRIs
+  found 95% had ≥1 abnormality and 30% needed follow-up, and there is no evidence of longer life. The
+  Prenuvo missed-stenosis lawsuit (2025–26) shows the liability exposure of this whole category. HLI
+  publishes yield, not overdiagnosis or harms.
+- **Corporate turbulence**: the former "unicorn" was down-valued in 2018, the founder left, CEOs have
+  changed several times (now Wei-Wu He), and funding totals disagree between sources. Execution has been
+  slow: the first consumer app only came in 2026.
+- **AI is still a promise**: the app chat has no published grounding or evaluation, and HLFM is a
+  press-release entity so far.
+- **Episodic, not continuous**: value is concentrated in one annual visit. Between visits there is a CGM,
+  a patch and quarterly calls, with no daily risk engine.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **Living genome report** (new row): our IndiGenomes/gnomAD annotation module plus a scheduled
+     re-annotation job that alerts the user and their doctor when a variant is reclassified (ClinVar
+     updates). HLI charges $599 for this idea; we can offer it on uploaded or partner-lab WGS at Indian
+     prices, with Indian-population allele frequencies that HLI lacks.
+  2. **Zio-style multi-day ECG report** (new row) from the patch we already ship: 7–14-day AF burden,
+     ectopy counts and pause detection in a format a cardiologist will sign. It is the cheapest high-value
+     clinical deliverable in HLI's $12k tier.
+  3. **Publish the fusion model first.** HLFM's "digital twin" (genome + imaging + blood + wearables) is
+     our fusion risk engine at hypothetical scale. A preprint with C-index/calibration on NHANES/UKB-style
+     cohorts would put Telomy ahead of an announcement that has no paper.
+- *Operational parity via partnership:* a doctor-ordered imaging and MCED menu through Indian scan centres
+  and labs (not bundled, to avoid the screening cascade); an AMRA/DEXA report importer that feeds our
+  muscle clock; and an academic-hospital second-opinion tie-up as the India counterpart to HLI's Mass
+  General link.
+- *Our opening:* HLI, like Fountain, sells the annual deep scan and leaves the year in between to a thin app.
+  It also has no India footprint and a slow track record. Telomy can be the continuous, validated layer,
+  and can give centres like Mitogenez the HLI playbook (annual assessment + genome + follow-up) as
+  software at Indian price points, with a findings-triage workflow that HLI does not publish.
+
+Sources:
+- [HLI 100+ Care](https://www.humanlongevity.com/100plus-care/), [HLI 100+ Concierge](https://www.humanlongevity.com/100plus-concierge/), [HLI programmes](https://www.humanlongevity.com/programs/), [2022 100+ brochure (older)](https://humanlongevity.cn/wp-content/uploads/2022/07/HLI_100-Membership-Brochure.pdf)
+- [PR Newswire: $599 Genomics for All](https://www.prnewswire.com/news-releases/human-longevity-makes-clinical-grade-whole-genome-sequencing-available-to-all-for-599-302840464.html), [PR Newswire via Morningstar: AI app launch (Feb 2026)](https://www.morningstar.com/news/pr-newswire/20260218la90863/human-longevity-launches-personal-ai-powered-longevity-app), [IBTimes: $599 genomes to AI models / HLFM](https://www.ibtimes.com/human-longevitys-second-act-599-genomes-ai-models-predictive-health-3808100), [NutritionInsight: genome app](https://www.nutritioninsight.com/news/human-longevity-genome-sequencing-dna.html)
+- [SF Chronicle: what $19,000 a year buys](https://www.sfchronicle.com/health/aging-longevity/article/human-longevity-health-clinic-20277643.php), [Radiology Business: $25K exam, critics](https://radiologybusiness.com/topics/cardiac-imaging/25k-exam-includes-full-body-mri-cardio-ct-critics-question-its-usefulness), [Business Wire: PNAS study (2020)](https://www.businesswire.com/news/home/20200127005223/en/Human-Longevity%E2%80%99s-Largest-Study-Kind-Shows-Early), [CNBC 2018](https://www.cnbc.com/2018/03/27/genome-pioneer-craig-venter-is-trying-to-decode-death.html), [MedCity: loses unicorn status (2018)](https://medcitynews.com/2018/12/former-unicorn-genetics-startup-human-longevity-loses-its-horn/), [Chief Healthcare Executive: shakeup + new plans](https://www.chiefhealthcareexecutive.com/view/following-shakeup-human-longevity-hires-a-cto-and-announces-new-consumer-plans)
+- [Longevity.Technology: $39.8M Series B (date unclear)](https://longevity.technology/news/hli-lands-39-8m-to-advance-ai-powered-longevity-medicine/), [Tracxn profile](https://tracxn.com/d/companies/human-longevity/__jIqMM4_fJUU1-OFP0MViba4YL1BiYf0TzLaACWME3RQ), [Wikipedia](https://en.wikipedia.org/wiki/Human_Longevity)
+- Category context: [PMC: Longevity clinics, promise and peril](https://pmc.ncbi.nlm.nih.gov/articles/PMC12606959/), [Futurism: Prenuvo stroke lawsuit](https://futurism.com/future-society/mri-body-scan-stroke-lawsuit), [Axios: body-scan lawsuit (Jan 2026)](https://www.axios.com/pro/health-tech-deals/2026/01/15/body-scans-lawsuit-mri-controversy), [wellnessand.world 2026 pricing benchmarks (third-party)](https://wellnessand.world/news/longevity-pricing-2026)
+
+---
+
+## 2026-10-29 — Hims & Hers (Hims · Hers · Labs · MedMatch · Trybe Labs · Zava · Eucalyptus)
+
+*Roster note: third entry in the Clinic / enterprise block (next: Ro). Sources: Hims & Hers investor
+releases and SEC 8-K/10-Q (Q1–Q2 2026), hims.com Labs and testosterone pages, the FTC press release
+(Jul 2026), CNBC, BioPharma Dive, Boston Globe/AP, MobiHealthNews, Sherwood, Athletech. The MedMatch
+figures come from one blog-style source and are unverified. Labs pricing has changed since launch, and
+third-party reviews disagree with hims.com, so the hims.com figure is used. Q3 2026 results are due 9 Nov
+2026 and are not included.*
+
+**Basic features.**
+- **Condition-led telehealth subscriptions**: an intake questionnaire, then async or video review by an
+  affiliated provider, then mail-order meds from its own affiliated/compounding pharmacies. Lines cover
+  ED, hair, skin, mental health, weight loss, testosterone and menopause. **~2.9M subscribers** (Q2 2026,
+  +19% YoY), **~$753M Q2 revenue** (+38%), FY2026 guidance $3.1–3.3B.
+- **Labs** (late 2025): Quest-processed blood panels. It launched as Base $199/yr (50 markers, one draw)
+  and Advanced $499/yr (120+, two draws). **hims.com now lists one $349/yr plan: 75+ markers plus a 45+
+  marker mid-year recheck.** Draws are in-lab at Quest, not at home.
+- **At-home kits**: a ~$69–94 testosterone/core panel kit is required before TRT-style Rx and is run by
+  **Trybe Labs**, a CLIA lab Hims bought in Feb 2026. A wider at-home rollout is promised.
+- **Subscriber Benefits**: partner discounts, including **Dexcom Stelo OTC CGM** and Pvolve classes
+  (8 partners added May 2026). Hims says it keeps no margin on these.
+- **International**: Zava (UK/DE/FR/IE, 2025) and **Eucalyptus** (Australia etc., up to $1.15B, announced
+  Feb 2026). International revenue was ~$131M in Q2 2026, against ~$7.5M a year earlier.
+
+**Advanced features.**
+- **Rx pathways at scale**: GLP-1 (now branded **Wegovy pill/injection and Ozempic** under the **9 Mar 2026
+  Novo settlement**), **compounded enclomiphene** (from ~$99/mo on a 10-month prepay; a reporter was
+  quoted $990 upfront) plus branded oral testosterone (Kyzatrex). The **Hers menopause** specialty
+  (Oct 2025) covers estradiol pill/patch/cream, progesterone and non-hormonal options, with patch kits
+  from ~$134/mo (Apr 2026).
+- **MedMatch**: provider-side AI that reads intake, history and labs and proposes treatment and dose for
+  clinician sign-off. Hims frames it as decision support. The claimed ~40% cut in intake wait time is
+  unverified.
+- **Longevity specialty**: announced for 2026. No product details were found as of today.
+- **No** biological-age score, trained risk prediction, own wearable, imaging, genomics or safety/SOS
+  features were found. Labs is a panel plus provider read-out, not a risk model.
+
+**Pricing.** Per-condition subscriptions; average monthly revenue per subscriber is **$92** (Q2 2026).
+Labs $349/yr (hims.com; launch tiers were $199/$499). Enclomiphene from $99/mo on prepay; menopause
+patches from ~$134/mo. The branded Wegovy price on Hims was not found. Insurance, FSA and HSA are not
+accepted.
+
+**Weaknesses.**
+- **Regulatory and legal exposure**: FDA warning letter (Sep 2025). The $49 compounded Wegovy pill was
+  pulled within days (Feb 2026) after an HHS referral to DOJ and a Novo patent suit, which Novo dropped
+  in the March deal while reserving the right to refile. Enclomiphene is compounded and off-label.
+- **FTC + Utah + LA County lawsuit (29 Jul 2026)**: alleges customers were charged before a clinician
+  reviewed them, a cancel flow buried behind multiple survey screens (one-click only in CA/CO), and
+  **health-condition data shared with Meta and Snap** via pixels/SDKs. There is also a private class
+  action (Pearson, Aug 2026). Hims denies the allegations.
+- **Care depth**: FTC complaint excerpts describe little real medical advice and hard-to-reach support.
+  There is no independent clinical-quality audit.
+- **Margins squeezed by GLP-1**: gross margin was ~64% in Q2 2026 (down ~12 pts per one analysis) and
+  adjusted EBITDA fell. Q2 EPS was negative.
+- **No India presence**, and no continuous monitoring or prediction layer. It is a prescription funnel
+  with a lab add-on.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **GLP-1 / HRT / TRT companion with safety labs**: dose log, side effects, weight and body
+     composition next to HRV/sleep/readiness, plus protocol-driven monitoring labs (Hct/PSA on
+     testosterone, lipids/HbA1c on GLP-1, symptom scores on menopause). The pieces already exist (med
+     list, trackers, recovery, doctor role). Hims sells the drug, and we would own the monitoring.
+  2. **Clinician pre-draft queue (MedMatch-style)**: wire `llx/clinic_engine.py` into the doctor
+     workspace so each intake arrives with a cited, evidence-graded draft plan for sign-off. Unlike
+     Hims, we would show the evidence grade and log every clinician override.
+  3. **Trust by design, published**: no ad pixels or SDKs on health screens, one-tap cancel, and no
+     charge before clinician review. These are the exact counts in the FTC complaint, and with the
+     on-device LLM this can be a marketing claim we can prove.
+- *Operational parity via partnership:* an Indian registered e-pharmacy for branded/approved-generic
+  GLP-1 (semaglutide generics) and HRT, and a lab partner (Thyrocare-class) for eligibility and
+  monitoring panels at home. A Benefits-style partner-discount shelf (CGM, gyms) can come later as a
+  retention lever.
+- *Our opening:* Hims is a high-volume prescription funnel with no measurement science. It has no bio-age,
+  no risk model, no continuous vitals and no India presence, and is under FTC and FDA pressure over
+  billing, data sharing and compounding. Telomy can be the clean, doctor-in-the-loop alternative that
+  measures whether the therapy is working, and in India GLP-1 demand is rising without a trusted
+  monitoring layer.
+
+Sources:
+- [Hims Q2 2026 results](https://investors.hims.com/news/news-details/2026/Hims--Hers-Health-Inc--Reports-Second-Quarter-2026-Financial-Results/default.aspx), [Q1 2026 results](https://investors.hims.com/news/news-details/2026/Hims--Hers-Health-Inc--Reports-First-Quarter-2026-Financial-Results/default.aspx), [10-Q Q2 2026 (SEC)](https://www.sec.gov/Archives/edgar/data/0001773751/000177375126000163/hims-20260630.htm), [Q3 2025 shareholder letter](https://s27.q4cdn.com/787306631/files/doc_financials/2025/q3/Hims-and-Hers_Q3-2025-Shareholder-Letter_Final.pdf)
+- [How Labs by Hims works](https://www.hims.com/labs/how-it-works), [Men's Core Panel](https://www.hims.com/testosterone/mens-core-panel), [StreetInsider: Labs two tiers](https://www.streetinsider.com/Corporate+News/HIMS+launches+Labs+testing+service+with+two+pricing+tiers/25605006.html), [Athletech: Hims enters blood testing](https://athletechnews.com/hims-hers-labs-blood-testing/), [TipRanks: Trybe Labs acquisition](https://www.tipranks.com/news/the-fly/hims-hers-acquires-at-home-lab-testing-facility-terms-undisclosed)
+- [Hims enclomiphene pricing](https://www.hims.com/blog/enclomiphene-price), [Hims newsroom: oral testosterone](https://news.hims.com/newsroom/the-new-standard-in-testosterone-treatment-exclusive-branded-oral-testosterone-and-expanded-treatment-options), [Sherwood: testosterone expansion](https://www.sherwood.news/markets/hims-expands-into-testosterone-treatments/)
+- [HLTH: menopause entry](https://hlth.com/insights/news/hims-and-hers-health-enters-menopause-market-in-1b-revenue-push-2025-10-16), [Yahoo Finance: estrogen patches (Apr 2026)](https://finance.yahoo.com/sectors/healthcare/articles/hims-hers-expands-menopause-care-152745149.html)
+- [CNBC: $49 Wegovy copy](https://www.cnbc.com/2026/02/05/eli-lilly-novo-nordisk-stock-wegovy-hims-hers-pill.html), [CNBC: Novo sues](https://www.cnbc.com/2026/02/09/novo-nordisk-sues-hims-hers-compounded-obesity-drugs.html), [BioPharma Dive: pill cancelled](https://www.biopharmadive.com/news/hims-stop-launch-compounded-wegovy-fda-novo/811662/), [Boston Globe: settlement (9 Mar 2026)](https://www.bostonglobe.com/2026/03/09/business/hims-hers-novo-nordisk-wegovy-weight-loss-pill-medicine), [Hims IR: Novo GLP-1s on platform](https://investors.hims.com/news/news-details/2026/Novo-Nordisks-FDA-Approved-GLP-1s-Now-Available-With-Hims--Hers/default.aspx)
+- [FTC press release (Jul 2026)](https://www.ftc.gov/news-events/news/press-releases/2026/07/ftc-states-act-against-hims-hers-deceptive-unlawful-privacy-practices), [MedCity News](https://medcitynews.com/2026/07/hims-hers-ftc-lawsuit/), [Gizmodo: FTC complaints](https://gizmodo.com/hims-hers-ftc-subscription-surprise-scam-2000795614), [ClassAction.org: Pearson suit](https://www.classaction.org/news/hims-and-hers-lawsuit-claims-users-health-info-is-shared-with-third-parties-without-consent)
+- [MobiHealthNews: Eucalyptus $1.15B](https://www.mobihealthnews.com/news/hims-hers-plans-acquire-eucalyptus-115b), [Nasdaq: care scope (MedMatch, longevity plans)](https://www.nasdaq.com/articles/hims-hers-expands-care-scope-digital-health-platforms-evolve), [BusinessWire: Benefits partners (May 2026)](https://www.businesswire.com/news/home/20260528501192/en)
+
+---
+
+## 2026-10-29 — Ro (Ro Body · Roman · Modern Fertility · legacy Workpath/Kit · Novo RWE collaboration)
+
+*Roster note: fourth entry in the Clinic / enterprise block (next: Epic/MyChart). Ro is private and
+publishes no audited figures. ro.co's pricing and press pages returned 403 to the fetcher, so the prices
+below come from 2026 third-party GLP-1 pricing trackers that say they read ro.co in Sep–Oct 2026, and one
+of those is a competitor (Cora). Treat all prices as unverified. Revenue and valuation figures are
+analyst estimates (Sacra), not company disclosures.*
+
+**Basic features.**
+- **Condition-led telehealth**: intake, async or video provider review, then mail-order meds through
+  Ro's pharmacy network. Lines cover weight loss (Ro Body), ED/PE and hair (Roman), skin, and fertility
+  and prenatal (Modern Fertility). There is also an OTC supplement shelf, including a hormone-free
+  "Testosterone Support". **Ro does not offer prescription TRT**, unlike Hims.
+- **Ro Body membership**: monthly provider check-ins, unlimited messaging, an app with dose logging and
+  weight tracking, and a **connected scale**. **Provider-ordered metabolic labs** (A1C, lipids, thyroid,
+  kidney) are included in the membership, partly to support insurance claims.
+- **Insurance concierge**: a free coverage checker, plus staff who file prior-authorization paperwork
+  (reviewers say this takes about 2–3 weeks). It is not available for Medicare, Medicaid or TRICARE
+  members inside the membership. Separately, Medicare's GLP-1 Bridge has offered $50/mo Wegovy, Foundayo
+  or Zepbound KwikPen since 1 Jul 2026.
+- **Diagnostics assets**: Ro bought Workpath (in-home phlebotomy API, Dec 2020), Modern Fertility (May
+  2021, reportedly >$225M) and **Kit** (finger-prick kits plus its own CLIA/CAP lab, Jun 2021). Ro calls
+  itself the only US company combining telehealth, pharmacy, at-home testing, labs and diagnostics. I
+  found no 2024–26 evidence of how much of this Ro Body uses today.
+
+**Advanced features.**
+- **Branded-only GLP-1 access**: Wegovy pill and pen, Zepbound vials and KwikPen, and Lilly's
+  **Foundayo** (orforglipron) pill, priced through LillyDirect and NovoCare channels. Ro was a launch
+  partner for the Wegovy pill (Jan 2026). Unlike Hims it has avoided mass compounding, which is its main
+  trust differentiator.
+- **Pharma real-world-evidence partner**: on 30 Sep 2026 Ro and Novo announced a research collaboration.
+  The first study (OCTANE, EASD 2026) used de-identified Ro platform data on **194** patients who switched
+  from injections to the Wegovy pill. They lost about 4.1% of body weight over 3 months. The study had no
+  control group and relied partly on self-reported data.
+- **RAID-FN Inventory** (Oct 2025): a "food noise" questionnaire developed with researchers. It is a
+  patient-reported outcome tool for GLP-1 care.
+- Earlier: a GLP-1 supply tracker and an insurance-coverage tool (2024), and an NIA Alzheimer's patient
+  registry agreement (2022).
+- **Not found**: biological-age score, trained risk prediction, wearable integration beyond the scale,
+  CGM, imaging, genomics, an AI coach, and safety/SOS or caregiver features.
+
+**Pricing (unverified, Oct 2026).** The Ro Body membership is **$39 for the first month, then $149/mo**
+month-to-month, or $99/mo prepaid quarterly, $89/mo prepaid for six months, or **$74/mo prepaid
+annually**. Earlier 2026 reviews list $45, then $145/mo. **Medication costs extra**: Wegovy pill and
+Foundayo from $149/mo (up to $299–349 at top doses), Zepbound KwikPen $299–449/mo (lower prices require a
+check-in and refill within 45 days). One tracker totals **~$448/mo** at maintenance (Wegovy pill $299 +
+$149 membership). Valuation was **$7B** at the last priced round (Feb 2022). Sacra estimates ~$598M
+annualised revenue for 2024, up ~66%. I found no 2025–26 funding round.
+
+**Weaknesses.**
+- **Two-part billing confuses customers**: BBB shows **407 complaints in the last 12 months** (761 over
+  3 years). The top themes are separate membership vs. medication charges, auto-renewals, charges after
+  cancellation, non-refundable memberships, slow or unclear prior-authorization status, and pressure to
+  use costlier preferred pharmacies. Ro keeps an A+ rating, and many complaints are marked resolved.
+- **Paid reach over product depth**: the first **Super Bowl ad (Feb 2026, Serena Williams)** reportedly
+  cost $20M+. Williams' husband, Alexis Ohanian, is a Ro investor and board member, and Sacra flags the
+  spend as a margin risk. Ro also runs F1, MLB and NASCAR sponsorships.
+- **Thin measurement layer**: progress means weight plus occasional labs. There is no continuous
+  physiology, no muscle-loss monitoring on GLP-1 (a known risk) and no risk or bio-age model. The RWE
+  study's weakness, self-reported data and no controls, comes from that thin layer.
+- **US-only**, with no India presence and no Rx TRT or menopause line. It was an early mover but has not
+  raised a priced round since 2022, while Hims has pushed abroad.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **Objective GLP-1 outcomes layer**: weight from a connected scale plus **lean-mass and muscle-age
+     tracking** (muscle clock, grip, BIA), HRV/RHR and sleep from ring and patch, and validated PROs (a
+     RAID-FN-style food-noise scale, GI side effects). Ro measures weight. We would measure whether the
+     patient is losing fat or muscle and whether their physiology is improving.
+  2. **Consented research cohort → real-world evidence**: a DPDP-compliant opt-in plus a de-identified
+     export. Continuous wearable and lab data would make more credible RWE than Ro's 194-patient
+     self-reported study, and pharma and CROs in India pay for this kind of evidence. This builds on the
+     "in-product research enrollment" row.
+  3. **Transparent single-price billing**: one line item, one-tap cancel, and a pre-charge summary. Ro's
+     BBB record shows how two-part pricing loses trust.
+- *Operational parity via partnership:* an Indian e-pharmacy for branded and generic semaglutide (Indian
+  generics after the 2026 patent expiry), plus a lab partner for eligibility and monitoring panels at
+  home. Help with insurer and TPA OPD claims is India's version of Ro's PA concierge, and it is ops, not
+  R&D.
+- *Our opening:* Ro is the "clean, branded-only" US GLP-1 funnel, but its science is a scale and a
+  questionnaire. A doctor-in-the-loop GLP-1 programme that **protects muscle and proves outcomes with
+  continuous data** is a gap neither Ro nor Hims fills, and neither operates in India.
+
+Sources:
+- [Wikipedia: Ro (company)](https://en.wikipedia.org/wiki/Ro_(company)), [Ro press: acquires Kit](https://ro.co/press/ro-acquires-kit/), [HIT Consultant: Kit acquisition (2021)](https://hitconsultant.net/2021/06/30/ro-acquires-kit/), [Fierce Healthcare: Kit after Workpath/Modern Fertility](https://www.fiercehealthcare.com/tech/ro-scoops-up-at-home-testing-startup-kit-heels-workpath-modern-fertility-acquisitions), [Ro press page](https://ro.co/press/)
+- [Ro: Body Program launch (labs, coaching)](https://ro.co/press/ro-launches-body-program/), [Ro weight-loss reviews guide](https://ro.co/weight-loss/ro-weight-loss-reviews/), [Ro: Foundayo vs Zepbound](https://ro.co/weight-loss/foundayo-vs-zepbound/), [Ro: Zepbound cost](https://ro.co/weight-loss/zepbound-cost-with-and-without-insurance/)
+- Pricing trackers (unverified, third-party): [glpchart: Ro](https://glpchart.com/program/ro/), [Cora vs Ro (competitor)](https://www.trycora.io/blog/cora-vs-ro/), [TelehealthTrueCost: Ro](https://www.telehealthtruecost.com/glp1/reviews/ro.html), [Fortune: Ro Body review](https://fortune.com/article/ro-body-review/), [OneDayMD: GLP-1 cost 2026](https://www.onedaymd.com/2026/10/GLP-1-cost.html)
+- [BioSpace: Ro × Novo RWE collaboration](https://www.biospace.com/press-releases/ro-and-novo-announce-research-collaboration-to-generate-first-of-its-kind-real-world-evidence-on-the-wegovy-pill), [Novo: OCTANE at EASD](https://www.novonordisk-us.com/media/press-releases/wegovy-pill-octane-study-real-world-data.html), [US News/Reuters: OCTANE (30 Sep 2026)](https://www.usnews.com/news/top-news/articles/2026-09-30/patients-switching-to-novo-nordisks-wegovy-pill-from-shots-lose-more-weight-in-real-world-study)
+- [Fortune: Ro Super Bowl ad (4 Feb 2026)](https://fortune.com/2026/02/04/ro-ceo-glp-1-stigma-super-bowl-ad-serena-williams/), [Fast Company: Ro CEO](https://www.fastcompany.com/91513338/ro-ceo-on-the-next-phase-of-the-ozempic-boom), [Sacra: Ro revenue estimates](https://sacra.com/c/ro/), [BBB: Ro complaints](https://www.bbb.org/us/ny/new-york/profile/telemedicine/ro-0121-173581/complaints), [Medical News Today: Ro review](https://www.medicalnewstoday.com/articles/ro-review)
+
+---
+
+## 2026-10-29 — Epic / MyChart (MyChart · MyChart Central · Emmie · Art · Cosmos / Curiosity · Agent Factory)
+
+*Roster note: last entry in the Clinic / enterprise block and the last unprofiled platform on the
+roster. Every roster platform now has at least a seed line. The ones with seed lines only (Function
+Health, InsideTracker, Superpower, Neko/Prenuvo, HealthifyMe, Tata 1mg, Practo, Cult.fit) are queued for
+full profiles on the revisit pass. Epic is not a direct rival: it sells EHR software to health systems,
+and MyChart is free to patients only through their provider. It sets the US baseline patients expect
+from a records portal, though, and its AI roadmap shows where the clinical-platform side of Telomy is
+heading. Fierce Healthcare and Becker's returned 403 to the fetcher, so their points come from search
+snippets. Usage and outcome numbers are Epic- or customer-reported, not independently audited.*
+
+**Basic features (patient side, MyChart).**
+- **Portal over the provider's EHR**: results, notes (released without delay under US Cures Act rules),
+  medications, messaging the care team, self-scheduling, e-check-in, bill pay and price estimates, video
+  visits. Each health system decides which features to switch on, so the experience varies by provider.
+- **MyChart Central**: one Epic ID (passkeys/Face ID) links records from every participating Epic
+  organisation. Epic says it is live in all 50 states, with **346 organisations and ~115M patients**
+  (UGM, Aug 2026). Care Everywhere exchanged ~914M records in June 2026, covering 10 countries.
+- **Proxy access** for parents, children and adult dependants. Gives record access, not live monitoring.
+- **Wearable sync ("Track My Health")**: Apple Health / Google Fit data flows into the chart, but only
+  the metrics a clinician has requested, and only where the health system has enabled it. Some systems
+  don't. Recent app releases add sleep sync.
+- **Apple Health Records** can pull MyChart data out via FHIR, and the Lucy patient-held record covers
+  people whose provider isn't on Epic. *(These are long-standing features; I didn't re-verify them for 2026.)*
+
+**Advanced features.**
+- **Emmie (patient AI assistant)**: answers questions from the patient's own chart (visit notes,
+  results, past messages), proposes appointments, suggests due screenings, explains bills, takes
+  payments and sets up payment plans, in MyChart and by SMS. Sutter was first live with "Ask Emmie"
+  (Mar 2026), followed by Community Health Network and others. Emmie is scoped to data the patient can
+  already see. Reported results: Rush says billing service messages fell **58%**, and Ochsner says
+  **14,900+ reschedules** were handled (~750 staff hours). Both are vendor/customer figures.
+  *Planned:* Emmie-set **wellness goals** (smoking, activity, sleep) personalised from chart data and
+  tracked from linked wearable steps/HR. Not released as of this run.
+- **Clinician AI**: Art (chart summaries, AI Charting ambient notes with Microsoft, from early 2026),
+  **AI-drafted In Basket replies** (press reports say 150+ systems and >1M drafts/month), and Ergo, an
+  adaptive clinician UI (Nov 2026). **Agent Factory** offers 120+ prebuilt agents that customers can
+  customise without code, with broad availability in 2027. Epic says it has ~200 AI features in
+  development.
+- **Cosmos**: de-identified records from ~300–320M patients and ~23B encounters (sources differ).
+  **CoMET**, a generative event-sequence model built with Microsoft/Yale and later renamed **Cosmos
+  Curiosity**, forecasts trajectories, readmission, stroke risk and length of stay. Epic says it matched
+  or beat most single-task models in 78 internal evaluations. No independent validation has been
+  published. A researcher lab was promised for Feb 2026, and clinician-facing launch is now slated for
+  **Mar 2027** (the dates conflict across sources). **Health Alerts** (since Apr 2026) has issued 13
+  outbreak alerts. Epic says one flagged cyclosporiasis about a week before the CDC (unvalidated).
+- **Not found**: a consumer biological-age score, trained mortality models shown to patients, continuous
+  ECG/PPG analysis, nutrition or meal logging, fall/SOS safety, and on-device AI. Epic is a records-and-
+  workflow company, and wellness has only just reached its roadmap.
+
+**Pricing.** MyChart is free to patients. Epic licenses to health systems on private contracts, and I
+found no public prices. Some US systems bill insurance for longer portal-message exchanges as e-visits
+(earlier reporting, not re-verified this run). Epic does not sell outside its customer base. Its
+sources name an international footprint in the UK, Netherlands, Canada, Australia and Switzerland, and
+Charité Berlin signed ~€200M in late 2025 for a 2029 go-live. **I found no Epic or MyChart presence in
+India**, and no ABDM/ABHA integration.
+
+**Weaknesses.**
+- **Records are only as continuous as visits.** Data arrives at encounters. Wearable data comes in only
+  if a clinician asks for it and the system enables it, and there is no analysis layer on top. MyChart
+  shows a step count but doesn't interpret physiology.
+- **Inconsistent product**: each health system configures its own MyChart, so features, wearable sync
+  and AI availability differ from one patient's provider to another's.
+- **Trust issues with AI and immediacy**: patients often see abnormal results, including cancer, before
+  a clinician has contacted them. AI-drafted replies often reach patients without disclosure, and
+  experts have found potentially harmful errors in some drafts. An Aug 2026 phishing wave used fake
+  MyChart "results ready" emails to spread malware.
+- **Hospital-centric scope**: no longevity, prevention or bio-age layer. The wellness-goals feature is
+  still only planned.
+- **Not in India**: the incumbent there is fragmented hospital apps (Apollo, Max, Fortis) plus ABHA.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **A "MyChart-grade" patient basics checklist**: proxy/family access with per-member permissions
+     (extends the caregiver row), clinician-requested wearable metrics shown as an explicit consent
+     object ("Dr X asked to see your HRV and sleep"), and in-app notifications that never put result
+     content or download links in email/SMS (phishing lesson).
+  2. **A disclosed, auditable AI reply drafter for the doctor workspace**: Ask Sinc already drafts. Add
+     an "AI-assisted" label on replies patients receive and log the clinician's edits. This answers
+     Epic's main AI-trust criticism directly, and the edit log becomes training and validation data.
+  3. **Result release with context by default**: every new lab or risk result arrives with a plain-
+     language explanation, the normal range and a next step (signals-not-verdicts). Critical values go
+     to the clinician first through the notifications safety path. MyChart's raw release is the
+     cautionary example.
+  4. **A pre-visit summary card**: an LLX-generated intake plus a 30-day wearable trend summary pushed to
+     the doctor queue before a booked consult. This matches Emmie's pre-visit intake and adds continuous
+     data Epic doesn't have.
+- *Operational parity via partnership:* ABHA/ABDM consent-manager linking is India's version of MyChart
+  Central/Care Everywhere and is parity, not an opening (Samsung Health India already has it). Patient
+  bill pay and payment plans belong to partner centres, not Telomy. Keep Telomy's single-price
+  membership.
+- *Our opening:* Epic owns the encounter but not the 99% of time between encounters. It has no
+  continuous ECG/PPG analysis, bio-age or mortality models for patients, safety agent or India presence.
+  **Cosmos Curiosity (Mar 2027) will make EHR-based risk forecasting a commodity inside US hospitals.
+  Telomy's defensible ground is risk that moves daily, from wearables plus bloods, explained to the
+  patient.** In India, no Epic-class records layer exists. A centre-facing Telomy OS with ABHA linkage
+  plus the continuous layer can fill both roles.
+
+Sources:
+- [Epic: Community Health Network adopts Emmie](https://www.epic.com/epic/post/community-health-network-adopts-emmie-an-ai-assistant-in-mychart-to-enhance-patient-experience/), [Becker's: CHN launches Emmie](https://www.beckershospitalreview.com/healthcare-information-technology/ehrs/community-health-network-launches-epics-emmie-in-mychart/), [Becker's: MyChart AI wellness goals (planned)](https://www.beckershospitalreview.com/healthcare-information-technology/innovation/epics-mychart-to-add-ai-tool-for-patient-wellness-goals/), [Fierce: Epic AI growth for docs + patients](https://www.fiercehealthcare.com/ai-and-machine-learning/epic-rolls-out-ai-charting-and-more-built-automation-clinicians-and)
+- [HealthTech HotSpot: UGM 2026 recap (MyChart Central 346 orgs, Curiosity Mar 2027, Agent Factory, Health Alerts, Charité)](https://healthtechhotspot.com/epic-ugm-2026-recap-cosmos-curiosity-epicops-and-an-expanding-ai-footprint/), [Fierce: agent platform + Cosmos predictions](https://www.fiercehealthcare.com/health-tech/epic-expands-ai-ambitions-agent-platform-cosmos-powered-predictions-and-deeper-workflow), [Healthcare IT News: AI agents + foundation models](https://www.healthcareitnews.com/news/epic-unveils-ai-agents-showcases-new-foundational-models), [Becker's: Faulkner roadmap takeaways](https://www.beckershospitalreview.com/healthcare-information-technology/ehrs/epics-roadmap-12-takeaways-from-judy-faulkner/)
+- [HIT Consultant: Comet launch (Sep 2025)](https://hitconsultant.net/2025/09/03/epic-launches-comet-a-new-ai-platform-to-predict-patient-health-journeys/), [Fierce: UGM 2025 AI + Cosmos AI preview](https://www.fiercehealthcare.com/health-tech/epic-unveils-major-ai-features-ai-charting-microsoft-cosmos-ai-risk-prediction-and-rcm), [CNBC: UGM 2025](https://www.cnbc.com/2025/08/20/epic-ugm-2025-epic-touts-new-ai-tools.html), [Newsweek: UGM 2025 live](https://www.newsweek.com/epic-ugm-2025-live-updates-verona-wisconsin-2115581)
+- [MyChart App Store listing (Apple Health sync, sleep)](https://apps.apple.com/us/app/mychart/id382952264), [UTMB: MyChart device integration](https://www.utmbhealth.com/mychart-info/mychart-app-device-integration), [Eisenhower Health: Apple Health not supported](https://eisenhowerhealth.org/sites/EmcOrg/assets/downloads/0031277.1.0-mycharthowtopairyourapplew.pdf), [MyChart.org: Explore / Epic ID](https://www.mychart.org/l/en-us/explore/)
+- [MHA: patients not told AI drafted messages](https://www.mhaonline.com/blog/ai-messages-from-doctors), [Duke AI Health: My Cancer on MyChart](https://aihealth.duke.edu/blog/my-cancer-on-mychart/), [ConsumerAffairs: fake MyChart messages spread malware (Aug 2026)](https://www.consumeraffairs.com/news/fake-mychart-messages-use-frightening-test-results-to-spread-malware-082826.html), [Becker's: 50 things to know about Epic](https://www.beckershospitalreview.com/ehrs/50-things-to-know-about-epic.html), [Sacra: Epic](https://sacra.com/c/epic/)
