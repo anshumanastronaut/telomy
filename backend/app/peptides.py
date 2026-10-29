@@ -119,10 +119,152 @@ PEPTIDES: dict[str, dict] = {
         "Tuftsin analogue; anxiolytic claims.", "D", "Not approved", "Not approved (approved only in Russia)",
         True, False, "Russian anxiolytic; essentially no international controlled evidence.", "Unregulated sourcing.",
         ["Russian clinical use; limited international evidence"]),
+    # ---------------- Metabolic / incretin — next-generation (investigational)
+    "retatrutide": P("Retatrutide", [], "Hormonal / metabolic (GIP/GLP-1/glucagon)",
+        "Triple GIP + GLP-1 + glucagon receptor agonist.", "B", "Investigational (Phase 3)", "Not approved",
+        True, False, "Largest weight loss yet seen in Phase 2; still investigational — not yet an approved drug.",
+        "GI effects; long-term safety not established.", ["Phase-II trial (NEJM 2023)", "Phase-III ongoing"]),
+    "cagrilintide": P("Cagrilintide", ["cagrisema (with semaglutide)"], "Hormonal / metabolic (amylin analogue)",
+        "Long-acting amylin analogue; often paired with semaglutide (CagriSema).", "B", "Investigational (Phase 3)",
+        "Not approved", True, False, "Promising weight data in combination; investigational.", "GI effects; under study.",
+        ["Phase-II/III trials"]),
+    "survodutide": P("Survodutide", [], "Hormonal / metabolic (GLP-1/glucagon)",
+        "Dual GLP-1 + glucagon agonist; studied for obesity and MASH.", "B", "Investigational (Phase 3)", "Not approved",
+        True, False, "Positive Phase 2 for weight and liver fat; investigational.", "GI effects; under study.",
+        ["Phase-II MASH/obesity trials"]),
+    "setmelanotide": P("Setmelanotide", ["imcivree"], "Neuropeptide (MC4R agonist)",
+        "Melanocortin-4 receptor agonist for rare genetic obesity.", "A", "Approved (specific genetic obesity syndromes)",
+        "Not approved (orphan)", True, True, "Approved for narrow monogenic obesity indications — not for general weight loss.",
+        "Hyperpigmentation, nausea, priapism.", ["FDA prescribing information", "Phase-III POMC/LEPR trials"]),
+    "teduglutide": P("Teduglutide", ["gattex", "revestive"], "Hormonal / GI (GLP-2 analogue)",
+        "GLP-2 analogue; intestinal adaptation in short-bowel syndrome.", "A", "Approved (short-bowel syndrome)",
+        "Limited / specialist use", True, True, "Approved for a specific GI indication; reduces parenteral-support needs.",
+        "Intestinal polyp risk (monitoring), fluid overload.", ["FDA prescribing information", "STEPS trial"]),
+    "linaclotide": P("Linaclotide", ["linzess", "constella"], "Hormonal / GI (GC-C agonist)",
+        "Guanylate-cyclase-C agonist peptide for IBS-C / chronic constipation.", "A", "Approved (IBS-C, CIC)",
+        "Approved", True, True, "Well-evidenced approved GI peptide.", "Diarrhoea; not in paediatric use.",
+        ["FDA prescribing information", "Phase-III IBS-C trials"]),
+    # ---------------- Endocrine / oncology — approved peptide drugs (grade-A anchors)
+    "octreotide": P("Octreotide", ["sandostatin"], "Endocrine (somatostatin analogue)",
+        "Somatostatin analogue; suppresses GH and various hormones.", "A", "Approved (acromegaly, NETs)", "Approved",
+        True, True, "Mainstay approved peptide for acromegaly and neuroendocrine tumours.", "Gallstones, GI effects, glucose changes.",
+        ["FDA prescribing information"]),
+    "lanreotide": P("Lanreotide", ["somatuline"], "Endocrine (somatostatin analogue)",
+        "Long-acting somatostatin analogue.", "A", "Approved (acromegaly, NETs)", "Approved", True, True,
+        "Approved depot somatostatin analogue.", "Gallstones, GI effects.", ["FDA prescribing information", "CLARINET trial"]),
+    "leuprolide": P("Leuprolide", ["lupron", "leuprorelin"], "Endocrine (GnRH agonist)",
+        "GnRH agonist; downregulates sex-hormone production.", "A", "Approved (prostate cancer, endometriosis, CPP)",
+        "Approved", True, True, "Widely used approved hormonal agent.", "Menopausal symptoms, bone-density loss, initial flare.",
+        ["FDA prescribing information"]),
+    "goserelin": P("Goserelin", ["zoladex"], "Endocrine (GnRH agonist)",
+        "GnRH agonist depot.", "A", "Approved (prostate/breast cancer, endometriosis)", "Approved", True, True,
+        "Approved hormonal depot.", "Hypogonadal effects; initial flare.", ["FDA prescribing information"]),
+    "desmopressin": P("Desmopressin", ["ddavp", "minirin"], "Hormone (vasopressin analogue)",
+        "Synthetic ADH analogue; antidiuretic.", "A", "Approved (diabetes insipidus, nocturnal enuresis, some bleeding)",
+        "Approved", True, True, "Well-established approved peptide hormone.", "Hyponatraemia — fluid restriction needed.",
+        ["FDA prescribing information"]),
+    "glucagon": P("Glucagon", ["baqsimi", "gvoke"], "Hormone (metabolic)",
+        "Counter-regulatory hormone; raises blood glucose.", "A", "Approved (severe hypoglycaemia)", "Approved",
+        True, True, "Approved emergency hypoglycaemia treatment.", "Nausea; transient.", ["FDA prescribing information"]),
+    "calcitonin": P("Calcitonin (salmon)", ["miacalcin", "fortical"], "Bone (hormone)",
+        "Inhibits osteoclast-mediated bone resorption.", "B", "Approved (osteoporosis, hypercalcaemia, Paget's)",
+        "Approved", True, True, "Approved but second-line for osteoporosis; modest efficacy, malignancy signal with long nasal use.",
+        "Possible small cancer-risk signal with prolonged use.", ["FDA prescribing information"]),
+    "icatibant": P("Icatibant", ["firazyr"], "Immune / vascular (bradykinin B2 antagonist)",
+        "Bradykinin B2-receptor antagonist for hereditary angioedema attacks.", "A", "Approved (HAE)",
+        "Limited / specialist use", True, True, "Approved acute HAE treatment.", "Injection-site reactions.",
+        ["FDA prescribing information"]),
+    "enfuvirtide": P("Enfuvirtide", ["fuzeon", "t-20"], "Antiviral (HIV fusion inhibitor)",
+        "Blocks HIV gp41-mediated fusion.", "A", "Approved (HIV, salvage therapy)", "Limited / specialist use",
+        True, True, "Approved but now rarely used (injections, newer orals preferred).", "Injection-site reactions.",
+        ["FDA prescribing information"]),
+    "gonadorelin": P("Gonadorelin", ["gnrh"], "Endocrine (GnRH)",
+        "Native GnRH; diagnostic and fertility uses.", "B", "Approved (diagnostic/fertility, limited)", "Limited use",
+        True, True, "Approved for specific endocrine/fertility uses; 'testosterone support' use is off-label.",
+        "Generally mild in approved use.", ["Approved-indication human data"]),
+    # ---------------- Neuro / mitochondrial / repair — investigational
+    "cerebrolysin": P("Cerebrolysin", [], "Neuropeptide (neurotrophic mixture)",
+        "Porcine-brain peptide mixture with neurotrophic claims.", "C", "Not approved",
+        "Available / used (stroke, dementia adjunct) in some markets incl. India", True, False,
+        "Used in parts of Asia/Europe for stroke and dementia; meta-analyses are mixed and often low-quality.",
+        "Hypersensitivity; variable evidence.", ["Mixed-quality human trials / Cochrane reviews"]),
+    "elamipretide": P("Elamipretide (SS-31)", ["ss-31", "mtp-131"], "Mitochondrial (investigational)",
+        "Cardiolipin-targeting peptide; stabilises mitochondrial membranes.", "C", "Investigational (not approved)",
+        "Not approved", True, False, "Human trials in mitochondrial and cardiac disease are mixed; not approved.",
+        "Injection-site reactions; efficacy unproven.", ["Phase-II trials (mixed)"]),
+    "humanin": P("Humanin", [], "Mitochondrial-derived (investigational)",
+        "Mitochondrial-derived peptide; cytoprotective/metabolic signalling.", "D", "Not approved",
+        "Not approved", False, False, "Interesting longevity-associated biology; essentially no human therapeutic data.",
+        "Unknown human safety.", ["Preclinical only"]),
+    "kisspeptin": P("Kisspeptin", [], "Neuropeptide (reproductive)",
+        "Upstream regulator of GnRH; reproductive-axis research.", "C", "Investigational", "Not approved",
+        True, False, "Active human research for fertility and sexual function; not an approved therapy.",
+        "Early-stage; safety under study.", ["Phase-I/II reproductive studies"]),
+    "dsip": P("DSIP (delta sleep-inducing peptide)", [], "Neuropeptide (investigational)",
+        "Peptide associated with sleep modulation.", "D", "Not approved", "Not approved (research-chem)",
+        True, False, "Old, weak and unreplicated human sleep data; popular online, not evidence-based.",
+        "Unregulated sourcing.", ["Small unreplicated human studies"]),
+    "ll37": P("LL-37 (cathelicidin)", ["cathelicidin"], "Immune / antimicrobial (investigational)",
+        "Host-defence antimicrobial peptide.", "D", "Not approved", "Not approved (research-chem)", False, False,
+        "Important innate-immunity biology; no human therapeutic approval or trials supporting injectable 'wellness' use.",
+        "Pro-inflammatory potential; unknown human safety.", ["Preclinical"]),
+    "kpv": P("KPV", [], "Immune / repair (α-MSH fragment)",
+        "Tripeptide fragment of α-MSH with anti-inflammatory signalling in models.", "D", "Not approved",
+        "Not approved (research-chem)", False, False, "Anti-inflammatory claims rest on animal/cell data; no human trials.",
+        "Unknown human safety; sourcing risk.", ["Preclinical"]),
+    "larazotide": P("Larazotide", ["at-1001"], "GI / barrier (investigational)",
+        "Tight-junction regulator studied for coeliac disease.", "C", "Investigational (Phase 3 missed primary)",
+        "Not approved", True, False, "Phase-3 coeliac trial did not meet its primary endpoint; not approved.",
+        "Generally well tolerated in trials.", ["Phase-III coeliac trial (negative primary)"]),
+    "afamelanotide": P("Afamelanotide (Melanotan I)", ["scenesse", "melanotan 1"], "Neuropeptide (melanocortin agonist)",
+        "Melanocortin-1 agonist; increases eumelanin (photoprotection).", "B", "Approved (erythropoietic protoporphyria)",
+        "Not approved (orphan)", True, True, "Approved for a rare photodermatosis — distinct from the unapproved Melanotan II.",
+        "Implant-site reactions, nausea.", ["FDA/EMA approval (EPP)", "Phase-III EPP trials"]),
+    "argireline": P("Argireline (acetyl hexapeptide-8)", ["acetyl hexapeptide-8", "ah8"], "Cosmetic (topical)",
+        "SNAP-25-mimicking peptide marketed as a topical 'Botox-like' wrinkle agent.", "C",
+        "Cosmetic ingredient (topical)", "Topical cosmetic use", True, False,
+        "Modest topical cosmetic evidence for fine lines; not a drug, effect is small.", "Topical, generally well tolerated.",
+        ["Small cosmetic studies"]),
+    "matrixyl": P("Matrixyl (palmitoyl pentapeptide)", ["palmitoyl pentapeptide-4", "matrixyl 3000"], "Cosmetic (topical)",
+        "Collagen-stimulating signal peptide in skincare.", "C", "Cosmetic ingredient (topical)", "Topical cosmetic use",
+        True, False, "Reasonable topical cosmetic evidence for skin texture; cosmetic, not therapeutic.",
+        "Topical, generally well tolerated.", ["Cosmetic dermatology studies"]),
 }
 
-CLASSES = sorted({p["pclass"] for p in PEPTIDES.values()})
 GRADE_RANK = {"A": 0, "B": 1, "C": 2, "D": 3}
+
+
+def family(pclass: str) -> str:
+    """Coarse bucket for the UI filter (the full `pclass` stays for display). Keyword-mapped to ~10 families."""
+    s = pclass.lower()
+    if "cosmetic" in s:
+        return "Cosmetic / skin"
+    if "growth-hormone" in s or "ghrh" in s or "ghrp" in s or "secretagogue" in s:
+        return "Growth-hormone axis"
+    if any(k in s for k in ("glp", "gip", "amylin", "incretin", "glucagon", "gc-c", "mc4r")):
+        return "Metabolic / weight"
+    if "somatostatin" in s or "gnrh" in s or "endocrine" in s:
+        return "Endocrine / hormonal"
+    if "bone" in s or "pth" in s:
+        return "Bone"
+    if "mitochond" in s or "longevity" in s:
+        return "Mitochondrial / longevity"
+    if any(k in s for k in ("neuro", "melanocortin", "sleep", "reproductive", "nootropic", "anxiolytic")):
+        return "Neuro / behavioural"
+    if "immune" in s or "antimicrob" in s or "vascular" in s:
+        return "Immune / inflammatory"
+    if "antiviral" in s:
+        return "Antiviral"
+    if s.startswith("gi") or "barrier" in s or "/ gi" in s:
+        return "Gut / GI"
+    if "repair" in s or "research" in s:
+        return "Repair / research"
+    if "hormon" in s or "metabolic" in s:
+        return "Metabolic / weight"
+    return "Other"
+
+
+CLASSES = sorted({family(p["pclass"]) for p in PEPTIDES.values()})
 
 
 def _match(p: dict, pid: str, q: str) -> bool:
@@ -138,9 +280,9 @@ def library(q: str = "", pclass: str | None = None) -> dict:
     for pid, p in PEPTIDES.items():
         if not _match(p, pid, q):
             continue
-        if pclass and p["pclass"] != pclass:
+        if pclass and family(p["pclass"]) != pclass:
             continue
-        items.append({"id": pid, **{k: p[k] for k in _F}})
+        items.append({"id": pid, "family": family(p["pclass"]), **{k: p[k] for k in _F}})
     items.sort(key=lambda x: (GRADE_RANK.get(x["grade"], 9), x["name"]))
     return {"peptides": items, "classes": CLASSES, "count": len(items),
             "disclaimer": ("Reference for clinicians. Evidence grades and regulatory status are point-in-time; verify "
@@ -161,7 +303,7 @@ def member_view(q: str = "") -> dict:
         if not _match(p, pid, q):
             continue
         approved = p["advised"]
-        items.append({"id": pid, "name": p["name"], "pclass": p["pclass"], "grade": p["grade"],
+        items.append({"id": pid, "name": p["name"], "pclass": p["pclass"], "family": family(p["pclass"]), "grade": p["grade"],
                       "regulatory": f"FDA: {p['fda']} · India: {p['cdsco']}",
                       "claim": p["summary"], "doctor_gate": True,
                       "flag": None if approved else "Not an approved therapy — research-grade / not advised outside a trial."})

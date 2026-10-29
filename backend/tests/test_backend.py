@@ -794,7 +794,7 @@ def test_peptide_library_graded_region_aware_and_cited():
 def test_peptide_member_view_is_gated_and_never_leaks_dosing():
     from app import peptides
     mv = peptides.member_view()
-    allowed = {"id", "name", "pclass", "grade", "regulatory", "claim", "doctor_gate", "flag"}
+    allowed = {"id", "name", "pclass", "family", "grade", "regulatory", "claim", "doctor_gate", "flag"}
     for p in mv["peptides"]:
         assert set(p) <= allowed, p                      # no mechanism-as-howto, no dose, no sourcing, no citations leaked
         assert p["doctor_gate"] is True

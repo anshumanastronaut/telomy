@@ -93,6 +93,17 @@ export default function Protocols() {
             </Section>
           ) : null}
 
+          <Card onPress={() => router.push('/peptides' as any)} accessibilityLabel="Peptide library">
+            <Row gap={space[2]} style={{ alignItems: 'center' }}>
+              <Icon name="atom" size={18} color={p.teal} />
+              <View style={{ flex: 1 }}>
+                <T v="label">Peptide library</T>
+                <T v="small" color={p.muted}>Look up any peptide — its evidence grade and approval status — to discuss with your doctor.</T>
+              </View>
+              <Icon name="chevron.right" size={13} color={p.faint} />
+            </Row>
+          </Card>
+
           <Row style={{ alignItems: 'flex-start', paddingHorizontal: space[1] }}>
             <Icon name="info.circle" size={14} color={p.faint} />
             <T v="small" color={p.faint} style={{ flex: 1, marginLeft: space[2] }}>{d.disclaimer}</T>

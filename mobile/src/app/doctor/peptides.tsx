@@ -10,7 +10,7 @@ import { radius, space, usePalette } from '@/lib/theme';
 import { Card, Icon, Row, Screen, T } from '@/ui/core';
 
 type Peptide = {
-  id: string; name: string; aliases: string[]; pclass: string; mechanism: string; grade: string;
+  id: string; name: string; aliases: string[]; pclass: string; family: string; mechanism: string; grade: string;
   fda: string; cdsco: string; human: boolean; advised: boolean; summary: string; safety: string; citations: string[];
 };
 type Lib = { peptides: Peptide[]; classes: string[]; count: number; disclaimer: string };
@@ -38,7 +38,7 @@ export default function Peptides() {
     const all = data?.peptides ?? [];
     const query = q.trim().toLowerCase();
     return all.filter((x) =>
-      (!cls || x.pclass === cls) &&
+      (!cls || x.family === cls) &&
       (!query || x.id.includes(query) || x.name.toLowerCase().includes(query) ||
         x.aliases.some((a) => a.includes(query)) || x.pclass.toLowerCase().includes(query)));
   }, [data, q, cls]);
@@ -63,7 +63,7 @@ export default function Peptides() {
             return (
               <Pressable key={c} onPress={() => setCls(c === 'All' ? null : c)}
                 style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: on ? p.teal : p.border, backgroundColor: on ? p.teal + '22' : 'transparent' }}>
-                <T v="small" color={on ? p.teal : p.muted}>{c === 'All' ? 'All' : c.split(' (')[0]}</T>
+                <T v="small" color={on ? p.teal : p.muted}>{c}</T>
               </Pressable>
             );
           })}
