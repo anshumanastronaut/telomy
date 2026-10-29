@@ -87,10 +87,6 @@ export type CaptureMeta = {
   notes?: string; summary?: Record<string, unknown>; bundlePath?: string; bundleBytes?: number;
 };
 
-/** Raw 6-axis capture from the patch (KYBand.startRawImu). phase 'data' carries the latest decoded triplet + counts. */
-export type ImuEvent = { phase: 'started' | 'data' | 'ctrl' | 'stopped' | 'error'; path?: string; message?: string;
-  count?: number; ax?: number; ay?: number; az?: number; perFrame?: number; hz?: number; cmd?: number; raw?: string };
-
 type Events = {
   onStatus: (s: BandStatus) => void;
   onDevice: (d: FoundDevice) => void;
@@ -99,7 +95,6 @@ type Events = {
   onMetrics: (m: BandMetrics) => void;
   onRecording: (r: RecordingEvent) => void;
   onRhythm: (e: RhythmEvent) => void;
-  onImu: (e: ImuEvent) => void;
   onRingStatus: (s: RingStatus) => void;
   onRingData: (s: RingStatus) => void;
   onRingDevice: (d: FoundDevice) => void;
@@ -129,8 +124,6 @@ type Native = {
   stopStream(): void;
   startRecording(): void;
   stopRecording(): void;
-  bandStartRawImu(tag: string): void;
-  bandStopRawImu(): void;
   syncRecording(): void;
   log(line: string): void;
   startCapture(meta: Record<string, unknown>): { id?: string; error?: string };
@@ -221,11 +214,6 @@ export const Band = {
   stopStream: () => native?.stopStream(),
   startRecording: () => native?.startRecording(),
   stopRecording: () => native?.stopRecording(),
-  /** Reverse-engineering capture of the patch's 6-axis accelerometer (0x33 frames). Raw bytes → Documents/band-raw,
-   *  live decoded triplets via onImu. Needs the patch connected; starts ECG streaming if it isn't already. */
-  startRawImu: (tag = 'imu') => native?.bandStartRawImu(tag),
-  stopRawImu: () => native?.bandStopRawImu(),
-  onImu(cb: (e: ImuEvent) => void) { return native ? native.addListener('onImu', cb) : { remove() {} }; },
   syncRecording: () => native?.syncRecording(),
   /** Write a line to the on-phone diagnostic log (Documents/ky-debug). */
   log: (line: string) => native?.log(line),

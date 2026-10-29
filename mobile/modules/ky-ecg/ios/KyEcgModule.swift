@@ -7,7 +7,7 @@ public class KyEcgModule: Module {
         // On-device speech (Cactus): no usage telemetry, no cloud hand-off — nothing about the user's voice leaves the phone.
         OnCreate { setenv("CACTUS_NO_CLOUD_TELE", "1", 1); unsetenv("CACTUS_CLOUD_API_KEY"); unsetenv("CACTUS_CLOUD_KEY") }
 
-        Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm", "onImu", "onRingStatus", "onRingData", "onRingDevice", "onRingHistory", "onRingSleep", "onPpgFrame")
+        Events("onStatus", "onDevice", "onEcg", "onBeat", "onMetrics", "onRecording", "onRhythm", "onRingStatus", "onRingData", "onRingDevice", "onRingHistory", "onRingSleep", "onPpgFrame")
 
         OnStartObserving {
             KYBand.shared.emit = { [weak self] name, body in self?.sendEvent(name, body) }
@@ -46,8 +46,6 @@ public class KyEcgModule: Module {
         Function("forget") { KYBand.shared.forget() }
         Function("startStream") { KYBand.shared.startStream() }
         Function("stopStream") { KYBand.shared.stopStream() }
-        Function("bandStartRawImu") { (tag: String) in KYBand.shared.startRawImu(tag: tag) }
-        Function("bandStopRawImu") { KYBand.shared.stopRawImu() }
         Function("startRecording") { KYBand.shared.startRecording() }
         Function("stopRecording") { KYBand.shared.stopRecording() }
         Function("syncRecording") { KYBand.shared.syncRecording() }
