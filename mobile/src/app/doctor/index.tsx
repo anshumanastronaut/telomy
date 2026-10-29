@@ -78,6 +78,17 @@ export default function DoctorToday() {
         </Card>
       </Row>
 
+      <Card onPress={() => router.push('/doctor/peptides' as any)} accessibilityLabel="Peptide library">
+        <Row gap={space[2]} style={{ alignItems: 'center' }}>
+          <Icon name="atom" size={20} color={p.teal} />
+          <View style={{ flex: 1 }}>
+            <T v="h3">Peptide library</T>
+            <T v="small" color={p.muted}>Evidence-graded, FDA + India status. Reference only.</T>
+          </View>
+          <Icon name="chevron.right" size={13} color={p.faint} />
+        </Row>
+      </Card>
+
       <Section title="Care review queue" action="Work queue" onAction={() => router.push('/doctor/work')}>
         {careN ? (
           d.care_queue.slice(0, 6).map((c: any) => (
