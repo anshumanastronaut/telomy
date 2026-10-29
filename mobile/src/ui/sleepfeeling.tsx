@@ -36,7 +36,7 @@ export function SleepFeeling({ onDone }: { onDone?: () => void } = {}) {
           const on = answered === o.r;
           return (
             <Pressable key={o.r} onPress={() => pick(o.r)} style={{ alignItems: 'center', flex: 1, opacity: answered && !on ? 0.3 : 1 }}>
-              <T style={{ fontSize: 26 }}>{o.emoji}</T>
+              <T style={{ fontSize: 26, lineHeight: 34, textAlign: 'center' }}>{o.emoji}</T>
               <T v="small" color={on ? p.teal : p.muted} style={{ fontSize: 10, marginTop: 2 }}>{o.label}</T>
             </Pressable>
           );
