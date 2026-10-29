@@ -15,7 +15,8 @@ export default function RingScreen() {
   useEffect(() => {
     const a = Ring.onStatus(setS), b = Ring.onData(setS);
     setS(Ring.status());
-    return () => { a.remove(); b.remove(); };
+    Ring.setLive(true);                                 // live HR every ~2 s while this screen is open
+    return () => { a.remove(); b.remove(); Ring.setLive(false); };
   }, []);
   const connected = s?.state === 'connected';
 

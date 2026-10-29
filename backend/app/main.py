@@ -3880,6 +3880,37 @@ def bioage_all():
     return bioage.all_ages()
 
 
+@app.get("/me/organs")
+def me_organs():
+    """Per-organ biological ages for the 3D twin: one age + age-acceleration per organ system (metabolic, liver,
+    kidney, immune, cardiometabolic) from the member's own blood panel, via the NHANES-trained Telomy organ clocks.
+    A RELATIVE signal (which system is aging faster), not a precise number — decision-support, not a diagnosis.
+    Returns {"organs": []} until enough markers are on file. The twin + overview screens already render this under
+    'How each system is aging'."""
+    try:
+        from .llx import organ_tools
+        if not organ_tools.available():
+            return {"organs": []}
+        panel = _telomy_ml._panel()
+        if len([k for k in panel if k not in ("age", "sex")]) < 4:
+            return {"organs": []}
+        # Derive age + sex from the member's profile — _panel()'s own SELECT reads non-existent columns (profile is
+        # JSON), so without this age_acceleration is always null and the twin shows no delta. age from `age` or dob.
+        prof = engine.profile() or {}
+        age = prof.get("age")
+        if not age and prof.get("dob"):
+            try:
+                d = date.fromisoformat(str(prof["dob"])[:10]); t = date.today()
+                age = t.year - d.year - ((t.month, t.day) < (d.month, d.day))
+            except ValueError:
+                age = None
+        if prof.get("sex"):
+            panel["sex"] = 1 if str(prof["sex"]).lower().startswith("m") else 2
+        return organ_tools.organ_ages(panel, chronological_age=float(age) if age else None)
+    except Exception:  # noqa: BLE001
+        return {"organs": []}
+
+
 @app.get("/cellular/explain")
 def cellular_explain(name: str):
     """What a supplement/medicine/food/stressor does at the cellular level, and which markers it moves."""

@@ -35,6 +35,7 @@ public class KyEcgModule: Module {
         Function("ringForget") { KYRing.shared.forget() }
         Function("ringStartMeasure") { (type: Int) in KYRing.shared.startMeasure(type) }
         Function("ringStopMeasure") { (type: Int) in KYRing.shared.stopMeasure(type) }
+        Function("ringSetLive") { (on: Bool) in KYRing.shared.setLive(on) }
         Function("ringReadBattery") { KYRing.shared.readBattery() }
         Function("getStatus") { KYBand.shared.status() }
         Function("startScan") { KYBand.shared.startScan() }

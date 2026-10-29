@@ -87,7 +87,7 @@ final class KYRing: NSObject {
         for p in central.retrieveConnectedPeripherals(withServices: svcs) {
             let n = (p.name ?? "").uppercased()
             if n.isEmpty || n.contains("TK") || n.contains("RING") || n.contains("R0") || n.contains("SMART") || n.contains("YC") || n.contains("BR") {
-                log("found system-connected \(p.name ?? "?")"); attach(p); return
+                log("found system-connected \(safeName(p.name))"); attach(p); return
             }
         }
         set("scanning")
@@ -123,6 +123,28 @@ final class KYRing: NSObject {
     func stopMeasure(_ type: Int) {
         if type == 0 { send(0x0309, [0x00, 0x01, 0x02]); return }
         send(0x032F, [0x00, UInt8(type & 0xFF)])
+    }
+
+    // Live HR view: hold the ~2 s real-time HR stream (AppControlReal 0x0309 on, every 2 s) ON while a screen is
+    // showing it (the ring screen calls setLive(true) on focus, false on blur). Without this, a connected ring only
+    // refreshes HR when the 5-min flash log is pulled, which is the "large gap between HR sendings". A 25 s keep-alive
+    // re-arms the stream because the ring stops it on its own after a while or after a spot measurement. No-op during
+    // overnight (which drives its own stream) and the flag is honoured on the next (re)connect if not yet connected.
+    private(set) var live = false
+    private var liveTimer: Timer?
+    func setLive(_ on: Bool) {
+        live = on
+        liveTimer?.invalidate(); liveTimer = nil
+        guard state == "connected" else { return }
+        if on {
+            if !overnight { send(0x0309, [0x01, 0x01, 0x02]) }
+            liveTimer = Timer.scheduledTimer(withTimeInterval: 25, repeats: true) { [weak self] _ in
+                guard let self, self.live, self.state == "connected", !self.overnight, !self.capturing else { return }
+                self.send(0x0309, [0x01, 0x01, 0x02])
+            }
+        } else if !overnight {
+            send(0x0309, [0x00, 0x01, 0x02])
+        }
     }
 
     // MARK: overnight mode — continuous HR + movement all night, saved on the phone even with the screen off
@@ -236,6 +258,7 @@ final class KYRing: NSObject {
         guard state == "connected", !capturing else { return }
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("ring-raw")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        pruneDir("ring-raw", keep: 40)               // bound raw-capture storage on the device
         let url = dir.appendingPathComponent(tag + "-" + ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-") + ".log")
         FileManager.default.createFile(atPath: url.path, contents: "# telomy ring \(tag) capture ecg=\(ecg) imu=\(imu) ppg=\(ppg)\n".data(using: .utf8))
         rawFile = try? FileHandle(forWritingTo: url); _ = try? rawFile?.seekToEnd()
@@ -338,7 +361,16 @@ final class KYRing: NSObject {
         return s & 0xFFFF
     }
 
+    /// Write-gate (adopted from NOOP's DeviceConfigWriteGate): refuse opcodes/params that would put the ring into a mode
+    /// Telomy never wants — notably AppStartMeasurement type 1 = BLOOD PRESSURE estimation (the old "HR" button bug,
+    /// see startMeasure's docstring). A refused write is logged, never sent, so a stray call can't mis-configure the ring.
+    private func gateAllows(_ code: UInt16, _ payload: [UInt8]) -> Bool {
+        if code == 0x032F, payload.count >= 2, payload[0] == 0x01, payload[1] == 0x01 { return false }  // turn ON BP-estimate
+        return true
+    }
+
     private func send(_ code: UInt16, _ payload: [UInt8]) {
+        guard gateAllows(code, payload) else { log("gate blocked tx code=\(String(format: "%04X", code))"); return }
         guard let p = ring, let c = writeC else { return }
         let total = payload.count + 6
         var b = [UInt8](repeating: 0, count: total)
@@ -549,12 +581,34 @@ final class KYRing: NSObject {
     private func set(_ s: String) { state = s; publish() }
     private func publish() { emit?("onRingStatus", status()) }
 
+    /// Strip a personal name before it reaches the debug log (adopted from NOOP's logSafeDeviceName): keep only a known
+    /// model token, so "Aarav's Ring" is logged as "RING" and no PII lands on disk.
+    func safeName(_ s: String?) -> String {
+        let n = (s ?? "").uppercased()
+        for t in ["TK3040", "RING", "SMART", "YC", "BR", "R0", "TK"] where n.contains(t) { return t }
+        return n.isEmpty ? "?" : "device"
+    }
+
+    /// Keep a Documents subfolder bounded: delete the oldest files beyond `keep` (NOOP's size-bounded eviction). Stops
+    /// ring-raw captures and hourly ring-debug logs from growing unbounded on the device.
+    func pruneDir(_ name: String, keep: Int) {
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(name)
+        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey]), files.count > keep else { return }
+        let sorted = files.sorted { a, b in
+            let da = (try? a.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let db = (try? b.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return da < db
+        }
+        for f in sorted.prefix(sorted.count - keep) { try? FileManager.default.removeItem(at: f) }
+    }
+
     func log(_ line: String) {
         let hour = String(ISO8601DateFormatter().string(from: Date()).prefix(13))
         if hour != debugHour || debug == nil {
             try? debug?.close()
             let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("ring-debug")
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            pruneDir("ring-debug", keep: 48)          // ~2 days of hourly logs
             let url = dir.appendingPathComponent(hour.replacingOccurrences(of: ":", with: "-") + ".log")
             if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
             debug = try? FileHandle(forWritingTo: url); _ = try? debug?.seekToEnd(); debugHour = hour
@@ -779,6 +833,7 @@ extension KYRing: CBPeripheralDelegate {
         probe()
         startAutoSync()                        // enable on-device monitoring + begin periodic history backfill
         if overnight { send(0x0309, [0x01, 0x01, 0x02]); send(0x0309, [0x01, 0x00, 0x02]); log("overnight re-armed after reconnect") }
+        else if live { setLive(true); log("live HR re-armed after reconnect") }   // restore the foreground live stream
     }
     private func probe() {
         guard battery < 0, probes < 6 else { return }

@@ -1,0 +1,185 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Telomy — Device Interception Reference</title>
+<style>
+:root{--ink:#10201A;--body:#1d2b25;--muted:#5b6b64;--teal:#2F8F6B;--copper:#A9643A;--line:#e3e8e5;--soft:#f4f7f5;--red:#D3523F;}
+*{box-sizing:border-box} html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:"Helvetica Neue",Arial,sans-serif;color:var(--body);margin:0;font-size:10px;line-height:1.5}
+@page{size:A4;margin:14mm 12mm}
+h1{font-size:24px;color:var(--ink);letter-spacing:-.5px;margin:.2em 0}
+h2{font-size:15px;color:var(--ink);border-bottom:2px solid var(--teal);padding-bottom:4px;margin:18px 0 8px;page-break-after:avoid}
+h3{font-size:12px;color:var(--teal);margin:12px 0 4px;page-break-after:avoid}
+h4{font-size:11px;color:var(--ink);margin:8px 0 2px}
+p{margin:.3em 0} a{color:var(--teal);text-decoration:none;word-break:break-word}
+code{font-family:"SF Mono",Menlo,monospace;font-size:8.5px;color:var(--copper);background:#faf6f2;padding:0 3px;border-radius:3px}
+ul{margin:.3em 0 .6em;padding-left:16px} li{margin:.15em 0}
+table{width:100%;border-collapse:collapse;font-size:8.3px;margin:.5em 0;page-break-inside:auto}
+tr{page-break-inside:avoid} th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--ink);font-size:8px;text-transform:uppercase;letter-spacing:.3px;background:var(--soft)}
+blockquote{background:var(--soft);border-left:3px solid var(--teal);margin:.5em 0;padding:6px 10px;font-size:9px}
+hr{border:none;border-top:1px solid var(--line);margin:14px 0}
+strong{color:var(--ink)}
+.cover{border-bottom:3px solid var(--teal);padding-bottom:10px;margin-bottom:6px}
+.cover .brand{font-size:13px;letter-spacing:5px;color:var(--teal);font-weight:600}
+</style></head><body>
+<div class="cover"><div class="brand">TELOMY</div></div>
+<h1>Telomy — Device Interception &amp; Jailbreak Reference</h1>
+
+<p>*Prepared 29 Oct 2026. Deep sweep of open-source repos, protocol teardowns, and tooling for pulling raw/near-raw biometrics (HR, HRV/RR-IBI, raw PPG, ECG, SpO₂, skin-temp, accel, sleep, glucose) off consumer wearables and CGMs into Telomy&#x27;s stack: iOS CoreBluetooth app, Android companion (adb), FastAPI backend, and the existing Nightscout ingest.*</p>
+
+<blockquote><strong>Accuracy note:</strong> star counts and &quot;last-commit&quot; dates are approximate (GitHub doesn&#x27;t render exact dates); verify on the repo page before quoting externally. Technical capability/method claims are high-confidence and sourced. Everything here assumes <strong>device-owner consent</strong> (our model); BLE interop leans on DMCA §1201(f).</blockquote>
+
+<hr>
+
+<h2>0. The three things that matter most</h2>
+
+<ul><li><strong>Raw PPG is almost never exposed over BLE.</strong> Every mainstream device (WHOOP API, Ultrahuman, RingConn, Pebble SDK, Apple, Samsung-without-partner) gives *processed* HR/SpO₂/HRV scalars. The <strong>only cheap device that streams a genuine raw optical waveform is the Colmi R02</strong> (after a community firmware mod). For validated raw ECG+RR, the <strong>Polar H10</strong> is the gold standard.</li>
+<li><strong>No sub-$300 wrist/ring gives true beat-to-beat RR/IBI over BLE</strong> — except anything exposing the <strong>standard BLE Heart Rate Service (0x180D / char 0x2A37)</strong>, whose RR-interval field is the universal, license-free, CoreBluetooth-native path. The Polar H10 does both (0x180D RR *and* raw ECG via its PMD service).</li>
+<li><strong>Licensing is the real trap.</strong> The richest code — <strong>Gadgetbridge (AGPLv3)</strong> and <strong>OpenStrap (AGPL-3.0)</strong> — is network-copyleft. <strong>Reference only, clean-room reimplement, never vendor into Telomy.</strong> The MIT-licensed projects (Colmi client, whoop-ble-swift, pydexcom, nightscout-librelink-up) are safe to build on with attribution.</li>
+</ul>
+<h3>Decision table</h3>
+
+<table><thead><tr><th>Device</th><th>Hackable?</th><th>Best repo / method</th><th>License</th><th>Raw data you actually get</th><th>Stack fit</th></tr></thead><tbody>
+<tr><td><strong>Polar H10 / Verity</strong></td><td>✅✅ Fully open</td><td><code>polarofficial/polar-ble-sdk</code> + PMD</td><td>SDK permissive</td><td><strong>Raw ECG 130 Hz, ACC, RR/PPI</strong></td><td>iOS <strong>+</strong> Android (native SDK)</td></tr>
+<tr><td><strong>Any 0x180D strap</strong></td><td>✅✅ Standard</td><td>roll-your-own 0x2A37 parser</td><td>n/a</td><td>HR + <strong>RR intervals (IBI)</strong></td><td>iOS CoreBluetooth native</td></tr>
+<tr><td><strong>Colmi R02/R03/R06</strong></td><td>✅✅ No-auth GATT</td><td><code>tahnok/colmi_r02_client</code> + Edge Impulse mod</td><td>MIT</td><td>HR, SpO₂, sleep; <strong>raw PPG + accel after firmware flash</strong></td><td>iOS native (like our TK3040)</td></tr>
+<tr><td><strong>WHOOP 4.0</strong></td><td>✅ RE&#x27;d</td><td><code>Asherlc/whoop-ble-swift</code> (MIT) / OpenStrap (ref)</td><td>MIT / AGPL</td><td>HR, <strong>RR, SpO₂, temp, accel</strong>; raw PPG via OpenStrap</td><td>iOS + Android (our NOOP)</td></tr>
+<tr><td><strong>WHOOP 5.0 / MG</strong></td><td>◐ RE&#x27;d, bonded</td><td>OpenStrap <code>protocol</code> (reference)</td><td>AGPL</td><td>raw PPG/RR/ECG <strong>once OS-bonded</strong>; else 0x180D HR only</td><td>needs bond work</td></tr>
+<tr><td><strong>Galaxy Watch 8</strong></td><td>◐ On-watch app</td><td>Wear OS Health Services + Sensor SDK</td><td>Apache / Samsung EULA</td><td>HR+HRV live; <strong>raw PPG/IBI only via partner SDK</strong></td><td>Android companion only</td></tr>
+<tr><td><strong>Ultrahuman Ring Air</strong></td><td>◐ RE&#x27;d (processed)</td><td>Gadgetbridge protocol / Partner API</td><td>AGPL ref</td><td>HR, HRV *scalar*, SpO₂, skin-temp (5-min)</td><td>iOS poll; no raw PPG</td></tr>
+<tr><td><strong>RingConn Gen2/3</strong></td><td>◐ Auth cracked</td><td><code>perezjuanj/OpenCircuit</code> (Swift→HealthKit)</td><td>check repo</td><td>HR, HRV, SpO₂, resp, temp (processed)</td><td><strong>best Swift reference design</strong></td></tr>
+<tr><td><strong>Pebble (Core Time 2)</strong></td><td>◐ SDK/firmware</td><td><code>coredevices/PebbleOS</code> (Apache)</td><td>Apache-2.0</td><td>BPM via SDK; <strong>raw PPG only if you fork firmware</strong></td><td>companion over BLE</td></tr>
+<tr><td><strong>Apple Watch S11</strong></td><td>✗ for raw</td><td>HealthKit (HKWorkoutSession, HKHeartbeatSeries, ECG)</td><td>—</td><td>HR, IBI (HeartbeatSeries), ECG voltage; <strong>no raw PPG</strong></td><td>iOS native</td></tr>
+<tr><td><strong>Garmin</strong></td><td>✗ live raw</td><td><code>GarminDB</code> (cloud) / Connect IQ</td><td>GPL / SDK</td><td>HR/HRV/SpO₂/sleep (synced, not live raw)</td><td>backend/cloud</td></tr>
+<tr><td><strong>FreeStyle Libre 2 Plus</strong></td><td>✅ (India: see caveat)</td><td>LibreLinkUp or dongle+xDrip / Juggluco</td><td>MIT / GPL</td><td>glucose ~1–5 min → Nightscout → Telomy</td><td>Android capture</td></tr>
+<tr><td><strong>Dexcom G6/G7</strong></td><td>✅ but not in India</td><td><code>xDrip+</code> native BLE / <code>pydexcom</code></td><td>GPL / MIT</td><td>glucose 5 min</td><td>not India-viable</td></tr>
+<tr><td><strong>Noise Luna / boAt ring</strong></td><td>✗</td><td>— (closed, cloud-locked)</td><td>—</td><td>nothing</td><td>skip</td></tr>
+</tbody></table>
+
+<p><strong>Buy list (updated):</strong> <strong>Polar H10</strong> (HRV/ECG reference) + <strong>Colmi R02 ×2–3</strong> (cheapest raw-PPG ring, ~₹1.5–2.5k) + <strong>Galaxy Watch 8</strong> (wrist, if wanted) + <strong>FreeStyle Libre 2 Plus</strong> (CGM, via the India-safe path below). Apple Watch as a HealthKit convenience feed only.</p>
+
+<hr>
+
+<h2>1. Wrist &amp; chest wearables</h2>
+
+<h3>Polar H10 / Verity Sense — the best raw target, start here</h3>
+<ul><li><strong><code>polarofficial/polar-ble-sdk</code></strong> — ~1.5k★, active 2026, permissive SDK license. Official Swift (iOS) <strong>+</strong> Android SDK wrapping the <strong>PMD (Polar Measurement Data)</strong> GATT service. <strong>H10:</strong> ECG 130 Hz, ACC, HR, RR/PPI. <strong>Verity:</strong> PPG, PPI, ACC. In-repo <code>technical_documentation/</code> has the PMD byte layout if you want to skip the SDK and talk PMD directly in CoreBluetooth (service <code>FB005C80-02E7-F387-1CAD-8ACD2D8DF0C8</code>, control <code>…81</code>, data <code>…82</code>).</li>
+<li>Python prototyping: <strong><code>fsmeraldi/bleakheart</code></strong> (MPL-2.0, safe as a dependency) does generic 0x180D HR+RR *and* Polar ECG/ACC/PPG; <strong><code>kbre93/OpenHRV</code></strong> (MIT) for H10 RR biofeedback.</li>
+<li><strong>Verdict:</strong> highest ROI in the whole report. Adopt the SDK in both apps; it&#x27;s the apples-to-apples comparator for the KYECG chest patch.</li>
+</ul>
+<h3>Standard BLE Heart Rate Service (0x180D / 0x2A37) — the universal path</h3>
+<p>Maps 1:1 onto CoreBluetooth. <strong>Reusable RR-interval decode (keep this):</strong></p>
+<blockquote>Char <code>0x2A37</code> notify payload: <strong>byte 0 = flags</strong>. bit0 → HR is uint8 (0) or uint16-LE (1); bit3 → energy-expended (uint16-LE) present; <strong>bit4 → RR-intervals present</strong>. After HR (and optional energy), the remaining bytes are one-or-more <strong>uint16-LE RR values in units of 1/1024 s</strong> → <code>rr_ms = raw × 1000 / 1024</code>. Multiple RR per notification is normal. Identical logic in Swift <code>Data</code>, Kotlin <code>ByteArray</code>, JS <code>DataView(...,true)</code>, Python <code>struct &#x27;&lt;H&#x27;</code>.</blockquote>
+
+<p>References: Adafruit <code>Adafruit_CircuitPython_BLE_Heart_Rate</code>, Chrome Web-Bluetooth samples, <code>fsmeraldi/bleakheart</code> (Python), <code>chbrown/BluetoothLE-HeartRate</code> (Node, MIT, dormant).</p>
+
+<h3>Samsung Galaxy Watch 8 / Wear OS</h3>
+<ul><li><strong>Hard truth:</strong> no raw PPG over BLE; everything runs *on-watch*. Raw PPG/IBI is gated behind the <strong>Samsung Health Sensor SDK</strong> partner program (approval needed only to *distribute* — <strong>developer mode on your own watch unlocks raw PPG/IBI for an internal rig</strong>).</li>
+<li>Supported, no-approval path: <strong>Wear OS Health Services</strong> (<code>androidx.health.services</code>) + <strong><code>android/health-samples</code></strong> (Apache-2.0) → on-watch app streams HR + available HRV to the phone → FastAPI. <strong>Health Connect</strong> reads HR/HRV(RMSSD)/SpO₂/skin-temp after sync (Samsung&#x27;s HRV→Health Connect sync is unreliable — don&#x27;t depend on RMSSD arriving there).</li>
+<li><strong>Blueprint repo:</strong> <strong><code>Kaist-ICLab/EnPULSE</code></strong> (Apache-2.0, actively maintained) — a full watch+phone+backend platform pulling <strong>raw PPG/IBI/accel/ECG/EDA/skin-temp @ 25 Hz</strong> via the Sensor SDK, and it documents the <strong>Developer-Mode-in-Samsung-Health unlock that avoids the partner license for your own devices</strong> (the <code>Error 2003</code> gotcha). <code>Kaist-ICLab/GalaxyPPG-Logger</code> + <code>-Supplementary-Code</code> are the focused 25 Hz PPG logging + validated PPG→HRV processing references.</li>
+<li><strong>Android-companion workstream only — no CoreBluetooth route to the watch itself.</strong> The *only* iOS path is to build a <strong>custom GATT peripheral into the Wear OS watch app</strong> and have our iOS app be the central; otherwise iOS consumes this data via the backend.</li>
+</ul>
+<h3>Apple Watch Series 11</h3>
+<ul><li><strong>Raw PPG = jailbreak only = not viable.</strong> HealthKit is the ceiling: <strong>HKWorkoutSession keepalive</strong> for live HR (~1–5 s), <strong>HKHeartbeatSeriesQuery</strong> for beat-to-beat IBI, <strong>HKElectrocardiogramQuery</strong> for ~512 Hz 30-s lead-I ECG voltage. <strong>Health Auto Export</strong> (commercial) is the ship-tomorrow HealthKit→REST/JSON stopgap. Pure iOS workstream; secondary convenience feed, not the comparator.</li>
+</ul>
+<h3>Garmin</h3>
+<ul><li>No live raw BLE (proprietary GFDI). Realistic: <strong><code>tcgoetz/GarminDB</code></strong> (GPL, cloud-sync → SQLite; TOS-dicey), <strong>Connect IQ</strong> on-watch app for live HR, <strong><code>python-fitparse</code>/<code>fitdecode</code></strong> for FIT files. Manage expectations — cloud/FIT, not live raw. Gadgetbridge has growing Garmin support but is AGPL (reference only).</li>
+</ul>
+<hr>
+
+<h2>2. WHOOP — 4.0 reachable, 5.0 now mapped (behind a bond)</h2>
+
+<ul><li><strong>OpenStrap</strong> (<code>OpenStrap/edge</code> app + <code>OpenStrap/protocol</code> spec + <code>OpenStrap/analytics</code>) — <strong>AGPL-3.0, reference only.</strong> The flagship and the first public crack of the WHOOP <strong>5.0/MG &quot;fd4b&quot;</strong> generation: documents <strong>raw green/red/IR PPG, accelerometer, RR intervals, SpO₂, skin-temp, and MG ECG records</strong>, plus the token-ack history-offload handshake. Covers 4.0 + 5.0 + MG. Flutter (iOS TestFlight + Android).</li>
+<li>MIT building blocks (safe to use): <strong><code>Asherlc/whoop-ble-swift</code></strong> (native Swift/CoreBluetooth, <code>AsyncStream</code> of HR/RR/IMU — your cleanest iOS start; requires an OS-bonded strap), <strong><code>christianmeurer/whoop-reader</code></strong> (Python, decodes the 96-byte realtime packet: HR/RR/SpO₂/temp), <strong><code>app-noop/noop</code></strong> (desktop, 4.0 tested / 5.0 experimental — *unrelated* to our NOOP).</li>
+<li>4.0 custom service chars: <code>61080002</code> write / <code>…03</code> responses / <code>…04</code> events / <code>…05</code> data stream; plaintext, CRC-32, no hard bond. <strong>The 5.0 gate is an OS-level encrypted bond</strong> — pre-bond you only get standard <strong>0x180D live HR (no RR)</strong>; near-raw needs the bond (still being RE&#x27;d).</li>
+<li>Official <strong>WHOOP Developer API v2</strong> (OAuth2) = aggregates only (HRV as one RMSSD value, RHR, SpO₂, sleep totals) — <code>felixnext/whoopy</code> (MIT) is a clean Python client. <strong>No raw data.</strong> Gadgetbridge does <strong>not</strong> support WHOOP.</li>
+<li><strong>Verdict (revises the earlier &quot;don&#x27;t rebuy&quot;):</strong> WHOOP 5.0 raw is now feasible via OpenStrap&#x27;s field map — reference it, clean-room the decoders into our NOOP (Kotlin) + iOS (Swift, seeded by whoop-ble-swift), and invest in the 5.0 bond. Keep the existing 4.0 rig; a 5.0 unit is now worth it *if* we fund the bond work.</li>
+</ul>
+<hr>
+
+<h2>3. Pebble (Core Time 2 / Core 2 Duo + Rebble)</h2>
+<ul><li><strong>Not an interception target — an SDK/firmware target.</strong> <code>coredevices/PebbleOS</code> (Apache-2.0, ~1.5k★, very active) is the open firmware you can legally fork. Stock <strong>HealthService API gives BPM only</strong>; <strong>raw PPG requires a firmware patch</strong> (feasible precisely because it&#x27;s open — a genuine differentiator). Core Time 2 has optical HR; Core 2 Duo does not. Companion via PebbleKit BLE. Pursue only if a wrist device is on the roadmap and you want a legally-forkable raw-PPG path.</li>
+</ul>
+<hr>
+
+<h2>4. Smart rings (India focus)</h2>
+
+<h3>Colmi R02 / R03 / R06 / R10 — RECOMMENDED cheap test unit</h3>
+<ul><li><strong>~₹1,500–2,500 on Amazon.in/Flipkart</strong> (verify live INR — Amazon.in blocked our fetch; global floor ~$16.50). Companion app <strong>QRing</strong> (by Yawell) — *if the listing says QRing, it&#x27;s the hackable variant.*</li>
+<li><strong><code>tahnok/colmi_r02_client</code></strong> (MIT, ~667★, active) — <strong>no pairing/security keys.</strong> Nordic-UART-style service <code>6E40FFF0-…</code>, write <code>…0002</code>, notify <code>…0003</code>, 16-byte packets (byte0=command, byte15=checksum mod 255) — nearly identical framing to our <strong>TK3040 0x18</strong> work, trivial to port to Swift CoreBluetooth. Stock exposes real-time HR, SpO₂, logs, steps, sleep. <strong>No HRV/IBI/raw PPG on stock.</strong></li>
+<li><strong><code>puxtril/colmi-docs</code></strong> (hosted at colmi.puxtril.com) — the <strong>command-byte Rosetta Stone for the whole 0x18/QRing family</strong>, reversed from QRing on an R03: <code>0x01</code> set-time, <code>0x03</code> battery, <code>0x15</code> HR-log, <code>0x1E</code> realtime HR, <code>0x37</code> stress, <strong><code>0x39</code> HRV</strong>, <code>0x43</code> steps, <code>0x44</code> sleep, and the streaming-subscription mechanism <strong><code>0x69</code> Data-Request / <code>0x6A</code> Stop</strong> (DataType 3=SpO₂, 6=realtime HR; DataAction start/pause/continue/stop). This is the closest analog to our TK3040 0x18 opcodes — read it alongside the client before porting. A &quot;Big Data&quot; bulk/near-raw history page is worth a human read.</li>
+<li><strong><code>atc1441/ATC_RF03_Ring</code></strong> (~494★) — chip teardown: the rings run a <strong>BlueX RF03 SoC with unsigned, OTA-downloadable firmware</strong> (SWD pads solderable) — *why* the whole family is hackable and how custom firmware exposes raw sensor rates the stock protocol hides.</li>
+<li><strong>Raw path (the differentiator):</strong> <code>edgeimpulse/example-data-collection-colmi-r02</code> ships <code>ring.py</code> logging <strong><code>ppg_raw</code>, accX/Y/Z, spO2_raw</strong> to CSV after flashing <code>R02_3.00.06_FasterRawValuesMOD.bin</code> via the ATC_RF03 web flasher. A <strong>time-varying optical waveform you run your own peak-detector/IBI/HRV on.</strong> Forks: <code>qlam-ai/qring</code>, <code>patmorli/colmi-r09</code>.</li>
+<li>Gadgetbridge rates R02/R06 &quot;highly supported&quot; (R03 = same HW). <strong>Warning:</strong> some R02/R03/R06 units ship different hardware + a different app and are NOT supported — confirm QRing before buying; buy 2–3 (sizing + variant risk).</li>
+</ul>
+<h3>Ultrahuman Ring Air (Indian company)</h3>
+<ul><li>~₹19,999 (MRP ₹28,499), widely available. BLE <strong>reverse-engineered</strong> (Gadgetbridge protocol doc): opcode 0x04 returns 32-byte records with HR, <strong>HRV scalar</strong>, SpO₂, skin-temp (float °C), steps, stress ~every 5 min. <strong>Processed only — no raw PPG/IBI/accel.</strong> Official <strong>OAuth2 Partner API</strong> (gated) + a separate <strong>UltraSignal dev kit</strong> that reportedly streams raw PPG/temp/accel via a loaned unit — worth a direct partnership inquiry (they&#x27;re Indian, reachable).</li>
+</ul>
+<h3>RingConn Gen 2/3 — best Swift reference, not India-stocked</h3>
+<ul><li>Import only ($299+). <strong><code>perezjuanj/OpenCircuit</code></strong> fully cracked the per-connection <strong>SM3 challenge auth (keyed on the ring&#x27;s MAC)</strong> — connects with no account/app. It&#x27;s a <strong>Swift + CoreBluetooth → HealthKit</strong> app decoding on-device: HR, <strong>HRV</strong>, SpO₂, resp rate, skin-temp, sleep (processed; no raw PPG/IBI). <strong>Study its architecture as our reference design.</strong> ⚠️ <strong>License is PolyForm Noncommercial 1.0.0 (not MIT) — commercial reuse needs a separate license; read the SM3-auth writeup for method, don&#x27;t vendor the code.</strong></li>
+</ul>
+<h3>Oura Ring Gen 3/4/5 — raw-PPG reference (not for shipping)</h3>
+<ul><li><strong><code>Th0rgal/open_oura</code></strong> (MIT, ~659★) — the <strong>richest raw ring stream documented anywhere</strong>: raw PPG, IBI, temperature, motion, SpO₂ samples. Method is heavy (BLE sniff + APK decompile + Ghidra port of <code>libringeventparser.so</code>, with a <strong>per-connection 16-byte auth key</strong>). Not shippable (proprietary IP, per-device auth), but the <strong>raw-PPG packet framing and Ghidra methodology are gold for our own decoder work</strong> and show what &quot;good&quot; raw ring data looks like. Oura&#x27;s scores are computed on-phone (proprietary PyTorch), not on the ring.</li>
+</ul>
+<h3>Skip: Noise Luna Ring (~₹15–19k), boAt Smart Ring (₹8,999)</h3>
+<ul><li>Closed, cloud-locked, no public API or BLE RE. 91mobiles confirms &quot;no way to interact with the ring&quot; outside the app. Not worth it vs a Colmi. Generic Amazon.in rings that use the <strong>QRing</strong> app are Colmi-compatible rebrands (cheap spares); avoid ones naming a bespoke app. <code>jphein/smartring</code> handles Lefun-protocol rings.</li>
+</ul>
+<hr>
+
+<h2>5. CGMs → Nightscout → Telomy</h2>
+
+<p><strong>Confirmed chain:</strong> Telomy already exposes a Nightscout-compatible endpoint — <code>GET/POST /nightscout/api/v1/entries</code> (main.py ~861–878, parsed by <code>cgm.py</code>, auth = SHA-1 of <code>TELOMY_NIGHTSCOUT_SECRET</code> in the <code>api-secret</code> header, or <code>?token=</code>). Any uploader targeting base URL <strong><code>https://&lt;server&gt;/nightscout</code></strong> works. Secret must be <strong>≥12 chars</strong>.</p>
+
+<h3>⚠️ India correction (changes yesterday&#x27;s rec)</h3>
+<p>Direct phone-to-sensor BLE for Libre 2 (<strong>Juggluco / xDrip+ native</strong>) was only reverse-engineered for the <strong>EU-market</strong> sensor. <strong>India sensors are non-EU firmware</strong>, so direct-BLE is a *gamble*. India-robust paths:</p>
+<ul><li><strong>LibreLinkUp cloud-follower — recommended first for India.</strong> <code>timoschlueter/nightscout-librelink-up</code> (MIT, ~293★, active, Docker). <code>LINK_UP_REGION=AP</code> works regardless of sensor firmware; mirrors Abbott&#x27;s cloud → Nightscout. ~5-min poll + cloud lag; depends on the official app + Abbott servers.</li>
+<li><strong>NFC→BLE transmitter dongle (MiaoMiao/Bubble, ~$30–60) + xDrip+</strong> — fully local, region-independent (dongle re-reads over NFC), 5-min values.</li>
+<li><strong>Juggluco / xDrip+ direct BLE</strong> — try (Juggluco first, NFC activate), keep 1 or 2 as fallback.</li>
+</ul>
+<h3>Sensors &amp; tools</h3>
+<ul><li><strong>FreeStyle Libre 2 Plus</strong> — sold in India, <strong>~₹4,600–5,100 / 14-day sensor</strong> (Apollo ₹4,624; Amazon.in ~₹5,100). This is the India default. <code>Juggluco</code> (GPL, ~476★) and <code>xDrip+</code> (GPL, ~1.8k★) do native BLE (EU-firmware caveat above); both upload to Nightscout natively.</li>
+<li><strong>Libre 3 / 3 Plus</strong> — <strong>not officially sold in India</strong> (Abbott India lists only Libre 2 Plus + 14-day Libre). Only <code>Juggluco</code> pushes it to Nightscout natively; the <code>maheini/FreeStyle-Libre-3-patch</code> repo is <strong>archived (22 Feb 2026)</strong>; iOS = LibreLoop/LibreCRKit (feeds Loop, not Nightscout). Noisier, more firmware-churn. <strong>Favor Libre 2 Plus.</strong></li>
+<li><strong>Dexcom G6/G7</strong> — <strong>effectively not sold in India</strong> (no en-IN store, grey-market only). <code>xDrip+</code> native BLE (G6 mature; G7/ONE+ fragile) or <code>pydexcom</code>/Nightscout bridge (Share cloud, lag). Deprioritize for India; BYOD-only.</li>
+<li>Other India e-commerce CGMs: <strong>Sibionics GS1</strong> (interception immature), <strong>Sugarfit/BeatO</strong> programs often ride on a <strong>Libre 2</strong> sensor → the Juggluco/LibreLinkUp path still works regardless of the branded app.</li>
+</ul>
+<h3>Exact config — Libre 2 → Juggluco → Nightscout → Telomy</h3>
+<ul><li>Install Juggluco APK; NFC-scan the sensor to start it; let BLE connect.</li>
+<li>Menu → Settings → Exchange data → <strong>Uploader</strong>: enable <strong>v1</strong>, disable &quot;Test v3&quot; and &quot;Send amount&quot; (Telomy implements the v1 API).</li>
+<li><strong>Nightscout URL:</strong> <code>https://&lt;server&gt;/nightscout</code> (no trailing slash).</li>
+<li><strong>Password/secret:</strong> plain <code>TELOMY_NIGHTSCOUT_SECRET</code> (Juggluco SHA-1-hashes it to <code>api-secret</code>).</li>
+<li>Entries POST to <code>/nightscout/api/v1/entries</code> at ~1-min cadence → <code>cgm.py</code> ingests → <code>signals.glucose_mean</code> (needs ≥48 readings/day before a daily mean is emitted). Dedup on timestamp, so backfill is safe.</li>
+</ul>
+<p>(xDrip+ equivalent: Settings → Cloud Upload → Nightscout Sync REST-API → Base URL <code>https://&lt;SECRET&gt;@&lt;server&gt;/nightscout/api/v1/</code>; supports multi-URL so a user can feed Telomy *and* a personal Nightscout.)</p>
+
+<hr>
+
+<h2>6. BLE reverse-engineering toolchain (to crack any new device)</h2>
+
+<ul><li><strong>nRF Connect</strong> (freeware) — enumerate services/chars; <code>6E40…</code> → Colmi/TK class, <code>0xFE…</code> → Da-Fit class, <code>0x6108…</code> → WHOOP-like.</li>
+<li><strong>Android Bluetooth HCI snoop log</strong> (built-in, fits our adb workflow) — enable in Developer Options, drive the vendor app, <code>adb pull btsnoop_hci.log</code> → <strong>Wireshark</strong> (filter <code>btatt.handle==0xNN</code>). Primary capture method, no extra hardware. (Android 16 blocked live capture; <strong>Android 17 restores it.</strong>)</li>
+<li><strong>Frida</strong> (+<code>objection</code>) — hook <code>setValue</code>/<code>onCharacteristicChanged</code> in the live vendor app to read plaintext values + encryption keys before they hit the air; <strong><code>jadx</code></strong> decompiles the APK for UUIDs/command tags/CRC logic; <strong><code>apktool</code></strong> repackages for non-rooted Frida-gadget injection.</li>
+<li><strong>Over-the-air sniffers</strong> (only for bonded/encrypted links — rare on cheap rings): <strong><code>nccgroup/Sniffle</code></strong> (GPL, ~1.2k★, SONOFF CC2652P dongle ~$10) or <strong>Nordic nRF Sniffer</strong> (nRF52840 dongle ~$10).</li>
+</ul>
+<p><strong>Workflow:</strong> explore → HCI-snoop capture → Wireshark decode → Frida/jadx if obfuscated → sniffer only if bonded → reimplement natively (CoreBluetooth if unauthenticated GATT, else Android-companion→FastAPI push like NOOP).</p>
+
+<hr>
+
+<h2>7. Licensing — carry these forward</h2>
+<ul><li><strong>AGPL-3.0 (reference only, never copy into Telomy):</strong> Gadgetbridge, OpenStrap (edge/protocol/analytics), Ultrahuman protocol doc is in Gadgetbridge. Reading for protocol knowledge is fine; clean-room reimplement.</li>
+<li><strong>GPL (keep at arm&#x27;s length):</strong> Juggluco, xDrip+, GarminDB, Sniffle.</li>
+<li><strong>MIT / permissive (safe to build on, attribute):</strong> <code>tahnok/colmi_r02_client</code>, <code>qlam-ai/qring</code>, <code>Asherlc/whoop-ble-swift</code>, <code>christianmeurer/whoop-reader</code>, <code>app-noop/noop</code>, <code>felixnext/whoopy</code>, <code>pydexcom</code>, <code>nightscout-librelink-up</code>, <code>Th0rgal/open_oura</code>, <code>zHElEARN/polar-python</code>, <code>cyberjunky/python-garminconnect</code>, <code>coredevices/PebbleOS</code> (Apache), <code>android/health-samples</code> + <code>Kaist-ICLab/EnPULSE</code> (Apache), <code>edgeimpulse/...colmi-r02</code> (BSD-3-Clear). <code>fsmeraldi/bleakheart</code> = MPL-2.0 (file-level copyleft, OK as dependency). <code>polar-ble-sdk</code> = Polar&#x27;s own NOASSERTION license (permits commercial use with notice — legal to review).</li>
+<li><strong>PolyForm Noncommercial (NOT free for a commercial product):</strong> <code>perezjuanj/OpenCircuit</code> (RingConn) — method/reference only unless separately licensed.</li>
+<li><strong>No license stated (read-only reference, don&#x27;t copy):</strong> <code>bWanShiTong/reverse-engineering-whoop-post</code>.</li>
+<li><strong>ToS/warranty:</strong> all of this is off-label; WHOOP private-cloud-API scraping is the clearest ToS violation + credential liability — avoid. Native BLE/on-device decode is the defensible path.</li>
+</ul>
+<hr>
+
+<h2>8. Recommended build order</h2>
+<ul><li><strong>Polar H10 via <code>polar-ble-sdk</code></strong> (iOS+Android) — raw ECG+RR now, zero legal risk. The HRV/ECG reference lane.</li>
+<li><strong>Generic 0x180D/0x2A37 parser</strong> in CoreBluetooth (+ Bleak mirror) — one parser, HR+RR from a whole class of straps.</li>
+<li><strong>Colmi R02</strong> — port <code>colmi_r02_client</code> to CoreBluetooth (mirrors our TK3040 0x18); flash the Edge Impulse mod for raw PPG and derive our own IBI/HRV. Cheapest raw-waveform ring.</li>
+<li><strong>CGM: Libre 2 Plus → LibreLinkUp (AP region) → Nightscout → Telomy</strong> for India; dongle+xDrip for fully-local; direct Juggluco as a try-first.</li>
+<li><strong>Galaxy Watch 8</strong> on-watch Health Services app (fork <code>android/health-samples</code>); apply to the Samsung Sensor SDK partner program for raw PPG/IBI.</li>
+<li><strong>WHOOP 5.0</strong> — reference OpenStrap&#x27;s fd4b field map, clean-room into NOOP + iOS, fund the bond crack. Keep the 4.0 rig meanwhile.</li>
+<li><strong>Apple Watch</strong> HealthKit (HKWorkoutSession + HeartbeatSeries + ECG) / Health Auto Export as a convenience feed.</li>
+<li><strong>RingConn OpenCircuit</strong> — study as the Swift/CoreBluetooth→HealthKit reference architecture.</li>
+</ul>
+</body></html>

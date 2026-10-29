@@ -112,7 +112,7 @@ type Native = {
   ringStartOvernight(): void; ringStopOvernight(): void; autoSleep(): boolean; setAutoSleep(on: boolean): void; autoRecord(): boolean; setAutoRecord(on: boolean): void;
   phoneActivity(hours: number): Promise<PhoneActivity[]>;
   ringConnect(id: string): void; ringDisconnect(): void;
-  ringForget(): void; ringStartMeasure(type: number): void; ringStopMeasure(type: number): void; ringReadBattery(): void;
+  ringForget(): void; ringStartMeasure(type: number): void; ringStopMeasure(type: number): void; ringReadBattery(): void; ringSetLive(on: boolean): void;
   getStatus(): BandStatus;
   startScan(): void;
   stopScan(): void;
@@ -179,6 +179,8 @@ export const Ring = {
   /** 0 = live heart rate, 2 = SpO2, 4 = temperature (never 1 — that is blood-pressure estimation in this SDK). */
   startMeasure: (type: number) => native?.ringStartMeasure(type),
   stopMeasure: (type: number) => native?.ringStopMeasure(type),
+  /** Hold the live (~2 s) HR stream on while a screen shows it — call setLive(true) on focus, false on blur. */
+  setLive: (on: boolean) => native?.ringSetLive(on),
   readBattery: () => native?.ringReadBattery(),
   onStatus(cb: (s: RingStatus) => void) { return native ? native.addListener('onRingStatus', cb) : { remove() {} }; },
   onData(cb: (s: RingStatus) => void) { return native ? native.addListener('onRingData', cb) : { remove() {} }; },
