@@ -804,13 +804,13 @@ def test_peptide_member_view_is_gated_and_never_leaks_dosing():
 
 
 def test_cross_device_calibration(client):
-    # patch (reference) + ring HR at the same timestamps, ring reads +4 bpm high
-    base = 1793000000
-    patch = [{"ts": base + i * 10, "metric": "hr", "value": 70 + (i % 7), "step_s": 10} for i in range(60)]
-    ring = [{"ts": base + i * 10, "metric": "hr", "value": 74 + (i % 7), "step_s": 10} for i in range(60)]
+    # Isolated on a unique metric + time window so it can't contaminate other tests sharing the DB.
+    base = 1_750_000_000
+    patch = [{"ts": base + i * 10, "metric": "hr_caltest", "value": 70 + (i % 7), "step_s": 10} for i in range(60)]
+    ring = [{"ts": base + i * 10, "metric": "hr_caltest", "value": 74 + (i % 7), "step_s": 10} for i in range(60)]
     assert client.post("/vitals/ingest", json={"samples": patch, "source": "patch"}).json()["stored"] == 60
     assert client.post("/vitals/ingest", json={"samples": ring, "source": "ring"}).json()["stored"] == 60
-    r = client.get("/vitals/calibrate", params={"metric": "hr", "days": 3650}).json()
+    r = client.get("/vitals/calibrate", params={"metric": "hr_caltest", "days": 7300}).json()
     assert r["reference"] == "patch" and r["reference_samples"] == 60
     ring_cal = r["devices"]["ring"]
     assert ring_cal["n"] == 60 and abs(ring_cal["bias"] - 4.0) < 0.6      # ring reads ~+4 vs patch

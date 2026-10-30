@@ -32,6 +32,7 @@ def init():
 
 def ingest(samples: list[dict], source: str) -> dict:
     """A batch of {ts, metric, value, step_s?} from a device. Idempotent (re-syncing the same window is safe)."""
+    init()                                                   # self-heal: ensure the table exists for this user DB
     rows, lo, hi = [], None, None
     for s in samples:
         try:

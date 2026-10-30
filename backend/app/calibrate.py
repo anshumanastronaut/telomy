@@ -22,7 +22,10 @@ REFERENCE = {"hr": "patch", "hrv": "patch", "spo2": "ring", "skin_temp": "ring"}
 
 
 def _rows(metric: str, since: int) -> list[dict]:
-    return db.rows("SELECT ts, value, source FROM vitals_ts WHERE metric = ? AND ts >= ? ORDER BY ts", (metric, since))
+    try:
+        return db.rows("SELECT ts, value, source FROM vitals_ts WHERE metric = ? AND ts >= ? ORDER BY ts", (metric, since))
+    except Exception:  # noqa: BLE001 — no vitals synced yet (table may not exist on a fresh DB)
+        return []
 
 
 def _pairs(rows: list[dict], ref_src: str, tol: int) -> tuple[dict[str, list[tuple[float, float]]], int]:
