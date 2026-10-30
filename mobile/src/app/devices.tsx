@@ -120,6 +120,17 @@ export default function Devices() {
           </Row>
         </Card>
 
+        <Card onPress={() => router.push('/jcvital' as any)} accessibilityLabel="JCVital V8 band">
+          <Row gap={space[2]} style={{ alignItems: 'center' }}>
+            <Icon name="dot.radiowaves.left.and.right" size={20} color={p.teal} />
+            <View style={{ flex: 1 }}>
+              <T v="label">JCVital V8 band</T>
+              <T v="small" color={p.muted}>Connect the JCVital/JSTYLE band — live vitals + raw ECG/PPG via its official SDK.</T>
+            </View>
+            <Icon name="chevron.right" size={13} color={p.faint} />
+          </Row>
+        </Card>
+
         <Card>
           <T v="label">How sources are ranked</T>
           <T v="small">Heart rate & HRV: ECG patch is most accurate, then the ring (optical), then phone health (Apple Health / Health Connect). SpO₂ & skin temperature: the ring. Steps, workouts & VO₂max: phone health. Rhythm screening & sleep stages: the ECG patch. When two devices disagree a lot, Telomy flags the lower-quality one.</T>
