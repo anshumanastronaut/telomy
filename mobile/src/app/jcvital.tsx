@@ -28,11 +28,13 @@ export default function JCVital() {
   const [vitals, setVitals] = useState<Record<string, any>>({});
   const [hrTrend, setHrTrend] = useState<number[]>([]);
   const [rawN, setRawN] = useState(0);
+  const [lastRx, setLastRx] = useState(0);
   const [active, setActive] = useState<number | null>(null);   // mode currently measuring
   const [capturing, setCapturing] = useState(false);
 
   const session = useRef('');
   const buf = useRef<any[]>([]);
+  const resend = useRef<any>(null);
 
   useEffect(() => {
     bleManager.deviceType = 'V8';
@@ -55,7 +57,7 @@ export default function JCVital() {
     };
     const onRaw = (bytes: number[]) => {
       if (!bytes || !bytes.length) return;
-      setRawN((n) => n + 1);
+      setRawN((n) => n + 1); setLastRx(Date.now());
       if (capturing && session.current) buf.current.push({ t: Date.now() / 1000, source: 'jcvital', channel: 'raw_frame', v: bytes.length, hex: bytes.slice(0, 40).map((b) => b.toString(16).padStart(2, '0')).join('') });
     };
     bleManager.on(Constants.BLUE_CONNECTION_STATE, onState);
@@ -68,6 +70,7 @@ export default function JCVital() {
       bleManager.off(Constants.BLUE_DATA_RECEIVED, onParsed);
       bleManager.off('dataByteCallBack', onRaw);
       clearInterval(flush);
+      if (resend.current) clearInterval(resend.current);
       bleManager.stopScan();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,11 +89,22 @@ export default function JCVital() {
     setTimeout(() => { bleManager.stopScan(); setScanning(false); }, 8000);
   }
   function connect(id: string) { bleManager.stopScan(); setScanning(false); bleManager.connectDeviceById(id); }
-  function measure(mode: number, label: string) {
-    if (active === mode) { safeWrite(BleSDK.healthMeasurementWithDataType(mode, false, null)); setActive(null); return; }
+  function stopMeasure() {
+    if (resend.current) { clearInterval(resend.current); resend.current = null; }
     if (active != null) safeWrite(BleSDK.healthMeasurementWithDataType(active, false, null));
+    try { safeWrite(BleSDK.realTimeStep(false, false)); } catch {}
+    setActive(null);
+  }
+  function measure(mode: number, label: string) {
+    if (active === mode) { stopMeasure(); return; }
+    if (active != null) safeWrite(BleSDK.healthMeasurementWithDataType(active, false, null));
+    // the band only streams once the real-time channel is open; then the measurement must be re-sent (~every 10s,
+    // the demo re-sends on a 30s timer) or the band stops after one cycle.
+    safeWrite(BleSDK.realTimeStep(true, false));
     safeWrite(BleSDK.healthMeasurementWithDataType(mode, true, null));
-    setActive(mode); show(`Measuring ${label}…`);
+    if (resend.current) clearInterval(resend.current);
+    resend.current = setInterval(() => safeWrite(BleSDK.healthMeasurementWithDataType(mode, true, null)), 10000);
+    setActive(mode); show(`Measuring ${label}… keep the band snug on your wrist`);
   }
   function startCapture() {
     session.current = `jcvital-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
@@ -138,6 +152,11 @@ export default function JCVital() {
               <View style={{ alignItems: 'center', flex: 1 }}><T v="small" color={p.muted}>Frames</T><T v="num" style={{ fontSize: 26 }}>{rawN}</T><T v="small" color={p.faint}>received</T></View>
             </Row>
             {hrTrend.length > 2 ? <Svg width="100%" height={48}><Polyline points={spark(hrTrend, 48)} fill="none" stroke={p.teal} strokeWidth={1.5} /></Svg> : null}
+            <T v="small" color={rawN ? p.teal : (active != null ? p.copper : p.faint)}>
+              {rawN ? `Streaming — ${rawN} frames, last ${Math.max(0, Math.round((Date.now() - lastRx) / 1000))}s ago`
+                : active != null ? 'No data from the band yet — make sure it is snug on your wrist (optical sensor needs skin contact).'
+                : 'Tap Heart rate to start.'}
+            </T>
             <Row gap={space[2]} style={{ flexWrap: 'wrap' }}>
               <Button style={{ flex: 1 }} kind={active === MODE.hr ? 'copper' : 'primary'} title={active === MODE.hr ? 'Stop HR' : 'Heart rate'} onPress={() => measure(MODE.hr, 'heart rate')} />
               <Button style={{ flex: 1 }} kind={active === MODE.spo2 ? 'copper' : 'secondary'} title={active === MODE.spo2 ? 'Stop SpO₂' : 'SpO₂'} onPress={() => measure(MODE.spo2, 'SpO₂')} />
