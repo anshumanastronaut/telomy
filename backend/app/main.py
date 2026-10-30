@@ -2398,6 +2398,20 @@ def vitals_coverage(days: int = 7):
     return vitalsmod.coverage(days)
 
 
+@app.get("/vitals/calibrate")
+def vitals_calibrate(metric: str = "hr", days: int = 7, tol_s: int = 10):
+    """Cross-device calibration vs the reference for one metric: per-device bias/error/correlation + a linear
+    correction toward truth. Computed from the longitudinal vitals the devices sync (app/calibrate.py)."""
+    from . import calibrate
+    return calibrate.report(metric, days, min(max(tol_s, 1), 120))
+
+
+@app.get("/vitals/calibrate/summary")
+def vitals_calibrate_summary(days: int = 7):
+    from . import calibrate
+    return calibrate.summary(days)
+
+
 # ---- Fulfillment & logistics (pickups/deliveries) ----
 class OrderIn(BaseModel):
     org: str = "default"

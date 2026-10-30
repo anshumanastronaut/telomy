@@ -801,3 +801,18 @@ def test_peptide_member_view_is_gated_and_never_leaks_dosing():
         assert "dose" not in p and "mechanism" not in p and "safety" not in p
     # a research-grade peptide carries the explicit not-advised flag to the member
     assert any(p["id"] == "bpc157" and p["flag"] for p in mv["peptides"])
+
+
+def test_cross_device_calibration(client):
+    # patch (reference) + ring HR at the same timestamps, ring reads +4 bpm high
+    base = 1793000000
+    patch = [{"ts": base + i * 10, "metric": "hr", "value": 70 + (i % 7), "step_s": 10} for i in range(60)]
+    ring = [{"ts": base + i * 10, "metric": "hr", "value": 74 + (i % 7), "step_s": 10} for i in range(60)]
+    assert client.post("/vitals/ingest", json={"samples": patch, "source": "patch"}).json()["stored"] == 60
+    assert client.post("/vitals/ingest", json={"samples": ring, "source": "ring"}).json()["stored"] == 60
+    r = client.get("/vitals/calibrate", params={"metric": "hr", "days": 3650}).json()
+    assert r["reference"] == "patch" and r["reference_samples"] == 60
+    ring_cal = r["devices"]["ring"]
+    assert ring_cal["n"] == 60 and abs(ring_cal["bias"] - 4.0) < 0.6      # ring reads ~+4 vs patch
+    assert ring_cal["corr"] is not None and ring_cal["corr"] > 0.9        # same shape → high correlation
+    assert ring_cal["correction"] is not None                            # a slope/intercept to correct ring→patch
