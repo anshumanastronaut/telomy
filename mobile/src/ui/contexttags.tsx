@@ -14,17 +14,21 @@ export function ContextTags() {
   const p = usePalette();
   const { data, reload } = useApi<any>('/me/context-tags');
   const [sel, setSel] = useState<string[] | null>(null);
+  const [saved, setSaved] = useState(false);
   const current: string[] = sel ?? data?.today?.tags ?? [];
 
   async function toggle(tag: string) {
     const next = current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag];
     setSel(next);
-    try { await api('/me/context-tags', { body: { tags: next } }); reload(); } catch {}
+    try { await api('/me/context-tags', { body: { tags: next } }); setSaved(true); setTimeout(() => setSaved(false), 2500); reload(); } catch {}
   }
 
   return (
     <Card style={{ gap: space[2] }}>
-      <T v="h3">What was going on?</T>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <T v="h3" style={{ flex: 1 }}>What was going on?</T>
+        {saved ? <T v="small" color={p.teal}>✓ Saved</T> : null}
+      </View>
       <T v="small" color={p.muted}>Tag anything that could explain today's numbers — so a reading is context, not a verdict.</T>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {TAGS.map((tag) => {

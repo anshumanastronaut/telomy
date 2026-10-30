@@ -20,16 +20,20 @@ export function SleepFeeling({ onDone }: { onDone?: () => void } = {}) {
   const p = usePalette();
   const { data, reload } = useApi<any>('/me/sleep-feeling');
   const [sent, setSent] = useState<number | null>(null);
+  const [saved, setSaved] = useState(false);
   const answered: number | null = data?.answered_today ? data?.today?.rating ?? null : sent;
 
   async function pick(r: number) {
     setSent(r);
-    try { await api('/me/sleep-feeling', { body: { rating: r } }); reload(); onDone?.(); } catch {}
+    try { await api('/me/sleep-feeling', { body: { rating: r } }); setSaved(true); setTimeout(() => setSaved(false), 2500); reload(); onDone?.(); } catch {}
   }
 
   return (
     <Card style={{ gap: space[2] }}>
-      <T v="h3">{answered ? 'How you felt this morning' : 'How did you sleep?'}</T>
+      <Row style={{ alignItems: 'center' }}>
+        <T v="h3" style={{ flex: 1 }}>{answered ? 'How you felt this morning' : 'How did you sleep?'}</T>
+        {saved ? <T v="small" color={p.teal}>✓ Saved</T> : null}
+      </Row>
       {!answered ? <T v="small" color={p.muted}>One tap — we learn what restorative sleep looks like for you, beyond the score.</T> : null}
       <Row style={{ justifyContent: 'space-between' }}>
         {OPTIONS.map((o) => {
