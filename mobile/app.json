@@ -27,7 +27,7 @@
         "NSHealthShareUsageDescription": "Telomy reads steps, activity, workouts, sleep and vitals from Apple Health to build your daily scores. Telomy never writes to Health.",
         "NSHealthUpdateUsageDescription": "Telomy does not write to Apple Health.",
         "NSMotionUsageDescription": "Telomy uses your phone's motion activity (still, walking, driving) to detect sleep and activity automatically. It stays on your phone.",
-        "NSLocationWhenInUseUsageDescription": "Telomy uses your location to show real-time air quality, UV and weather where you are — an outdoor-health score, UV and sun-exposure alerts, and a cleaner picture of what your environment does to your body. Used only while you have the app open; your location is never stored."
+        "NSLocationWhenInUseUsageDescription": "Telomy uses your location to show real-time air quality, UV and weather where you are \u2014 an outdoor-health score, UV and sun-exposure alerts, and a cleaner picture of what your environment does to your body. Used only while you have the app open; your location is never stored."
       },
       "appleTeamId": "M483297A5P",
       "buildNumber": "5",
@@ -52,7 +52,17 @@
         "BLUETOOTH_ADMIN",
         "BLUETOOTH_SCAN",
         "BLUETOOTH_CONNECT",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_OXYGEN_SATURATION",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_VO2_MAX",
+        "android.permission.health.READ_BODY_FAT",
+        "android.permission.health.READ_BASAL_METABOLIC_RATE",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_LEAN_BODY_MASS"
       ]
     },
     "web": {
@@ -74,13 +84,13 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Telomy uses the microphone when you talk to Sinc — to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
+          "microphonePermission": "Telomy uses the microphone when you talk to Sinc \u2014 to log meals, events and activities by voice and, if you allow it, to estimate stress from voice tone. Audio is never stored."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Telomy uses your location to show real-time air quality, UV and weather where you are — an outdoor-health score, UV and sun-exposure alerts, and a cleaner picture of what your environment does to your body. Used only while you have the app open; your location is never stored.",
+          "locationWhenInUsePermission": "Telomy uses your location to show real-time air quality, UV and weather where you are \u2014 an outdoor-health score, UV and sun-exposure alerts, and a cleaner picture of what your environment does to your body. Used only while you have the app open; your location is never stored.",
           "isIosBackgroundLocationEnabled": false,
           "isAndroidBackgroundLocationEnabled": false
         }
@@ -93,6 +103,15 @@
           "isBackgroundEnabled": false,
           "neverForLocation": false,
           "modes": []
+        }
+      ],
+      "react-native-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],

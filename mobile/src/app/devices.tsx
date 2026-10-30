@@ -3,7 +3,7 @@
 // Works with one device or none; nothing here fails when a device is absent.
 import { router, Stack } from 'expo-router';
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { HEALTH_LABEL, connectHealth } from '@/lib/health';
 import { METRIC_SOURCES, SOURCE_LABEL, useDevices, type SourceId } from '@/lib/devices';
 import { hrHrvCorrelation, useRingHistory } from '@/lib/ringhistory';
@@ -119,6 +119,19 @@ export default function Devices() {
             <Button kind={autoRec ? 'primary' : 'secondary'} title={autoRec ? 'On' : 'Off'} onPress={() => { Band.setAutoRecord(!autoRec); setAutoRec(!autoRec); }} />
           </Row>
         </Card>
+
+        {Platform.OS === 'android' ? (
+          <Card onPress={() => router.push('/galaxy' as any)} accessibilityLabel="Galaxy Watch">
+            <Row gap={space[2]} style={{ alignItems: 'center' }}>
+              <Icon name="applewatch" size={20} color={p.teal} />
+              <View style={{ flex: 1 }}>
+                <T v="label">Galaxy Watch</T>
+                <T v="small" color={p.muted}>Heart rate, SpO₂, sleep, steps, VO₂max and body composition from Samsung Health.</T>
+              </View>
+              <Icon name="chevron.right" size={13} color={p.faint} />
+            </Row>
+          </Card>
+        ) : null}
 
         <Card onPress={() => router.push('/jcvital' as any)} accessibilityLabel="JCVital V8 band">
           <Row gap={space[2]} style={{ alignItems: 'center' }}>

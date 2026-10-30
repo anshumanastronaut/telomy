@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { Band, type RingHistorySample } from '../../modules/ky-ecg';
 import { ringSamples } from '@/lib/ringhistory';
 import { JCVital } from '@/lib/jcvitalsource';
+import { Galaxy, GALAXY_AVAILABLE } from '@/lib/galaxy';
 
 const CURSOR = 'telomy.vitals.cursor.v1';   // { patch: lastTs, ring: lastTs }
 const MIN_INTERVAL_MS = 2 * 60 * 1000;
@@ -93,6 +94,7 @@ export async function syncVitals(force = false): Promise<void> {
     const rMax = await push('ring', rr); if (rMax) next.ring = rMax;
     const jMax = await push('jcvital', jr); if (jMax) next.jcvital = jMax;
     if (pMax || rMax || jMax) await setCursor(next);
+    if (GALAXY_AVAILABLE) Galaxy.sync(force).catch(() => {});   // Samsung Health via Health Connect (Android); own cursor
   } catch { /* offline or no device — try again next time; nothing is lost */ }
   finally { running = false; }
 }
