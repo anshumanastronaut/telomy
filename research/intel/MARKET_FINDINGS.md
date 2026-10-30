@@ -2849,3 +2849,397 @@ Sources:
 - [HIT Consultant: Comet launch (Sep 2025)](https://hitconsultant.net/2025/09/03/epic-launches-comet-a-new-ai-platform-to-predict-patient-health-journeys/), [Fierce: UGM 2025 AI + Cosmos AI preview](https://www.fiercehealthcare.com/health-tech/epic-unveils-major-ai-features-ai-charting-microsoft-cosmos-ai-risk-prediction-and-rcm), [CNBC: UGM 2025](https://www.cnbc.com/2025/08/20/epic-ugm-2025-epic-touts-new-ai-tools.html), [Newsweek: UGM 2025 live](https://www.newsweek.com/epic-ugm-2025-live-updates-verona-wisconsin-2115581)
 - [MyChart App Store listing (Apple Health sync, sleep)](https://apps.apple.com/us/app/mychart/id382952264), [UTMB: MyChart device integration](https://www.utmbhealth.com/mychart-info/mychart-app-device-integration), [Eisenhower Health: Apple Health not supported](https://eisenhowerhealth.org/sites/EmcOrg/assets/downloads/0031277.1.0-mycharthowtopairyourapplew.pdf), [MyChart.org: Explore / Epic ID](https://www.mychart.org/l/en-us/explore/)
 - [MHA: patients not told AI drafted messages](https://www.mhaonline.com/blog/ai-messages-from-doctors), [Duke AI Health: My Cancer on MyChart](https://aihealth.duke.edu/blog/my-cancer-on-mychart/), [ConsumerAffairs: fake MyChart messages spread malware (Aug 2026)](https://www.consumeraffairs.com/news/fake-mychart-messages-use-frightening-test-results-to-spread-malware-082826.html), [Becker's: 50 things to know about Epic](https://www.beckershospitalreview.com/ehrs/50-things-to-know-about-epic.html), [Sacra: Epic](https://sacra.com/c/epic/)
+
+---
+
+## 2026-10-29 — Function Health (membership labs · Ezra MRI/CT · Getlabs home draws · SuppCo · Medical Intelligence / AI connectors · Google Health tie-up)
+
+*Roster note: the roster is fully covered at seed level, so this run begins the revisit pass from the
+top (Function had only a seed line). Sources are Function's own pricing page and press releases, trade
+press (Fierce Healthcare, AuntMinnie, Longevity.Technology, Pulse 2.0), Wikipedia, and consumer reviews.
+Several review sites are competitor-authored (Superpower, OneTwenty/Surges) or affiliate content, so
+their claims are marked where used.*
+
+**Basic features.**
+- **Panel**: "160+ lab tests" a year, blood + urine, in two draws (annual + mid-year) plus on-demand add-on
+  testing (official pricing page, Oct 2026). Independent counts are lower: ~114 distinct markers, ~60 of
+  them retested mid-year, giving ~228 results a year. The headline counts results, not markers.
+- **Lab logistics**: draws at ~2,200 Quest sites, and now **at-home or office draws via Getlabs**, which
+  Function acquired on 8 Apr 2026 (terms undisclosed, AI-routed phlebotomist scheduling). This closes the
+  gap reviewers used to raise.
+- **Clinician review**: clinicians review every result and write notes. Reviewers say a clinician phones
+  you on urgent findings. A personalised action plan / "Protocols" turns results into steps.
+- **Records**: Upload Health Records (past labs + visit notes), launched Nov 2025.
+- **Pricing/payments**: $365/yr ($1/day), HSA/FSA eligible, US only. Higher in NY/NJ per one review
+  (unverified).
+
+**Advanced features.**
+- **Imaging via Ezra** (acquired May 2025): AI-accelerated full-body MRI cut from 60 to 22 minutes,
+  launched at $499. Ezra's FDA-cleared AI covers image enhancement (Flash), radiologist assist (Assist,
+  cleared for prostate) and plain-English reports (Reporter). CT is also available. **Current MRI price is
+  unverified**: one 2026 review says $899 plus a required membership, and the pricing page lists no price.
+- **Medical Intelligence Lab** (Nov 2025, with the Series B): Private AI Chat over member data, Protocols,
+  record upload.
+- **AI connectors, the 2026 strategy**: member data can be connected to ChatGPT Health, Anthropic Claude,
+  Perplexity Health (announced 20 Mar 2026, "rolling out in coming weeks"), Microsoft Copilot and Meta's
+  Muse agent (Sep 2026), plus a general "health data connector for AI tools" (Aug 2026). Function is
+  positioning itself as the *lab-data source* for other people's assistants. I did not verify which
+  connectors are live.
+- **Google Health partnership** (12 Oct 2026): Function lab results will flow into the Google Health app
+  next to Fitbit/Pixel resting HR, sleep, HRV and cardio load, and Google Health Coach will use them. US
+  only, "later this fall", no date. This is Function's answer to its "no wearables" weakness: it gets
+  wearable context by partnership rather than building it.
+- **Supplements**: acquired SuppCo (May 2026), a supplement rating and testing platform, to link
+  supplement choices to biomarkers.
+- **Add-ons**: Galleri multi-cancer test, Alzheimer's/brain testing, mold reactivity, advanced cardiac
+  panel (~$100 per one review). No prices on the official page.
+- **Research**: NYU Grossman research partnership on earlier disease detection (Aug 2026).
+- **Not found**: a published biological-age method (the app shows a "biological age" in a marketing
+  screenshot but no methodology), trained disease or mortality prediction, continuous vitals of its own,
+  nutrition logging, CGM, Rx pathways (GLP-1/TRT/HRT; competitor pages say Function has none, and I found
+  no Function Rx product), fall/SOS safety, caregiver access, or any presence outside the US.
+
+**Scale and money.** Founded 2021 (Austin; co-founders include Mark Hyman and Jonathan Swerdlin). 100k+
+members and a 200k waitlist in 2024. It now says it serves "millions of members" (company claim). Series
+B $298M at $2.5B (Nov 2025, Redpoint), then $450M non-dilutive revenue-linked growth financing from General
+Catalyst's Customer Value Fund (30 Jul 2026). Secondary-market valuation estimates (~$2.9B) are
+unverified. First CMO hired Oct 2026.
+
+**Pricing.** $365/yr, cut from $499 in 2026. Existing members were initially denied the lower rate, then
+Function reversed after cancellation threats on Reddit. Superpower undercuts at $199/yr. Add-ons
+(imaging, Galleri, cardiac) push total spend past $1,000 per reviewers.
+
+**Weaknesses.**
+- **Two snapshots a year.** Reviewers say it "goes quiet between draws". There is no continuous signal,
+  so risk can't move week to week. Google partnership is a co-display, not a trained fusion model.
+- **Information overload / anxiety**: 100+ markers with many borderline flags, and the critique (McGill
+  OSS's Jonathan Jarry, academic doctors) that broad DTC panels drive unnecessary follow-up. Its claim
+  that 25% of people have heavy-metal poisoning was publicly criticised.
+- **Little after the results**: no Rx, limited coaching, and AI chat over the user's own data (an
+  "explain my dashboard" layer, the pattern we've already flagged as low-value when it's paid).
+- **Opaque counts and prices**: "160+ tests" vs ~114 markers; imaging prices not public; pricing
+  fairness backlash.
+- **Screening-cascade exposure** from full-body MRI, the same category risk as Prenuvo/Fountain/HLI.
+- **US only.** No India presence, no ABHA, and its Quest + Getlabs logistics don't travel.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **A Telomy MCP / AI-connector server** exposing our *grounded* tools (bio-age, 12-condition +
+     mortality risk, lab interpretation, muscle clock) to the user's own assistant (Claude, ChatGPT,
+     Perplexity), with per-tool consent. Function exports *raw data* to other AIs, and those AIs then
+     interpret it with no grounding. We can export *computed, validated answers*. Telomy-LLX stays the
+     source of truth even when the user chats elsewhere. New row; GAP ★.
+  2. **Adaptive retest panels** (existing ✗ row): Function retests a fixed ~60 markers mid-year. Our risk
+     models can pick the retest markers with the most expected information, so a cheaper, smaller panel
+     gives a sharper update. This attacks its information-overload weakness and its cost.
+  3. **"Signals not verdicts" triage of a big panel**: rank 100+ markers into "act / watch / ignore" with
+     a one-line reason and a clinician-first route for critical values (our notifications safety path).
+     This answers the anxiety critique directly.
+  4. **Daily-moving risk between draws** (already ✅★ fusion engine): make it the headline. Function's
+     results are fixed between two draws a year. Ours update from the ring/patch every night.
+- *Operational parity via partnership:* home phlebotomy is what Function had to *buy* (Getlabs). In
+  India, partner with Tata 1mg / Thyrocare / Redcliffe rather than build (lab-ordering is still our ◐/✗
+  row). Imaging and Galleri-style MCED: doctor-ordered add-ons through partner centres only, never a
+  headline. A supplement *rating* reference (SuppCo-style, extending the peptide-library grading
+  pattern) is fine; a storefront stays out by choice.
+- *Our opening:* Function is the US benchmark for breadth and distribution, but it's a snapshot company
+  with no continuous physiology, trained prediction, Rx or India presence. Its 2026 moves (Google
+  wearables, AI connectors) admit that labs alone aren't the product. **In India no one offers Function-
+  style breadth at ₹ lab-package prices together with continuous vitals and a trained fusion model. That
+  combination is our open ground. Do it before a 1mg/Thyrocare + Ultrahuman tie-up assembles it.**
+
+Sources:
+- [Function Health pricing page (official, accessed 29 Oct 2026)](https://www.functionhealth.com/pricing), [Function: $2.5B / Medical Intelligence Lab announcement](https://www.functionhealth.com/article/function-announcement), [PR Newswire: Function × Google Health (12 Oct 2026)](https://www.prnewswire.com/news-releases/function-and-google-join-forces-to-connect-daily-habits-with-whats-happening-inside-the-body-302905844.html), [PR Newswire: Function newsroom](https://www.prnewswire.com/news/function-health/)
+- [Fierce: Series B + Medical Intelligence](https://www.fiercehealthcare.com/health-tech/function-health-lands-298m-series-b-rolls-out-medical-intelligence-ai-model-health-data), [Fierce: $450M growth financing](https://www.fiercehealthcare.com/health-tech/function-health-lands-450m-growth-financing-scale-tech-enabled-preventive-health), [Fierce: Getlabs acquisition](https://www.fiercehealthcare.com/health-tech/function-health-acquires-mobile-healthcare-platform-getlabs-provide-members-home-lab), [Pulse 2.0: Getlabs](https://pulse2.com/function-health-acquires-getlabs-to-expand-at-home-testing-access/), [Fierce: Ezra acquisition](https://www.fiercehealthcare.com/health-tech/function-health-acquires-ezra-combine-lab-testing-and-ai-powered-medical-imaging), [AuntMinnie: Ezra MRI](https://www.auntminnie.com/clinical-news/mri/news/15744874/function-health-acquires-ezra-launches-fullbody-retail-mri-exam), [Longevity.Technology: Ezra](https://longevity.technology/news/function-health-acquires-full-body-scanning-firm-ezra/)
+- [Digital Health News: Function × Perplexity Health connector](https://www.digitalhealthnews.com/function-perplexity-health-roll-out-ai-connector-to-turn-health-data-into-personalized-insights), [The Next Web: Perplexity Health launch](https://thenextweb.com/news/perplexity-health-launch), [Wikipedia: Function Health](https://en.wikipedia.org/wiki/Function_Health)
+- Reviews (treat as opinion; some competitor-authored): [Superpower vs Function (competitor)](https://superpower.com/biomarker-testing-companies/superpower-vs-function-health), [Surges: 6-month review (OneTwenty-affiliated)](https://www.surges.co/guides/function-health-review/), [Crown Counseling: Function vs Superpower](https://crowncounseling.com/reviews/function-health-vs-superpower), [Empirical Health: lower-cost Function](https://www.empirical.health/blog/function-health-lower-cost/), [Lifespan Vault: Ezra MRI pricing](https://lifespanvault.com/ultra-premium/ezra-mri), [Longevity Benchmark review](https://www.longevitybenchmark.com/platforms/function-health-review/)
+
+## 2026-10-30 — InsideTracker (Ultimate blood test · InnerAge 2.0 · DNA · Nutrition DeepDive · Ask InsideTracker · Terra B2B AI platform)
+
+*Roster note: InsideTracker is the next roster entry after Function Health and had only a seed line.
+Sources are InsideTracker's own store, enterprise page and press releases (PR Newswire, Business Wire),
+trade press (Longevity.Technology, NutritionInsight), and consumer reviews. Several reviews are
+competitor-authored (Superpower, Vitals Vault) or affiliate content, so their claims are marked where
+used. insidetracker.com/pricing returned 404 on 30 Oct 2026; prices below come from store.insidetracker.com.*
+
+**Basic features.**
+- **Panel**: "Ultimate" blood test, "up to 54 biomarkers" (official store). Some older listings say 48.
+  That is roughly a third of Function's or Superpower's headline counts.
+- **Lab logistics**: Quest in-lab by default. Mobile draw via Getlabs costs +$119 and is *required* in
+  NY, NJ, RI, AZ, HI and Canada (InsideTracker sales PDF and reviews). Getlabs is now Function-owned
+  (Apr 2026), so a rival owns InsideTracker's home-draw supplier.
+- **Report**: "Optimized Zones", meaning per-person target ranges adjusted for age, sex, ethnicity and
+  activity rather than lab reference ranges, plus an action plan of food, exercise and supplement steps.
+- **Records / upload**: upload past blood results and DNA files. A **source-agnostic blood connector**
+  launched 29 Jul 2026 (PR Newswire). It reads print/PDF reports, digital files, Apple Health and
+  FHIR/HL7 EMRs, covering ~120 markers. Business partners got it first; consumers "over the coming weeks".
+- **Wearables**: Oura integration since 2023 (sleep duration and stages, steps, RHR). 2026 trade press
+  also lists Apple Health, Fitbit and Garmin. Users complain about Android / Health Connect gaps, and
+  WHOOP support is unclear. Ultrahuman partnership (Jan 2025, cardiovascular / Blood Vision for US users;
+  the details are thin).
+- **Nutrition**: Nutrition DeepDive (Sep 2024) logs food and supplements and reads them against
+  blood, DNA and tracker data. A VO2max feature has also shipped (estimate method not verified).
+- **No doctor consults and no Rx.** It is a wellness product; tests are ordered through a physician
+  network only to meet lab requirements.
+
+**Advanced features.**
+- **InnerAge 2.0**: blood-based biological age from 13–18 markers depending on sex (sources disagree).
+  About $99 as an add-on; not available on category tests. I found no peer-reviewed validation of
+  InnerAge as a clock, unlike PhenoAge. Treat it as proprietary and unvalidated.
+- **DNA report**: ~20k-SNP genotyping (about $249 add-on), with healthspan "DNA insights" (10 added in
+  2023). Reviewers repeatedly say it doesn't disclose which SNPs it uses, links weakly to the blood
+  results, and gives shallow recommendations.
+- **Ask InsideTracker** (Aug 2024): an AI chat over the member's data. Its quality is not
+  independently evaluated.
+- **Terra (B2B, launched 14 May 2026)**: the company's bet. A white-label SaaS and API, an embeddable
+  "TerraCore" rules layer, or a "powered-by" mode. It takes blood (any lab), DNA, wearables, nutrition,
+  sleep and the partner's own data. It returns lifestyle, activity, nutrition and supplement
+  recommendations. It claims "two engines": LLM plus structured rules, marketed as "hallucination-free"
+  and "traceably backed" by 7,000+ studies (company claims). Target segments are fitness, nutrition /
+  weight loss (including GLP-1 access programmes) and employee wellness. **No named customers and no
+  public pricing.** Longevity.Technology (3 Jun 2026) calls it a pivot from a consumer brand to an AI
+  platform.
+- **Evidence**: the company cites a PLOS study of 20,000+ users showing marker improvement over ~4
+  years. It is observational with self-selected payers and no control group. It's better than nothing,
+  but it isn't outcome evidence.
+- **Not found**: disease or mortality risk prediction, continuous vitals of its own, CGM, imaging,
+  Rx pathways, emergency / fall safety, caregiver access, clinician review of results, or any presence
+  in India or Asia.
+
+**Pricing (store.insidetracker.com, 30 Oct 2026).** New customers: membership + 1 Ultimate test $489;
++2 tests $761; +4 tests $1,305. Members only: Ultimate $340; 2 for $578; 4 for $1,088. Membership on its
+own is $149/yr (sold as "international": upload results, sync a tracker). Add-ons are InnerAge ~$99 and
+DNA ~$249 (third-party figures that vary by date). Auto-renewal and platform-fee terms are not shown on
+the store page. A first year with DNA + InnerAge comes to ~$840 for one 54-marker draw, versus Function
+$365 for 2 draws of 100+ markers.
+
+**Weaknesses.**
+- **Price per marker is uncompetitive.** At ~$9/marker against Function's ~$3 and Superpower's ~$2,
+  the consumer DTC position is squeezed, which is presumably why it pivoted to B2B.
+- **Its home-draw supplier now belongs to its biggest rival** (Getlabs → Function).
+- **The DNA product is weak** and kept separate from the blood results.
+- **The bio-age score is a black box.** InnerAge has no published validation and uses few markers.
+- **Data entry is effortful** and Android wearable support is patchy (reviews).
+- **The B2B pivot is unproven.** There are no named customers, and the "hallucination-free" claim has
+  not been independently tested.
+- **US-centric**, with no presence in India.
+
+**What Telomy should integrate.**
+- *Core tech we can build:*
+  1. **Personal "optimal zones"** on top of reference ranges (new row, ◐). For each marker show the
+     lab range *and* a Telomy target conditioned on age, sex, Indian ancestry and activity, derived
+     from our NHANES/Indian-cohort models and from which values lower *predicted risk*. InsideTracker's
+     zones are rule-based targets. Ours can be risk-optimal, which is a real leapfrog. It also
+     completes the P0 "normal-range hero" item on the signals-not-verdicts list.
+  2. **Per-recommendation evidence citations for consumers** (new row, ◐). The clinical evidence
+     engine already cites PubMed for doctors; reuse it so every Telomy action card links to its studies
+     and grade. This matches Terra's "traceable" claim with a working implementation.
+  3. **Make any-lab PDF ingestion and FHIR import a first-class feature** (existing row 39, ◐).
+     InsideTracker built a business line on it, and Indian users hold Thyrocare, Redcliffe and hospital
+     PDFs. Verify and harden our parser across the top 5 Indian lab formats.
+  4. **Publish the method behind our clocks** (existing peer-reviewed-validation row). InnerAge's
+     opacity is its weak spot. A short validation note (PhenoAge-based clock, MAE on held-out NHANES,
+     muscle clock MAE 9y) turns that into our credibility edge.
+- *Operational parity via partnership:* home phlebotomy through Indian lab partners (Thyrocare /
+  Redcliffe / 1mg), as with Function. Take a **partner-API SKU** to clinics, insurers and Bonphul
+  centres: Terra shows the "engine as a product" market exists, and our multi-role OS plus tool-grounded
+  LLX is already closer to a deployable partner product than Terra's unnamed-customer launch.
+- *Our opening:* InsideTracker is a shrinking DTC brand turning into a US B2B engine with no risk
+  prediction, no continuous vitals, no clinician layer and no India presence. **No Indian wellness or
+  GLP-1 programme (Sugar.fit, HealthifyMe, Cult.fit, insurers) has a grounded, validated "labs +
+  wearables → plan" engine to license. Telomy can be that engine in India before Terra or a US
+  player localises.**
+
+Sources:
+- [InsideTracker store (official pricing, accessed 30 Oct 2026)](https://store.insidetracker.com), [Terra AI platform (official enterprise page)](https://enterprise.insidetracker.com/terra-ai-platform), [InnerAge 2.0 (official)](https://info.insidetracker.com/innerage2.0)
+- [PR Newswire: source-agnostic blood connector (29 Jul 2026)](https://www.prnewswire.com/news-releases/insidetracker-unveils-source-agnostic-blood-data-processing-across-nearly-120-biomarkers-302837181.html), [Morningstar/PR Newswire: Terra launch (14 May 2026)](https://www.morningstar.com/news/pr-newswire/20260514ne58919/insidetracker-unveils-new-ai-platform-empowering-wellness-brands-to-deliver-hyper-personalized-health-guidance-at-scale), [Longevity.Technology: pivot from consumer brand to AI platform (3 Jun 2026)](https://longevity.technology/news/insidetracker-pivots-from-consumer-brand-to-ai-platform/), [NutritionInsight: Terra connector](https://www.nutritioninsight.com/news/insidetracker-terra-blood-test-personalized-nutrition.html)
+- [Business Wire: Ask InsideTracker (Aug 2024)](https://www.businesswire.com/news/home/20240813707836/en/InsideTracker-Launches-Innovative-Ask-InsideTracker-AI-Chat-Feature-to-Provide-Members-with-Science-Backed-Information-in-Real-Time), [Business Wire: Nutrition DeepDive (Sep 2024)](https://www.businesswire.com/news/home/20240924971217/en/InsideTracker-Launches-Nutrition-DeepDive-a-Food-and-Supplement-Tracker-That-Analyzes-Nutrition-in-the-Context-of-Blood-DNA-and-Fitness-Tracker-Data), [Business Wire: DNA report (Apr 2024)](https://www.businesswire.com/news/home/20240410246118/en/InsideTracker-Launches-Novel-DNA-Report-Empowering-Members-with-New-Technology-To-Better-Understand-Healthspan-Related-Genetics-and-Mitigate-Potential-Risks), [PR Newswire: Oura integration (2023)](https://prnewswire.com/news-releases/maximize-your-sleep-to-enhance-your-healthspan-industry-pioneers-insidetracker-and-ura-launch-highly-anticipated-integration-301832358.html), [InsideTracker on X: Ultrahuman partnership (Jan 2025)](https://x.com/InsideTracker/status/1879647187346370961), [ChannelBiz: VO2max feature](https://www.channelbiz.co.uk/press-release/insidetracker-releases-new-vo2max-product-feature-to-support-members-improved-healthspan/)
+- Reviews (treat as opinion; some competitor-authored or affiliate): [Innerbody review](https://www.innerbody.com/insidetracker-review), [Crown Counseling 2026 review](https://crowncounseling.com/reviews/insidetracker-review-and-alternative), [MedConsumerWatch 2026](https://www.medconsumerwatch.com/insidetracker-review), [Gene Food review](https://www.mygenefood.com/blog/my-inside-tracker-review/), [Nebula review (DNA critique)](https://nebula.org/blog/insidetracker-review/), [Superpower vs InsideTracker (competitor)](https://superpower.com/biomarker-testing-companies/function-health-vs-insidetracker), [Vitals Vault vs InsideTracker (competitor)](https://www.vitalsvault.com/compare/insidetracker), [Athletech: InnerAge 2.0 review](https://athletechnews.com/insidetracker-review-ultimate-innerage-2-0/)
+
+## 2026-10-30 — Superpower (Superpower Health · $199/$349 membership · Lifescore · AI+human concierge care team · IM8 supplement tie-up)
+
+*Roster note: Superpower is the 3rd global-longevity roster entry (after Function and InsideTracker) and had
+only a seed line, though it appears as a comparator across many matrix rows. It is the closest direct clone
+of Function Health's model: an annual blood-testing membership + app + AI, pitched as a preventive "health
+super-app". Sources: superpower.com's own pages and /biomarker-testing-companies/ comparison pages, TechCrunch
+and Forbes Australia founder coverage, funding press (Fierce Healthcare, Endpoints, Capital Brief, Sourcery),
+the IM8/Prenetics press release, and a wide spread of affiliate/review blogs and Trustpilot/BBB summaries.
+Pricing and marker counts are genuinely inconsistent across sources and appear to have changed around
+1 Sep 2026 — figures below are flagged where they conflict. Many reviews are affiliate-style; treat claims
+as opinion unless from Superpower itself.*
+
+**Basic features.**
+- **Panel**: Superpower's own pages say a membership includes **100+ biomarker lab tests/yr** plus 8 specialty
+  add-on panels. Sep-2026 reviews report the product now markets **150+ biomarkers across two draws** (a
+  baseline panel + a ~60-marker retest). Independent counts of the per-draw baseline run **~90–97 markers**.
+  So the "150+" is the two-draw sum, same accounting trick Function uses ("160+" = baseline + mid-year recheck).
+  One reviewer claims ~30% of the "100+" are *calculated* values, not directly assayed (single source).
+- **Lab logistics**: in-lab draws at partner labs (Quest-style network); **at-home phlebotomy is a +$119
+  add-on** per reviews. US-only. No India presence.
+- **Pricing (conflicted)**: launched at a **$199/yr** founding rate to undercut Function's then-$499. Multiple
+  Sep-2026 reviews report a hike to **$349/yr** (ending the founding rate); **NY/NJ ~$399 for a ~90-marker
+  panel**. Superpower's own comparison pages (≈10 days old at time of search) still show $199 — so the site and
+  the reviews disagree; verify on superpower.com before quoting. HSA/FSA eligible.
+- **Records / upload**: in-app **"Health data upload"** for past results/documents. Positions itself as a place
+  to aggregate your health data, but I found no evidence of true medical-record (FHIR/EHR) connection — it is
+  upload + wearable sync, not an Apple/Epic-style records pull.
+- **Wearables**: syncs **Oura, WHOOP, Apple Health** per 2026 reviews. A late-2025 review called the
+  integration "woefully incomplete" (no Apple HealthKit, AI concierge couldn't find Oura data); 2026 reviews
+  are warmer but still call it "nice-to-have, not a difference-maker". Weak, improving.
+- **Reports / composite score**: headline is a **0–100 "Lifescore"** combining biomarkers + a health
+  questionnaire + clinician review, with **biological age** as one of three components.
+
+**Advanced features.**
+- **Biological age**: shown as a modeled estimate vs population averages. One reviewer reports the algorithm
+  uses **9 blood markers (albumin, creatinine, glucose, …)** — i.e. it looks like **Levine PhenoAge**, the
+  *same base clock Telomy uses* (unconfirmed, single source; Superpower's own guides only describe bio-age
+  generically and reference epigenetic clocks it does not sell). No peer-reviewed validation of Superpower's
+  own number found. If true, Superpower has **no bio-age moat over Telomy** — identical method, and Telomy adds
+  blood+muscle clocks and per-condition risk on top.
+- **AI + human concierge "care team"**: a 24/7 **hybrid AI+human** concierge. The AI reads medical history,
+  meds, wearable data and labs to **write a protocol and revise it over time**; concierge reply SLA ~1 business
+  day. Grounding method undisclosed. Reviewers' recurring critique: the AI **"lacks the full context to make
+  recommendations without a human in the loop"** — i.e. ungrounded-LLM-over-a-dashboard, the generic failure
+  mode. Explicitly **not** positioned to replace doctor visits (TechCrunch).
+- **Rx pathways**: prescriptions (incl. GLP-1, HRT/TRT territory) are offered, **billed separately** from
+  membership; details thin and complaint volume (billing/Rx delays) is small but growing per a BBB summary.
+- **Supplements**: no own line; **partnered with IM8 (parent: Prenetics) in Mar 2026** for "personalized
+  supplementation" — a referral/commerce tie-up rather than a house brand.
+- **Company / scale**: founded by Max Marchione, Jacob Peters, Kevin Unkrich. **~$30M Series A led by
+  Forerunner (Apr 2025)**; cumulative funding reported **$40–51M** (sources vary); team ~100; **150,000-person
+  waitlist** cited at launch; valuation figures ($200M–$432M) inconsistent/unverified. A Forbes Australia
+  headline references a **David Beckham** partnership — unverified in detail, treat as celebrity-backing signal.
+  Growth plans mention "overseas markets" but no India footprint today.
+
+**Pricing.** $199/yr (official pages) vs $349/yr (Sep-2026 reviews, claimed hike); NY/NJ ~$399; at-home draw
++$119; Rx and supplements billed separately. US-only.
+
+**Weaknesses (our opening).**
+- **No defensible bio-age or AI moat.** Bio-age appears to be PhenoAge (what we already compute); the AI is an
+  ungrounded concierge that reviewers say lacks context. This is exactly the gap Telomy-LLX (tool-grounded, no
+  hallucinated numbers) + our trained disease/mortality + muscle clocks are built to beat.
+- **Support & trust friction**: most consistent complaint is **slow/"almost non-existent" concierge support**,
+  fee-stacking/surprise add-ons, hard refunds, failed-draw redraws, and scheduling mix-ups. A Function↔Superpower
+  false-advertising dispute over biomarker-count marketing is referenced (status unverified).
+- **Me-too positioning**: it is a Function clone that competed on price, then raised price — repeating the same
+  new-member/price-hike churn it criticized. No clinical depth beyond labs + a chatbot.
+- **US-only, no India, no own devices, no continuous vitals** — zero overlap with Telomy's wearable/safety stack.
+
+**What Telomy should integrate.** Superpower confirms the category is converging on one commodity pattern
+(annual bloods + a 0–100 score + an AI concierge), so our differentiation has to be the *depth under the score*,
+not the score itself. *Core tech we can build:* (1) **Our own composite "Lifescore"-style 0–100 index** —
+matrix row 31 is still ◐ for us; we already have bio-age + per-condition risk, we just don't roll them into one
+number. Build it on top of our trained models (not a 9-marker PhenoAge like Superpower's) so the single number
+is *backed by* disease/mortality prediction, and show the components. (2) **Call out the bio-age parity openly**
+in positioning: if Superpower's bio-age is PhenoAge, then "same clock, plus validated risk + muscle age +
+grounded AI that never invents a number" is a clean, truthful wedge. *Operational parity via partnership:*
+(3) the annual-membership + retest-cadence + any-lab-upload bundle is table stakes — pair it with a Thyrocare/1mg
+lab partner (India price floor ~₹1,000 for 66 tests vs their $349) so our membership undercuts theirs by an
+order of magnitude in ₹. (4) A **hybrid AI+human concierge** is cheap credibility, but do it grounded: route
+Telomy-LLX draft answers to our platform doctor/centre role for sign-off, label AI-vs-human, and publish the
+reply SLA we actually hit — directly attacking their #1 complaint (support). Their weakness (shallow,
+ungrounded, US-only, support-poor) is our opening: **grounded clinical depth + India economics + a real
+clinician loop.**
+
+Sources:
+- [Superpower homepage (official)](https://superpower.com/), [Superpower biological-age LP (official)](https://superpower.com/lp/biological-age), [Superpower vs Function Health (official comparison page)](https://superpower.com/biomarker-testing-companies/superpower-vs-function-health), [Superpower vs Lifeforce (official)](https://superpower.com/biomarker-testing-companies/superpower-vs-lifeforce), [Nutraceuticals World: $199 membership launch](https://www.nutraceuticalsworld.com/breaking-news/superpower-launches-199-membership-for-personalized-health-app/)
+- [TechCrunch: Superpower wants to detect issues before symptoms (22 Apr 2025)](https://techcrunch.com/2025/04/22/superpower-wants-to-help-people-detect-and-address-health-issues-before-symptoms-appear), [Fierce Healthcare: $30M raise + 150k waitlist](https://www.fiercehealthcare.com/health-tech/new-startup-superpower-scores-30m-launch-personalized-health-testing), [Endpoints: $30M raise](https://endpoints.news/preventive-health-startup-superpower-raises-30m/), [Capital Brief: US$30M raise](https://www.capitalbrief.com/briefing/superpower-raises-us30m-for-new-health-app-263542fe-370f-4260-a697-bfb503e528ce/), [Forbes Australia: Marchione + Beckham](https://www.forbes.com.au/news/entrepreneurs/sydney-uni-dropout-behind-432m-startup-teams-up-with-beckham-to-outsmart-aging/), [Tracxn company profile](https://tracxn.com/d/companies/superpower/__hWD9Ke0SD5i8XH3H_pwjR_MTRfvMZYZdOENbM1njsiw)
+- [Yahoo Finance/PR: IM8 (Prenetics) × Superpower supplement partnership (Mar 2026)](https://finance.yahoo.com/sectors/healthcare/articles/prenetics-im8-partners-superpower-personalize-150000264.html)
+- Reviews (opinion; affiliate/competitor where noted): [Crown Counseling 2026 review](https://crowncounseling.com/reviews/superpower-health-review), [HealNourishGrow: what the $349 panel caught](https://healnourishgrow.com/superpower-health-review/), [Traksource review](https://traksource.com/superpower-health-review/), [Well Defined editor's take](https://welldefined.com/an-editors-take-on-superpowers-health-platform/), [HealthRx BBB/complaint-trend summary](https://healthrx.com/brands-v2-superpower/complaint-trends), [ProductPep: the $199 AI coach](https://www.productpep.com/blog/2025/10/27/what-is-superpowers-superpower), [Club Karpediem (clinician review, part 1)](https://clubkarpediem.substack.com/p/reviewing-superpower-part-i)
+
+## 2026-10-30 — Neko Health (Neko Body Scan · Neko app · Stockholm/London/NYC clinics · Daniel Ek)
+
+*Roster note: Neko is the 5th global-longevity roster entry (after Function, InsideTracker, Superpower,
+Lifeforce) and the first pure clinic/imaging player we've profiled — the closest category comparables already
+in the file are Fountain Life and Human Longevity Inc, and its direct rival is Prenuvo (next in the roster).
+Neko is NOT a blood-membership app; it is a preventive **full-body scan clinic** co-founded by Spotify's
+Daniel Ek and Hjalmar Nilsonne, building its own scanning hardware. Sources: Neko's own press release and
+scan pages (nekohealth.com), Fierce Healthcare / Axios / MobiHealthNews / Dealroom funding coverage, TechCrunch
+London-launch reporting, PureWow / TheFlowSpace / Yahoo first-person scan reviews, and a cluster of critical
+blogs/newsletters (UnHerd, Slate, HealthTech Off the Record, Dr Evan Rieder, Healthy-Debate). Most feature
+detail comes from company-adjacent or lifestyle press; the critiques are opinion/analyst reads, not
+peer-reviewed. Figures flagged where sources conflict.*
+
+**Basic features.**
+- **The scan (core product)**: a single ~60-minute in-clinic visit in a proprietary scan pod. Explicitly
+  **not MRI, CT or X-ray** — it is a non-invasive sensor + imaging + blood suite that the company says captures
+  "millions of data points". Reviewers consistently describe: a **360° skin camera** mapping every mole/mark
+  (one reviewer logged ~1,740 skin markings), an **ECG + multi-site pulse and skin-microcirculation** read,
+  blood pressure, a **blood panel of 50+ biomarkers**, **grip strength**, and **eye pressure**. US price
+  **$499/scan**; UK reported **£299–£300**; Europe figures of €250 seen in older coverage. **No membership /
+  subscription** is required (sources agree; one competitor page calling it a membership is outdated). HSA/FSA
+  eligible in the US; insurance does not cover it.
+- **Lab logistics**: blood is drawn and processed **on-site**; results are ready in the same visit. No
+  home-collection model — the whole value prop is the clinic visit.
+- **Doctor consult**: every scan ends with a **same-visit clinician conversation** that walks through the
+  results and gives a **personalized action plan**. If something is flagged, Neko's **in-house specialists**
+  follow up via the app; patients needing outside care are **referred through a network of NY hospitals**.
+- **App / records**: the Neko app holds scan history and results, **tracks change scan-to-scan**, **syncs
+  wearable data** (device list unspecified; added in the Jun 2026 experience update), and lets you **share
+  results with your primary-care physician**. App store listing is careful to state it **"does not diagnose,
+  treat or monitor medical conditions."** Launched an iOS app alongside the US expansion.
+- **Reports**: visual, shareable scan report; annual re-scan is the implied cadence (TechCrunch 2024).
+
+**Advanced features.**
+- **360° skin / mole mapping + melanoma screen**: whole-body dermoscopy-style imaging that maps and re-checks
+  every lesion between scans; Neko reports **57 melanomas found in 2025**. Whole-body mapping (vs single-lesion
+  phone-camera apps like SkinVision) is genuinely rare — a real capability we do not have.
+- **Radiation-free body composition (added Jun 2026)**: every scan now reports **visceral fat + body-fat %**
+  from Neko's own imaging device, **no X-ray** (company claim via its press release / Medical Device Network).
+- **Microcirculation / peripheral vascular read**: skin-level perfusion + multi-site pulse as part of the
+  cardiovascular assessment — not something wrist wearables do.
+- **AI role**: Neko says **AI interprets** the scan's data and flags findings while **clinicians make the
+  clinical decisions** — an explicit human-in-the-loop model. Grounding/validation method not published. Neko
+  pitches itself (and investors frame it) as "medical AI beyond chatbots" — i.e. AI tied to proprietary
+  first-party sensor data, which is the defensible version of the AI-health story.
+- **Scale / funding**: **100,000+ people scanned** across Sweden and the UK. **$700M Series C, Jul 2026**, led
+  by **Lightspeed** (O.G. Venture Partners co-lead), at a media-reported **~$7B valuation** (company confirms
+  the $700M, not the valuation; third-party estimates range $6.1–10.8B). Prior **$260M Series B, Jan 2025 at
+  $1.8B**. First US clinic opened **NYC, 24 Sep 2026**; waitlist reported to have doubled in two weeks. Also
+  took on ~1.7B SEK debt to fund the global rollout. FDA clearances in 2026 reportedly cover specific hardware
+  components, not the whole service.
+
+**Pricing.** US **$499/scan**, UK **£299–£300**, no subscription; HSA/FSA eligible; insurance not accepted.
+Positioned as the **cheaper** full-body alternative to Prenuvo (~$1,200 and up to ~$4,000 for deeper MRI
+imaging).
+
+**Weaknesses (our opening).**
+- **False-positive / overdiagnosis problem, by its own numbers.** A third-party analysis of Neko's 3rd annual
+  report implies **~20% of ~8,600 members** were referred for follow-up, of whom **~6.9% got a confirmed
+  diagnosis, ~6.4% were cleared as false positives, ~6.7% still open** — i.e. a flagged result had only about
+  a **52% positive predictive value**. Melanoma screen **sensitivity (miss rate) is undisclosed**. Independent
+  researchers (UnHerd) call unproven whole-body screening "more likely a waste of money and time… risk of harm
+  through overdiagnosis and overtreatment"; a *Hypertension*-style skepticism applies to screening asymptomatic
+  people. Whole-body screening is **not endorsed** by bodies like the American College of Radiology.
+- **Capital- and geography-bound.** It is a **physical clinic** business: three cities (Stockholm, London,
+  NYC), scans only where a pod exists, no home option, no India path. Every new market = real estate + hardware
+  + licensed clinicians. The opposite of software leverage.
+- **No bio-age clock, no disease/mortality model, no continuous vitals.** It is a **point-in-time snapshot**
+  (annual), not a longitudinal trained-risk engine; the "AI" interprets one visit's sensor data. No wearable of
+  its own; wearable *sync* is new and thin. No GLP-1/HRT Rx, no CGM, no genomics.
+- **Reassurance risk + reimbursement gap.** Critics warn a "clean" scan may falsely reassure people about
+  drinking/inactivity; and at $499 cash with no insurance, it skews to the affluent worried-well.
+
+**What Telomy should integrate.** Neko is validation that **preventive, consumer-paid screening with
+first-party sensor data + an action plan** is a venture-scale category ($7B) — but its model is the inverse of
+ours (capital-heavy clinic snapshot vs software longitudinal engine), so we should borrow the *outputs*, not
+the *clinic*. *Core tech we can build:* (1) **A vascular/microcirculation signal from hardware we already have**
+— our patch ECG + ring PPG yield pulse-arrival time (a PWV-style vascular-age input) that a wrist device can't;
+this is matrix row 106's ★ opening and turns Neko's marquee "microcirculation/cardiovascular" read into a
+*continuous* metric, not an annual one. (2) **Lead on the number Neko refuses to publish:** false-positive rate,
+PPV and sensitivity. Neko flags 1-in-5 members and ~half are false alarms; our "signals not verdicts" + grounded
+Telomy-LLX + normal-range hero should *show* calibration and a "what to do now / don't panic" path, making
+honest uncertainty a differentiator against screening theatre. *Operational parity via partnership:* (3) **Skin
+/ mole imaging** (matrix new row) is a real gap and a brand-adjacent one — but build it as a **clinic-capture
+add-on via a partner centre (Mitogenez-style) or a validated dermatology-AI license**, feeding the
+`telomy-vision` project, rather than a Neko-style pod. (4) **Body composition**: accept visceral/body-fat and
+DXA/BIA reports from partner centres and Health Connect into the muscle clock (rows 104/143) — cheap parity with
+Neko's Jun-2026 headline without building an imaging device. Neko's weakness (clinic-bound, point-in-time,
+overdiagnosis-prone, affluent-only, no India) is precisely our opening: **a continuous, trained-risk, grounded,
+India-priced longitudinal layer that is honest about what a screen can and can't tell you.**
+
+Sources:
+- [Neko Health: body-composition & wearables scan advancements (official press release)](https://www.nekohealth.com/us/en/press/neko-health-announces-advancements-to-its-health-scan-experience-fueling-the-future-of-proactive), [Neko Health US scan page (official)](https://www.nekohealth.com/us/en/health-scan), [Neko Health app (App Store)](https://apps.apple.com/us/app/neko-health/id6751233363)
+- [Fierce Healthcare: Neko scores $700M to break into US](https://www.fiercehealthcare.com/health-tech/full-body-scan-startup-neko-health-scores-700m-break-us-market), [MobiHealthNews: $700M for AI full-body scans](https://www.mobihealthnews.com/news/neko-health-raises-700m-ai-full-body-health-scans), [Dealroom: $700M Series C at ~$7bn](https://dealroom.co/news/139045-neko-health-raises-700m-series-c-at-7bn-valuation/), [Axios: Neko raises $260M (Jan 2025)](https://www.axios.com/2025/01/23/spotify-founder-neko-health), [TechCrunch: Neko opens in London (Sep 2024)](https://techcrunch.com/2024/09/03/neko-health-the-body-scanning-ai-health-startup-from-spotifys-daniel-ek-opens-in-london/)
+- [MedicalDevice-Network: new body-composition metrics](https://www.medicaldevice-network.com/news/neko-health-advances-scan-technology/), [PureWow: I tried the $499 scan (first-person review)](https://www.purewow.com/wellness/neko-health-full-body-scan), [TheFlowSpace: Neko body-scan review](https://www.theflowspace.com/video/neko-health-body-scan-review-3079534/), [Yahoo/Business Insider: is it worth $499?](https://www.yahoo.com/lifestyle/articles/neko-scan-spotify-longevity-designed-110001421.html)
+- Critiques (opinion/analyst, not peer-reviewed): [HealthTech Off the Record: Neko's 3rd annual report (false-positive math)](https://healthtechofftherecord.substack.com/p/nekos-third-annual-health-report), [UnHerd: the truth about private health scans](https://unherd.com/2025/01/the-truth-about-private-health-scans/), [Slate: creepy way to profit off health anxiety](https://slate.com/technology/2026/10/spotify-neko-health-ai-body-scan-startup.html), [Dr Evan Rieder: the Neko Health scan](https://drevanrieder.substack.com/p/the-neko-health-scan), [Healthy-Debate: Neko](https://www.healthy-debate.com/p/neko)
