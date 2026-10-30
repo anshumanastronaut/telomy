@@ -17,7 +17,7 @@ import { Icon, Row, T } from '@/ui/core';
 
 type Reading = { v: number | null; src?: string; live: boolean };
 type Tile = { key: string; icon: SFSymbol; label: string; value: string | null; unit?: string; color: string; source?: string; live: boolean; to: string };
-const SHORT: Record<SourceId, string> = { patch: 'Patch', ring: 'Ring', health: 'Health' };
+const SHORT: Record<SourceId, string> = { patch: 'Patch', ring: 'Ring', jcvital: 'JCVital', health: 'Health' };
 const fmt = (v: number | null | undefined, d = 0) => (v == null ? null : d ? v.toFixed(d) : Math.round(v).toLocaleString('en-IN'));
 /** "now", "12 min ago", "3h ago", "yesterday", "Tue" — when a fallback reading was taken. */
 export function ago(tSec: number) {

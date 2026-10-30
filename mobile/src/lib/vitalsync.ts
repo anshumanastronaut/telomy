@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/lib/api';
 import { Band, type RingHistorySample } from '../../modules/ky-ecg';
 import { ringSamples } from '@/lib/ringhistory';
+import { JCVital } from '@/lib/jcvitalsource';
 
 const CURSOR = 'telomy.vitals.cursor.v1';   // { patch: lastTs, ring: lastTs }
 const MIN_INTERVAL_MS = 2 * 60 * 1000;
@@ -66,6 +67,18 @@ async function push(source: string, rows: Row[]): Promise<number> {
   return maxTs;
 }
 
+/** JCVital V8 continuous buffer → ingest rows (hr, spo2, skin_temp). Source lib/jcvitalsource.ts. */
+function jcvitalRows(since: number): Row[] {
+  const out: Row[] = [];
+  for (const b of JCVital.rows(since)) {
+    if (!b.ts || b.ts <= since) continue;
+    if (b.hr != null) out.push({ ts: b.ts, metric: 'hr', value: b.hr, step_s: 10 });
+    if (b.spo2 != null) out.push({ ts: b.ts, metric: 'spo2', value: b.spo2, step_s: 10 });
+    if (b.temp != null) out.push({ ts: b.ts, metric: 'skin_temp', value: b.temp, step_s: 10 });
+  }
+  return out;
+}
+
 /** Sync the longitudinal vitals. Throttled; safe to call often (on load, on foreground). */
 export async function syncVitals(force = false): Promise<void> {
   if (running) return;
@@ -74,10 +87,12 @@ export async function syncVitals(force = false): Promise<void> {
   try {
     const c = await cursor();
     const [pr, rr] = await Promise.all([patchRows(c.patch ?? 0), ringRows(c.ring ?? 0)]);
+    const jr = jcvitalRows(c.jcvital ?? 0);
     const next = { ...c };
     const pMax = await push('patch', pr); if (pMax) next.patch = pMax;
     const rMax = await push('ring', rr); if (rMax) next.ring = rMax;
-    if (pMax || rMax) await setCursor(next);
+    const jMax = await push('jcvital', jr); if (jMax) next.jcvital = jMax;
+    if (pMax || rMax || jMax) await setCursor(next);
   } catch { /* offline or no device — try again next time; nothing is lost */ }
   finally { running = false; }
 }

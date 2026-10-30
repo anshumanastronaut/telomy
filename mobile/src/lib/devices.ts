@@ -7,22 +7,23 @@ import { Band, bandAvailable, useBand } from './band';
 import { Ring, type RingStatus } from '../../modules/ky-ecg';
 import { startRingHistory } from './ringhistory';
 import { HEALTH_LABEL, useHealth } from './health';
+import { JCVital, type JcSnapshot } from './jcvitalsource';
 
-export type SourceId = 'patch' | 'ring' | 'health';
-export const SOURCE_LABEL: Record<SourceId, string> = { patch: 'Chest ECG patch', ring: 'Smart ring', health: HEALTH_LABEL };
+export type SourceId = 'patch' | 'ring' | 'jcvital' | 'health';
+export const SOURCE_LABEL: Record<SourceId, string> = { patch: 'Chest ECG patch', ring: 'Smart ring', jcvital: 'JCVital V8 band', health: HEALTH_LABEL };
 
 // Which sources can provide each metric, best first. "patch" = KY-E-B1 single-lead ECG (gold for HR/HRV/rhythm),
 // "ring" = PPG + IMU + temp, "health" = Apple Watch / iPhone via HealthKit.
 export const METRIC_SOURCES: Record<string, SourceId[]> = {
-  hr: ['patch', 'ring', 'health'],
+  hr: ['patch', 'ring', 'jcvital', 'health'],
   hrv: ['patch', 'ring', 'health'],
   ecg: ['patch'],
   rhythm: ['patch'],
-  spo2: ['ring', 'health'],
-  skinTemp: ['ring'],
+  spo2: ['ring', 'jcvital', 'health'],
+  skinTemp: ['ring', 'jcvital'],
   respRate: ['patch', 'health'],
   motion: ['ring', 'health'],       // ring IMU for sleep; Health for daytime
-  steps: ['health'],
+  steps: ['health', 'jcvital'],
   distanceKm: ['health'],
   activeKcal: ['health'],
   workouts: ['health'],
@@ -57,6 +58,7 @@ export function useDevices(ageHint?: number | null): DevicesSnapshot {
   const band = useBand();
   const health = useHealth(2);
   const [ring, setRing] = useState<RingStatus | null>(bandAvailable ? Ring.status() : null);
+  const [jc, setJc] = useState<JcSnapshot>(JCVital.status());
   useEffect(() => {
     if (!bandAvailable) return;
     // Subscribe FIRST, then kick off auto-connect — so the ring's status/data updates are never missed on a cold
@@ -67,9 +69,16 @@ export function useDevices(ageHint?: number | null): DevicesSnapshot {
     try { Ring.autoConnect(); } catch {}
     return () => { a.remove(); b.remove(); };
   }, []);
+  useEffect(() => {
+    // JCVital (ble-plx, cross-platform): continuous like the ring — reconnect the remembered band and keep it streaming.
+    const s = JCVital.on(setJc); setJc(JCVital.status());
+    JCVital.autoConnect();
+    return () => s.remove();
+  }, []);
 
   const bandConn = band.status?.state === 'streaming' || band.status?.state === 'connected';
   const ringConn = ring?.state === 'connected';
+  const jcConn = jc.connected;
   const healthConn = health.connected === true;
 
   const devices: DeviceState[] = [
@@ -77,6 +86,8 @@ export function useDevices(ageHint?: number | null): DevicesSnapshot {
       detail: bandConn ? `Live${band.metrics?.hr ? ` · ${Math.round(band.metrics.hr)} bpm` : ''}` : 'Not connected' },
     { id: 'ring', label: SOURCE_LABEL.ring, connected: !!ringConn,
       detail: ringConn ? `Connected${ring?.battery != null && ring.battery >= 0 ? ` · ${ring.battery}%` : ''}` : ring?.state === 'scanning' ? 'Searching…' : 'Not connected' },
+    { id: 'jcvital', label: SOURCE_LABEL.jcvital, connected: jcConn,
+      detail: jcConn ? `Streaming${jc.hr ? ` · ${jc.hr} bpm` : ''}` : 'Not connected' },
     { id: 'health', label: SOURCE_LABEL.health, connected: healthConn,
       detail: healthConn ? `${health.today?.steps != null ? Math.round(health.today.steps).toLocaleString('en-IN') + ' steps today' : 'Connected'}` : 'Not connected' },
   ];
@@ -84,11 +95,11 @@ export function useDevices(ageHint?: number | null): DevicesSnapshot {
   const bm = band.metrics;
   const hy = health.today;
   const live: Record<string, Fused> = {
-    hr: fuse('hr', { patch: bandConn ? bm?.hr : undefined, ring: ringConn ? ring?.hr : undefined, health: hy?.restingHr }),
+    hr: fuse('hr', { patch: bandConn ? bm?.hr : undefined, ring: ringConn ? ring?.hr : undefined, jcvital: jcConn ? jc.hr : undefined, health: hy?.restingHr }),
     hrv: fuse('hrv', { patch: bandConn && (bm?.hrvState === 'ok' || bm?.hrvState === 'active') ? bm?.rmssdSmooth : undefined, ring: ringConn ? ring?.hrv : undefined, health: hy?.hrvSdnn }),
-    spo2: fuse('spo2', { ring: ringConn ? ring?.spo2 : undefined, health: hy?.spo2 }),
-    skinTemp: fuse('skinTemp', { ring: ringConn ? ring?.temp : undefined }),
-    steps: fuse('steps', { health: hy?.steps }),
+    spo2: fuse('spo2', { ring: ringConn ? ring?.spo2 : undefined, jcvital: jcConn ? jc.spo2 : undefined, health: hy?.spo2 }),
+    skinTemp: fuse('skinTemp', { ring: ringConn ? ring?.temp : undefined, jcvital: jcConn ? jc.temp : undefined }),
+    steps: fuse('steps', { health: hy?.steps, jcvital: jcConn ? jc.steps : undefined }),
     vo2max: fuse('vo2max', { health: hy?.vo2max }),
   };
 

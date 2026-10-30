@@ -11,7 +11,7 @@ import { Band, Ring } from '../../modules/ky-ecg';
 import { space, usePalette } from '@/lib/theme';
 import { Button, Card, Chip, Icon, Row, Screen, Section, T, useToast } from '@/ui/core';
 
-const ICON: Record<SourceId, any> = { patch: 'waveform.path.ecg', ring: 'circle.circle', health: 'heart.text.square' };
+const ICON: Record<SourceId, any> = { patch: 'waveform.path.ecg', ring: 'circle.circle', jcvital: 'dot.radiowaves.left.and.right', health: 'heart.text.square' };
 const UNIT: Record<string, string> = { hr: 'bpm', hrv: 'ms', spo2: '%', skinTemp: '°C', steps: '', vo2max: '' };
 const LABEL: Record<string, string> = { hr: 'Heart rate', hrv: 'HRV', spo2: 'SpO₂', skinTemp: 'Skin temp', steps: 'Steps', vo2max: 'VO₂max' };
 
