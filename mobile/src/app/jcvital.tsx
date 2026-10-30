@@ -35,20 +35,29 @@ export default function JCVital() {
   const session = useRef('');
   const buf = useRef<any[]>([]);
   const resend = useRef<any>(null);
+  const spo2Buf = useRef<number[]>([]);
 
   useEffect(() => {
     bleManager.deviceType = 'V8';
     const onState = (c: boolean) => { setConnected(c); if (c) show('Band connected'); };
+    const num = (v: any): number | null => typeof v === 'number' ? v : (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v)) ? Number(v) : null);
     const onParsed = (arg: any) => {
       try {
+        // band payload: { data: { heart_rate, blood_oxygen, step, distance, calories, temp_data(×10), … }, data_type, end }
         const data = (arg && arg[DeviceKey.Data]) || arg || {};
-        const hr = data[DeviceKey.HeartRate];
-        const spo2 = data[DeviceKey.Blood_oxygen];
         const upd: Record<string, any> = {};
-        if (hr != null && Number(hr) > 0) { upd.heartRate = Number(hr); setHrTrend((t) => [...t, Number(hr)].slice(-60)); }
-        if (spo2 != null && Number(spo2) > 0) upd.spo2 = Number(spo2);
-        // also surface any other numeric fields the band sends
-        for (const [k, v] of Object.entries(data)) if (typeof v === 'number' && !['heartRate', 'spo2'].includes(k)) upd[k] = v;
+        const hr = num(data[DeviceKey.HeartRate] ?? data.heart_rate);
+        if (hr && hr > 0) { upd.heartRate = hr; setHrTrend((t) => [...t, hr].slice(-60)); }
+        const sp = num(data[DeviceKey.Blood_oxygen] ?? data.blood_oxygen);
+        if (sp && sp >= 70 && sp <= 100) {                       // SpO2 is noisy per-reading → show a rolling median
+          spo2Buf.current = [...spo2Buf.current, sp].slice(-10);
+          const s = [...spo2Buf.current].sort((a, b) => a - b);
+          upd.spo2 = s[Math.floor(s.length / 2)];
+        }
+        for (const [k, v] of Object.entries(data)) {             // the band sends numbers as strings
+          const n = num(v);
+          if (n != null && !['heart_rate', 'blood_oxygen'].includes(k)) upd[k === 'temp_data' ? 'skin_temp_c' : k] = k === 'temp_data' ? Math.round(n / 10 * 10) / 10 : n;
+        }
         if (Object.keys(upd).length) {
           setVitals((prev) => ({ ...prev, ...upd }));
           if (capturing && session.current) for (const [k, v] of Object.entries(upd)) if (typeof v === 'number') buf.current.push({ t: Date.now() / 1000, source: 'jcvital', channel: k, v });
